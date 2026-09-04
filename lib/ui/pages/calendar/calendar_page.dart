@@ -84,13 +84,14 @@ class CalendarPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FutureBuilder(
-        future: CalendarController.to.findFirstEventsFromToday(),
+        future: CalendarController.instance.findFirstEventsFromToday(),
         builder: (context, __) => Scaffold(
           appBar: AppBar(
             title: Text(R.current.calendar),
           ),
-          body: GetBuilder<CalendarController>(
-            builder: (controller) => Column(
+          body: Obx(() {
+            final controller = CalendarController.instance;
+            return Column(
               mainAxisSize: MainAxisSize.max,
               children: [
                 _buildTableCalendar(controller),
@@ -99,8 +100,8 @@ class CalendarPage extends StatelessWidget {
                   child: _buildEventList(context, controller.selectedEventsRx),
                 ),
               ],
-            ),
-          ),
+            );
+          }),
         ),
       );
 }

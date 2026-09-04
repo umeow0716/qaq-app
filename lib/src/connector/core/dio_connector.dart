@@ -7,8 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/adapters/early_interceptor_adapter.dart';
-import 'package:get/get.dart' as k;
-import 'package:get/get_core/get_core.dart';
+import 'package:flutter_app/src/navigation/app_navigator.dart';
 
 import 'connector_parameter.dart';
 
@@ -22,7 +21,8 @@ class DioConnector {
 
   static final _alice = Alice();
 
-  Alice getAlice({required GlobalKey<NavigatorState> navigatorKey}) => _alice..setNavigatorKey(navigatorKey);
+  Alice getAlice({GlobalKey<NavigatorState>? navigatorKey}) =>
+      _alice..setNavigatorKey(navigatorKey ?? AppNavigator.key);
 
   static final dioOptions = BaseOptions(
     connectTimeout: 5000,
@@ -55,7 +55,7 @@ class DioConnector {
       headerDecorators: headerDecorators,
     );
 
-  final CookieJar _cookieJar = k.Get.find<CookieJar>();
+  CookieJar? _cookieJar;
 
   static final connectorError = Exception("Connector statusCode is not 200");
 
@@ -66,17 +66,36 @@ class DioConnector {
   static String _big5Decoder(List<int> responseBytes, RequestOptions options, ResponseBody responseBody) =>
       big5.decode(responseBytes);
 
-  Future<void> init({required List<Interceptor> interceptors}) async {
+  Future<void> init({
+    required List<Interceptor> interceptors,
+    CookieJar? cookieJar,
+  }) async {
+    if (cookieJar != null) {
+      _cookieJar = cookieJar;
+    }
+    _requireCookieJar();
+
+    // LocalStorage can reinitialize after logout. Rebuild the interceptor list
+    // instead of stacking duplicate CookieManager/Alice interceptors.
+    dio.interceptors.clear();
     dio.interceptors.addAll(interceptors);
-    dio.interceptors.add(getAlice(navigatorKey: Get.key).getDioInterceptor());
+    dio.interceptors.add(getAlice().getDioInterceptor());
   }
 
-  void deleteCookies() {
-    try {
-      _cookieJar.deleteAll();
-    } catch (_, stackTrace) {
-      stackTrace.printError();
+  Future<void> deleteCookies() async {
+    await _requireCookieJar().deleteAll();
+  }
+
+  Future<void> deleteCookiesFor(Uri uri) async {
+    await _requireCookieJar().delete(uri, true);
+  }
+
+  CookieJar _requireCookieJar() {
+    final cookieJar = _cookieJar;
+    if (cookieJar == null) {
+      throw StateError('DioConnector has not been initialized with a CookieJar.');
     }
+    return cookieJar;
   }
 
   Future<String> getDataByPost(ConnectorParameter parameter) async {
@@ -102,7 +121,7 @@ class DioConnector {
   Future<Map<String, List<String>>> getHeadersByGet(ConnectorParameter parameter) async {
     final response = await dio.get<ResponseBody>(
       parameter.url,
-      options: Options(responseType: ResponseType.stream), // set responseType to `stream`
+      options: Options(responseType: ResponseType.stream),
     );
 
     if (response.statusCode == HttpStatus.ok) {
@@ -131,6 +150,8 @@ class DioConnector {
     dio.options.headers[HttpHeaders.userAgentHeader] = parameter.userAgent;
     if (parameter.referer != null) {
       dio.options.headers[HttpHeaders.refererHeader] = parameter.referer;
+    } else {
+      dio.options.headers.remove(HttpHeaders.refererHeader);
     }
   }
 
@@ -172,5 +193,5 @@ class DioConnector {
 
   Map<String, String> get headers => _headers;
 
-  CookieJar get cookiesManager => _cookieJar;
+  CookieJar get cookiesManager => _requireCookieJar();
 }

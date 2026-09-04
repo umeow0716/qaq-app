@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
@@ -37,6 +38,7 @@ class LocalStorage {
   final _courseTableList = <CourseTableJson>[];
 
   final _httpClientInterceptors = <Interceptor>[];
+  CookieJar _cookieJar;
 
   SharedPreferences _pref;
   UserDataJson _userData;
@@ -241,10 +243,25 @@ class LocalStorage {
 
   Future<void> setVersion(String version) => _writeString("version", version);
 
-  Future<void> init({List<Interceptor> httpClientInterceptors = const []}) async {
+  Future<void> init({
+    List<Interceptor> httpClientInterceptors = const [],
+    CookieJar cookieJar,
+  }) async {
     _pref = await SharedPreferences.getInstance();
-    await DioConnector.instance.init(interceptors: httpClientInterceptors);
-    _httpClientInterceptors.addAll(httpClientInterceptors);
+
+    if (httpClientInterceptors.isNotEmpty) {
+      _httpClientInterceptors
+        ..clear()
+        ..addAll(httpClientInterceptors);
+    }
+    if (cookieJar != null) {
+      _cookieJar = cookieJar;
+    }
+
+    await DioConnector.instance.init(
+      interceptors: _httpClientInterceptors,
+      cookieJar: _cookieJar,
+    );
     _courseSemesterList = _courseSemesterList ?? [];
     _loadUserData();
     _loadCourseTableList();
@@ -254,6 +271,7 @@ class LocalStorage {
   }
 
   Future<void> logout() async {
+    await DioConnector.instance.deleteCookies();
     await clearUserData();
     clearSemesterJsonList();
     await clearCourseTableList();

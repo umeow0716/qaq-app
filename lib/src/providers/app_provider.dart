@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
 import 'package:flutter_app/src/config/app_themes.dart';
+import 'package:flutter_app/src/navigation/app_navigator.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,7 +20,7 @@ class AppProvider extends ChangeNotifier {
   ThemeData get theme => (() => _theme)();
   ThemeData _theme = Get.isDarkMode ? AppThemes.darkTheme : AppThemes.lightTheme;
   final Key key = UniqueKey();
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> navigatorKey = AppNavigator.key;
 
   void setTheme(ThemeData value, String colorName) {
     _theme = value;

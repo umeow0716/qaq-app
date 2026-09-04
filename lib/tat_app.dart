@@ -11,6 +11,7 @@ import 'package:flutter_app/src/config/app_config.dart';
 import 'package:flutter_app/src/config/app_themes.dart';
 import 'package:flutter_app/src/connector/blocked_cookies.dart';
 import 'package:flutter_app/src/connector/interceptors/request_interceptor.dart';
+import 'package:flutter_app/src/connector/interceptors/response_cookie_filter.dart';
 import 'package:flutter_app/src/controllers/calendar_controller.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
 import 'package:flutter_app/src/providers/category_provider.dart';
@@ -18,21 +19,13 @@ import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/ui/pages/webview/web_view_page.dart';
 import 'package:flutter_app/ui/screen/main_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:get/get_instance/get_instance.dart';
 import 'package:get/route_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:tat_core/core/api/interceptors/response_cookie_filter.dart';
-import 'package:tat_core/core/api/school_api_service.dart';
-import 'package:tat_core/core/portal/data/check_session_repository.dart';
-import 'package:tat_core/core/portal/data/simple_login_repository.dart';
-import 'package:tat_core/core/portal/usecase/check_session_use_case.dart';
-import 'package:tat_core/core/portal/usecase/simple_login_use_case.dart';
 
 typedef _FutureVoidCallBack = Future<void> Function();
 
 Future<void> runTATApp() async {
-
   final appDocDir = (await getApplicationDocumentsDirectory()).path;
   final CookieJar cookieJar = PersistCookieJar(storage: FileStorage('$appDocDir/.cookies'));
 
@@ -41,31 +34,16 @@ Future<void> runTATApp() async {
     CookieManager(cookieJar),
     RequestInterceptors(),
   ];
-
-  final schoolApiService = SchoolApiService(interceptors: apiInterceptors);
-
-  final simpleLoginRepository = SimpleLoginRepository(apiService: schoolApiService);
-  final checkSessionRepository = CheckSessionRepository(apiService: schoolApiService);
-
-  final simpleLoginUseCase = SimpleLoginUseCase(simpleLoginRepository);
-
-  final checkSessionIsAliveUseCase = CheckSessionUseCase(checkSessionRepository);
-
-  final calendarController = CalendarController();
-
-  const webViewPage = WebViewPage();
+  const webViewPage = WebViewPage.instance;
 
   Future<void> handleAppDetached() async {
     await webViewPage.close();
   }
 
-  Get.put(webViewPage);
-  Get.put(simpleLoginUseCase);
-  Get.put(cookieJar);
-  Get.put(calendarController);
-  Get.put(checkSessionIsAliveUseCase);
-
-  await LocalStorage.instance.init(httpClientInterceptors: apiInterceptors);
+  await LocalStorage.instance.init(
+    httpClientInterceptors: apiInterceptors,
+    cookieJar: cookieJar,
+  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   WidgetsBinding.instance.addObserver(
     _TATLifeCycleEventHandler(detachedCallBack: handleAppDetached),

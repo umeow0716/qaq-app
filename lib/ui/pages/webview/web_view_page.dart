@@ -14,7 +14,7 @@ class WebViewPage {
   @literal
   const WebViewPage();
 
-  static WebViewPage get to => Get.find();
+  static const WebViewPage instance = WebViewPage();
 
   Future<void> close() => FlutterWebBrowser.close();
 

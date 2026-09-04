@@ -6,14 +6,12 @@ import 'package:flutter_app/src/model/ntut/ntut_calendar_json.dart';
 import 'package:flutter_app/src/task/ntut/ntut_calendar_task.dart';
 import 'package:flutter_app/src/task/task_flow.dart';
 import 'package:flutter_app/src/util/language_util.dart';
-import 'package:get/get_core/get_core.dart';
-import 'package:get/get_instance/get_instance.dart';
 import 'package:get/get_rx/get_rx.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarController extends GetxController {
-  static CalendarController get to => Get.find();
+  static final CalendarController instance = CalendarController();
 
   final Map<DateTime, List<NTUTCalendarJson>> knownHolidays = {
     // TODO: Define the source of holidays in a correct way.

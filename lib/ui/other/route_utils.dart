@@ -101,7 +101,7 @@ class RouteUtils {
     String? title,
     bool shouldUseAppCookies = false,
   }) =>
-      WebViewPage.to(
+      WebViewPage.instance(
         initialUrl: initialUrl,
         title: title,
         shouldUseAppCookies: shouldUseAppCookies,
@@ -115,7 +115,7 @@ class RouteUtils {
   }
 
   static Future toAliceInspectorPage() async {
-    DioConnector.instance.getAlice(navigatorKey: Get.key).showInspector();
+    DioConnector.instance.getAlice().showInspector();
   }
 
   static Future? toIPlusAnnouncementDetailPage(CourseInfoJson courseInfo, Map detail) {

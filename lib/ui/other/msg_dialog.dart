@@ -1,7 +1,7 @@
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_app/src/navigation/app_navigator.dart';
 import 'package:flutter_app/src/r.dart';
-import 'package:get/get.dart';
 
 class MsgDialogParameter {
   String? title;
@@ -46,7 +46,7 @@ class MsgDialog {
   final MsgDialogParameter parameter;
 
   Future<void> show({BuildContext? context}) => AwesomeDialog(
-        context: context ?? Get.key.currentContext!,
+        context: context ?? AppNavigator.key.currentContext!,
         dialogType: parameter.dialogType,
         animType: parameter.animType,
         title: parameter.title,

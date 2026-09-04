@@ -5,13 +5,12 @@ import 'dart:async';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/ntut_connector.dart';
+import 'package:flutter_app/src/portal/account_status.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/task/task.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
-import 'package:get/get.dart';
-import 'package:tat_core/tat_core.dart';
 
 import '../dialog_task.dart';
 
@@ -31,7 +30,7 @@ class NTUTTask<T> extends DialogTask<T> {
 
     if (account.isEmpty || password.isEmpty) {
       _isLogin = false;
-      LocalStorage.instance.logout();
+      await LocalStorage.instance.logout();
       RouteUtils.toLoginScreen();
       return TaskStatus.shouldGiveUp;
     }
@@ -41,18 +40,19 @@ class NTUTTask<T> extends DialogTask<T> {
       // This is because the school's backend only allow one session at the same time.
       // So if current session was expired or hijacked by other client, we should try to login again.
 
-      final checkSessionUseCase = Get.find<CheckSessionUseCase>();
-
       super.onStart(R.current.loading);
-      final isCurrentSessionAlive = await checkSessionUseCase();
+      final isCurrentSessionAlive = await NTUTConnector.checkSession();
       super.onEnd();
 
       if (isCurrentSessionAlive) {
         return TaskStatus.success;
       }
+
+      _isLogin = false;
     }
 
     try {
+      await NTUTConnector.clearSession();
       super.onStart(R.current.loginNTUT);
       final loginResult = await NTUTConnector.login(account, password);
       super.onEnd();
@@ -132,16 +132,14 @@ class NTUTTask<T> extends DialogTask<T> {
         taskStatus = TaskStatus.success;
         break;
       case AccountStatus.needsVerifyMobile:
-        // If the status is mobile not verified, we will prepare to show the error dialog.
-
-        // TODO: inspect sending params to the main screen through route for showing the dialog.
-        // For urgent fix, we will not show the dialog here.
-        shouldShowDialog = false;
-        // But we will still let the user to continue the task, since the user may not want to verify the mobile.
+        // login.do explicitly reports this as an unsuccessful login. Do not let
+        // dependent tasks continue with a session that was never authenticated.
+        shouldShowDialog = true;
+        shouldLogout = true;
         parameter.desc = R.current.needsVerifyMobileWarning;
         parameter.dialogType = DialogType.info;
         parameter.title = R.current.warning;
-        taskStatus = TaskStatus.success;
+        taskStatus = TaskStatus.shouldGiveUp;
         break;
       default:
         // If the status is unknown, we will prepare to show the error dialog.
@@ -151,7 +149,9 @@ class NTUTTask<T> extends DialogTask<T> {
     }
 
     if (shouldWipeData) {
-      LocalStorage.instance.logout();
+      await LocalStorage.instance.logout();
+    } else if (shouldLogout) {
+      await NTUTConnector.clearSession();
     }
 
     if (shouldLogout) {
