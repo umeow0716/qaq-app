@@ -26,18 +26,6 @@ jobs:
         flutter-version: '3.7.x'
         cache: true
 
-    - name: Install SSH Key
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_KEY }}
-        known_hosts: ${{ secrets.KNOWN_HOSTS }}
-
-    - name: Add Github Token
-      uses: oleksiyrudenko/gha-git-credentials@v2
-      with:
-        token: '${{ secrets.TAT_CORE_ACCESS_TOKEN }}'
-        email: '${{ secrets.EMAIL }}'
-
     - name: Get dependencies
       run: flutter pub get
 
@@ -68,21 +56,6 @@ jobs:
       with:
         flutter-version: '3.7.x'
         cache: true
-
-    - name: Install SSH Key
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.SSH_KEY }}
-        known_hosts: ${{ secrets.KNOWN_HOSTS }}
-
-    - name: Add Github Token
-      uses: oleksiyrudenko/gha-git-credentials@v2
-      with:
-        token: '${{ secrets.TAT_CORE_ACCESS_TOKEN }}'
-        email: '${{ secrets.EMAIL }}'
-
-    - name: Add Key property
-      run: echo "${{ secrets.ANDROID_KEY_PROPERTIES }}" > android/key.properties
 
     - name: Get dependencies
       run: flutter pub get

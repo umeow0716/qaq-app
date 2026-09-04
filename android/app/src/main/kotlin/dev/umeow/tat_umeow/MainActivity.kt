@@ -1,4 +1,4 @@
-package club.ntut.npc.tat
+package dev.umeow.tat_umeow
 
 import android.content.Intent
 import androidx.annotation.NonNull

@@ -3,7 +3,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/core/connector.dart';
 import 'package:flutter_app/src/connector/core/connector_parameter.dart';
@@ -37,15 +36,7 @@ class NTUTConnector {
     final loginCredential = LoginCredential(userId: account, password: password);
     final loginResult = await simpleLoginUseCase(credential: loginCredential);
 
-    await FirebaseAnalytics.instance.logLogin(
-      loginMethod: 'ntut_portal_new',
-    );
-
     if (loginResult.isSuccess) {
-      await FirebaseAnalytics.instance.setUserProperty(
-        name: 'user_id',
-        value: account,
-      );
 
       final userInfo = UserInfoJson(
         givenName: loginResult.userNaturalName,

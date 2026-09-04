@@ -36,4 +36,3 @@
 ## flutter_local_notification plugin rules
 -keep class com.dexterous.** { *; }
 
--keep class com.google.firebase.provider.FirebaseInitProvider

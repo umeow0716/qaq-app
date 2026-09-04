@@ -5,7 +5,6 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/core/connector.dart';
 import 'package:flutter_app/src/model/ischoolplus/course_file_json.dart';
@@ -41,7 +40,7 @@ class ISchoolPlusConnector {
   /// 1. GET https://app.ntut.edu.tw/ssoIndex.do
   /// 2-1. POST https://app.ntut.edu.tw/oauth2Server.do (It should be. See the comment on step 2-1)
   /// 2-2. follow the redirection to https://istudy.ntut.edu.tw/login2.php (It should be. See the comment on step 2-2)
-  static Future<ISchoolPlusConnectorStatus> login(String account, {bool logEventToFirebase = true}) async {
+  static Future<ISchoolPlusConnectorStatus> login(String account) async {
     try {
       final ssoIndexResponse = await getSSOIndexResponse();
       if (ssoIndexResponse.isEmpty) return ISchoolPlusConnectorStatus.loginGetSSOIndexError;
@@ -80,12 +79,6 @@ class ISchoolPlusConnector {
           continue;
         }
         return ISchoolPlusConnectorStatus.loginSuccess;
-      }
-
-      if (logEventToFirebase) {
-        await FirebaseAnalytics.instance.logLogin(
-          loginMethod: 'ntut_iplus',
-        );
       }
       return ISchoolPlusConnectorStatus.loginRedirectionError;
     } catch (e, stack) {

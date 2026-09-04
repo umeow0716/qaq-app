@@ -1,7 +1,6 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
@@ -38,10 +37,6 @@ class WebViewPage {
           ),
         ).onError((error, stackTrace) {
           stackTrace.printError();
-
-          FirebaseAnalytics.instance.logEvent(
-            name: 'custom_tab_open_err_aos',
-          );
 
           MsgDialog(MsgDialogParameter(
             desc: R.current.alertError,

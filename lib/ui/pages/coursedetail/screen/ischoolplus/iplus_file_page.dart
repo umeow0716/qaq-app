@@ -12,7 +12,6 @@ import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/task/iplus/iplus_course_file_task.dart';
 import 'package:flutter_app/src/task/task_flow.dart';
-import 'package:flutter_app/src/util/analytics_utils.dart';
 import 'package:flutter_app/ui/icon/my_icons.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
@@ -233,8 +232,6 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     final dirName = widget.courseInfo.main.course.name;
     String url = "";
     String referer = "";
-
-    await AnalyticsUtils.logDownloadFileEvent();
     if (showToast) {
       MyToast.show(R.current.downloadWillStart);
     }

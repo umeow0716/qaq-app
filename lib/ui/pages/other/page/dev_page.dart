@@ -1,15 +1,12 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
-import 'package:clipboard/clipboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/util/cloud_messaging_utils.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 
 enum OnListViewPress {
-  cloudMessageToken,
   dioLog,
   appLog,
 }
@@ -18,23 +15,12 @@ class DevPage extends StatelessWidget {
   const DevPage({super.key});
 
   final List<Map> listViewData = const [
-    {
-      "icon": Icons.vpn_key_outlined,
-      "title": "Cloud Messaging Token",
-      "color": Colors.green,
-      "onPress": OnListViewPress.cloudMessageToken
-    },
     {"icon": Icons.info_outline, "title": "Dio Log", "color": Colors.blue, "onPress": OnListViewPress.dioLog},
     {"icon": Icons.info_outline, "title": "App Log", "color": Colors.yellow, "onPress": OnListViewPress.appLog},
   ];
 
   void _onListViewPress(OnListViewPress value) async {
     switch (value) {
-      case OnListViewPress.cloudMessageToken:
-        final token = await CloudMessagingUtils.getToken();
-        MyToast.show("$token copy");
-        FlutterClipboard.copy(token ?? '');
-        break;
       case OnListViewPress.dioLog:
         RouteUtils.toAliceInspectorPage();
         break;

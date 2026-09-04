@@ -1,7 +1,7 @@
 import 'dart:io';
 
 class AppLink {
-  static const String androidAppPackageName = "club.ntut.npc.tat";
+  static const String androidAppPackageName = "dev.umeow.tat_umeow";
   static const String _playStoreUrl = "https://play.google.com/store/apps/details?id=$androidAppPackageName";
   static const String _appleStoreUrl = "https://apps.apple.com/tw/app/id1513875597";
 

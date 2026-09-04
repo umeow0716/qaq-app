@@ -25,8 +25,6 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
-apply plugin: 'com.google.gms.google-services'
-apply plugin: 'com.google.firebase.crashlytics'
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
@@ -35,7 +33,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "club.ntut.npc.tat"
+    namespace = "dev.umeow.tat_umeow"
     compileSdk 35
     ndkVersion = "25.1.8937393"
 
@@ -59,7 +57,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "club.ntut.npc.tat"
+        applicationId "dev.umeow.tat_umeow"
         minSdk 24
         targetSdk 35
         versionCode flutterVersionCode.toInteger()
@@ -120,7 +118,4 @@ dependencies {
     implementation "androidx.media:media:1.6.0"
     implementation 'androidx.work:work-runtime:2.8.1'
     implementation 'androidx.work:work-runtime-ktx:2.8.1'
-    implementation 'com.google.firebase:firebase-analytics-ktx:21.4.0'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx:18.5.0'
-    implementation 'com.google.firebase:firebase-messaging-ktx:23.3.0'
 }

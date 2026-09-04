@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="club.ntut.npc.tat">
+    package="dev.umeow.tat_umeow">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -33,22 +33,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
         </activity>
 
         <receiver
-            android:name="widget.CourseWidgetProvider"
+            android:name="dev.umeow.tat_umeow.widget.CourseWidgetProvider"
             android:grantUriPermissions="true"
             android:exported="true"
             tools:replace="android:exported">
             <intent-filter>
-                <action android:name="club.ntut.npc.tat.weight.onclick" />
+                <action android:name="dev.umeow.tat_umeow.weight.onclick" />
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data

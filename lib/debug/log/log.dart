@@ -1,6 +1,5 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
 import 'package:logger/logger.dart';
 
@@ -39,7 +38,6 @@ class Log {
   static void eWithStack(dynamic data, StackTrace stackTrace) {
     //用於顯示已用try catch的處理error
     logger.e(data.toString(), time: null, stackTrace: stackTrace);
-    FirebaseCrashlytics.instance.recordError(data, stackTrace);
   }
 
   static void error(dynamic data, StackTrace stackTrace) {
