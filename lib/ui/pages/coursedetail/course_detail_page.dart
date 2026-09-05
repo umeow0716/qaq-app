@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
@@ -17,15 +15,15 @@ class ISchoolPage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const ISchoolPage(this.studentId, this.courseInfo, {Key key}) : super(key: key);
+  const ISchoolPage(this.studentId, this.courseInfo, {Key? key}) : super(key: key);
 
   @override
   State<ISchoolPage> createState() => _ISchoolPageState();
 }
 
 class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStateMixin {
-  TabPageList tabPageList;
-  TabController _tabController;
+  late final TabPageList tabPageList;
+  late final TabController _tabController;
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
@@ -45,9 +43,16 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
-      builder: (BuildContext context, AppProvider appProvider, Widget child) {
+      builder: (BuildContext context, AppProvider appProvider, Widget? child) {
         return WillPopScope(
           onWillPop: () async {
             var currentState = tabPageList.getKey(_currentIndex).currentState;

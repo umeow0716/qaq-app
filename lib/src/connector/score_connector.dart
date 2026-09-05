@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:developer';
 
 import 'package:flutter_app/debug/log/log.dart';
@@ -33,11 +31,16 @@ class ScoreConnector {
       final ssoIndexTagNode = parse(await Connector.getDataByGet(ssoIndexParameter));
       final ssoIndexNodes = ssoIndexTagNode.getElementsByTagName("input");
       final ssoIndexJumpUrl = ssoIndexTagNode.getElementsByTagName("form")[0].attributes["action"];
+      if (ssoIndexJumpUrl == null || ssoIndexJumpUrl.isEmpty) {
+        return ScoreConnectorStatus.loginFail;
+      }
       final Map<String, String> oauthData = {};
       for (Element node in ssoIndexNodes) {
         final name = node.attributes['name'];
         final value = node.attributes['value'];
-        oauthData[name] = value;
+        if (name != null && value != null) {
+          oauthData[name] = value;
+        }
       }
 
       final jumpParameter = ConnectorParameter("${NTUTConnector.host}$ssoIndexJumpUrl");
@@ -51,7 +54,11 @@ class ScoreConnector {
           continue;
         }
 
-        final loginOAuthParameter = ConnectorParameter(jumpResult.headers['location'][0]);
+        final redirectLocations = jumpResult.headers['location'];
+        if (redirectLocations == null || redirectLocations.isEmpty) {
+          continue;
+        }
+        final loginOAuthParameter = ConnectorParameter(redirectLocations.first);
         final loginOAuthResult = (await Connector.getDataByPostResponse(loginOAuthParameter)).toString().trim();
         if (loginOAuthResult.contains("中斷連線")) {
           log("[TAT] score_connector.dart: connection lost during redirection, retrying...");
@@ -107,8 +114,9 @@ class ScoreConnector {
 
       //依照學期取得課程資料
       for (final titleNode in titleNodes) {
-        final siblingOfTitle = titleNode.parent.localName == "form"
-            ? titleNode.parent.nextElementSibling
+        final parent = titleNode.parent;
+        final siblingOfTitle = parent?.localName == "form"
+            ? parent?.nextElementSibling
             : // 當成績單已發布 父元素為form 父元素的旁邊元素才是 分數table
             titleNode.nextElementSibling; // 當成績單未發布 父元素為body 原元素旁邊元素就會是 分數table
 
@@ -119,7 +127,8 @@ class ScoreConnector {
 
         SemesterJson semester = SemesterJson();
 
-        String semesterText = titleNode.attributes["value"];
+        final semesterText = titleNode.attributes["value"];
+        if (semesterText == null || semesterText.isEmpty) continue;
         semester.year = semesterText.split(" ")[0];
         semester.semester = semesterText.split(" ")[3];
         courseScore.semester = semester;
@@ -142,7 +151,7 @@ class ScoreConnector {
           RegExp creditDoubleFilter = RegExp(r'\d+(\.\d+)?');
           final Iterable<RegExpMatch> creditDoubleMatches =
               creditDoubleFilter.allMatches(scoreNode.getElementsByTagName("th")[6].text);
-          final List<String> creditDoubles = creditDoubleMatches.map((match) => match.group(0)).toList();
+          final List<String> creditDoubles = creditDoubleMatches.map((match) => match.group(0)!).toList();
 
           score.credit = double.parse(creditDoubles[0]);
           score.score = scoreNode.getElementsByTagName("th")[7].text.replaceAll(RegExp(r"[\s| ]"), "");
@@ -224,7 +233,7 @@ class ScoreConnector {
     }
   }
 
-  static Future<List<String>> getCoreGeneralLesson() async {
+  static Future<List<String>?> getCoreGeneralLesson() async {
     ConnectorParameter parameter;
     String result;
     Document tagNode;

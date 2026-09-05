@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 import 'package:flutter_app/src/r.dart';
@@ -12,12 +10,13 @@ import 'package:flutter_app/src/task/task_flow.dart';
 import 'package:get/get.dart';
 
 class GraduationPicker {
-  GraduationPickerWidget _dialog;
-  BuildContext _dismissingContext;
+  late GraduationPickerWidget _dialog;
+  BuildContext? _dismissingContext;
   bool _barrierDismissible = true;
   bool _isShowing = false;
 
-  GraduationPicker(BuildContext context, {bool isDismissible}) {
+  GraduationPicker(BuildContext context, {bool? isDismissible}) {
+    _dismissingContext = context;
     _barrierDismissible = isDismissible ?? _barrierDismissible; //是否之支援返回關閉
   }
 
@@ -29,8 +28,9 @@ class GraduationPicker {
     if (_isShowing) {
       try {
         _isShowing = false;
-        if (Navigator.of(_dismissingContext).canPop()) {
-          Navigator.of(_dismissingContext).pop();
+        final context = _dismissingContext;
+        if (context != null && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
         }
       } catch (_) {}
     }
@@ -40,7 +40,9 @@ class GraduationPicker {
     if (_isShowing) {
       try {
         _isShowing = false;
-        Navigator.of(_dismissingContext).pop(true);
+        final context = _dismissingContext;
+        if (context == null) return Future.value(false);
+        Navigator.of(context).pop(true);
         return Future.value(true);
       } catch (_) {
         return Future.value(false);
@@ -50,7 +52,7 @@ class GraduationPicker {
     }
   }
 
-  Future<bool> show(Function(GraduationInformationJson) finishCallBack) async {
+  Future<bool> show(void Function(GraduationInformationJson) finishCallBack) async {
     if (!_isShowing) {
       try {
         _dialog = const GraduationPickerWidget();
@@ -63,7 +65,7 @@ class GraduationPicker {
                   child: _dialog)),
           barrierDismissible: false,
         ).then((value) {
-          finishCallBack(value);
+          if (value != null) finishCallBack(value);
         });
         // Delaying the function for 200 milliseconds
         // [Default transitionDuration of DialogRoute]
@@ -80,7 +82,7 @@ class GraduationPicker {
 }
 
 class GraduationPickerWidget extends StatefulWidget {
-  const GraduationPickerWidget({Key key}) : super(key: key);
+  const GraduationPickerWidget({Key? key}) : super(key: key);
 
   @override
   State<GraduationPickerWidget> createState() => _GraduationPickerWidget();
@@ -91,11 +93,11 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   List<String> yearList = [];
   List<Map> divisionList = [];
   List<Map> departmentList = [];
-  double width;
-  String _selectedYear;
-  Map _selectedDivision;
-  Map _selectedDepartment;
-  Map<String, String> _presetDepartment;
+  double width = 0;
+  String? _selectedYear;
+  Map? _selectedDivision;
+  Map? _selectedDepartment;
+  final Map<String, String> _presetDepartment = <String, String>{};
 
   @override
   void initState() {
@@ -106,7 +108,6 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   }
 
   Future<void> _addSelectTask() async {
-    _presetDepartment ??= {};
     await _getYearList();
     //利用學號預設學年度
     if (graduationInformation.selectYear.isEmpty) {
@@ -121,13 +122,9 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
     await _getDivisionList();
     //利用北科行動助理預設學制與系所
     if (graduationInformation.selectDivision.isEmpty) {
-      graduationInformation.selectDivision = _presetDepartment["division"];
+      graduationInformation.selectDivision = _presetDepartment["division"] ?? "";
     }
     for (Map v in divisionList) {
-      if (graduationInformation.selectDivision == null) {
-        break;
-      }
-
       if (v["name"]?.contains(graduationInformation.selectDivision) ?? false) {
         _selectedDivision = v;
         break;
@@ -135,20 +132,16 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
     }
     await _getDepartmentList();
     if (graduationInformation.selectDepartment.isEmpty) {
-      graduationInformation.selectDepartment = _presetDepartment["department"];
+      graduationInformation.selectDepartment = _presetDepartment["department"] ?? "";
     }
     for (Map v in departmentList) {
-      if (graduationInformation.selectDepartment == null) {
-        break;
-      }
-
       if (v["name"]?.contains(graduationInformation.selectDepartment) ?? false) {
         _selectedDepartment = v;
         break;
       }
     }
     await _getCreditInfo();
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Widget buildText(String title) {
@@ -162,7 +155,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
     );
   }
 
-  List<DropdownMenuItem> buildYearList() {
+  List<DropdownMenuItem<String>> buildYearList() {
     return yearList
         .map(
           (val) => DropdownMenuItem(
@@ -173,23 +166,23 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
         .toList();
   }
 
-  List<DropdownMenuItem> buildDivisionList() {
+  List<DropdownMenuItem<Map>> buildDivisionList() {
     return divisionList
         .map(
           (val) => DropdownMenuItem(
             value: val,
-            child: buildText(val["name"]),
+            child: buildText(val["name"]?.toString() ?? ""),
           ),
         )
         .toList();
   }
 
-  List<DropdownMenuItem> buildDepartmentList() {
+  List<DropdownMenuItem<Map>> buildDepartmentList() {
     return departmentList
         .map(
           (val) => DropdownMenuItem(
             value: val,
-            child: buildText(val["name"]),
+            child: buildText(val["name"]?.toString() ?? ""),
           ),
         )
         .toList();
@@ -200,49 +193,66 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
     var task = CourseYearTask();
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      yearList = task.result;
-      _selectedYear = yearList.first;
+      yearList = task.result ?? <String>[];
+      if (yearList.isNotEmpty) _selectedYear = yearList.first;
     }
     setState(() {});
   }
 
   Future<void> _getDivisionList() async {
-    TaskFlow taskFlow = TaskFlow();
-    String year = _selectedYear.split(" ")[1];
-    var task = CourseDivisionTask(year);
+    final selectedYear = _selectedYear;
+    if (selectedYear == null || selectedYear.isEmpty) return;
+    final parts = selectedYear.split(" ");
+    final year = parts.length > 1 ? parts[1] : parts.first;
+    final taskFlow = TaskFlow();
+    final task = CourseDivisionTask(year);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      divisionList = task.result;
-      _selectedDivision = divisionList.first;
+      divisionList = task.result ?? <Map>[];
+      _selectedDivision = divisionList.isNotEmpty ? divisionList.first : null;
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _getDepartmentList() async {
-    TaskFlow taskFlow = TaskFlow();
-    Map<String, String> code = _selectedDivision["code"];
+    final selectedDivision = _selectedDivision;
+    if (selectedDivision == null) return;
+    final rawCode = selectedDivision["code"];
+    if (rawCode is! Map) return;
+    final code = rawCode.map((key, value) => MapEntry(key.toString(), value.toString()));
+    final taskFlow = TaskFlow();
     final task = CourseDepartmentTask(code);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      departmentList = task.result;
-      _selectedDepartment = departmentList.first;
+      departmentList = task.result ?? <Map>[];
+      _selectedDepartment = departmentList.isNotEmpty ? departmentList.first : null;
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _getCreditInfo() async {
-    TaskFlow taskFlow = TaskFlow();
-    Map code = _selectedDivision["code"];
-    String name = _selectedDepartment["name"];
-    var task = CourseCreditInfoTask(code, name);
+    final selectedDivision = _selectedDivision;
+    final selectedDepartment = _selectedDepartment;
+    final selectedYear = _selectedYear;
+    if (selectedDivision == null || selectedDepartment == null || selectedYear == null) return;
+    final rawCode = selectedDivision["code"];
+    if (rawCode is! Map) return;
+    final code = rawCode.map((key, value) => MapEntry(key.toString(), value.toString()));
+    final name = selectedDepartment["name"]?.toString() ?? "";
+    if (name.isEmpty) return;
+    final taskFlow = TaskFlow();
+    final task = CourseCreditInfoTask(code, name);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      graduationInformation = task.result;
-      graduationInformation.selectYear = _selectedYear;
-      graduationInformation.selectDivision = _selectedDivision["name"];
-      graduationInformation.selectDepartment = _selectedDepartment["name"];
+      final result = task.result;
+      if (result != null) {
+        graduationInformation = result;
+        graduationInformation.selectYear = selectedYear;
+        graduationInformation.selectDivision = selectedDivision["name"]?.toString() ?? "";
+        graduationInformation.selectDepartment = selectedDepartment["name"]?.toString() ?? "";
+      }
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -273,7 +283,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   Expanded(
-                    child: DropdownButton(
+                    child: DropdownButton<String>(
                       isExpanded: true, //裡面元素是否要Expanded
                       value: _selectedYear,
                       items: buildYearList(),
@@ -286,7 +296,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                     ),
                   ),
                   Expanded(
-                    child: DropdownButton(
+                    child: DropdownButton<Map>(
                       isExpanded: true,
                       value: _selectedDivision,
                       items: buildDivisionList(),
@@ -304,7 +314,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Expanded(
-                    child: DropdownButton(
+                    child: DropdownButton<Map>(
                       isExpanded: true,
                       value: _selectedDepartment,
                       items: buildDepartmentList(),

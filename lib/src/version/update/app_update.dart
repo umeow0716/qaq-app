@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:package_info_plus/package_info_plus.dart';
 

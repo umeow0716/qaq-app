@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter_app/src/model/course/course_class_json.dart';
 import 'package:flutter_app/src/model/json_init.dart';
 import 'package:flutter_app/src/util/language_util.dart';
@@ -22,13 +20,12 @@ class CourseScoreCreditJson {
   GraduationInformationJson graduationInformation;
   List<SemesterCourseScoreJson> semesterCourseScoreList;
 
-  CourseScoreCreditJson({this.graduationInformation, this.semesterCourseScoreList}) {
-    graduationInformation = graduationInformation ?? GraduationInformationJson();
-    semesterCourseScoreList = semesterCourseScoreList ?? [];
-  }
+  CourseScoreCreditJson({GraduationInformationJson? graduationInformation, List<SemesterCourseScoreJson>? semesterCourseScoreList})
+      : graduationInformation = graduationInformation ?? GraduationInformationJson(),
+        semesterCourseScoreList = semesterCourseScoreList ?? <SemesterCourseScoreJson>[];
 
   //利用學期取得課程資訊
-  SemesterCourseScoreJson getCourseBySemester(SemesterJson semesterJson) {
+  SemesterCourseScoreJson? getCourseBySemester(SemesterJson semesterJson) {
     for (final i in semesterCourseScoreList) {
       if (i.semester == semesterJson) {
         return i;
@@ -49,7 +46,7 @@ class CourseScoreCreditJson {
   }
 
   //利用課程id取得課程資訊
-  CourseScoreInfoJson getCourseByCourseId(String courseId) {
+  CourseScoreInfoJson? getCourseByCourseId(String courseId) {
     for (final i in semesterCourseScoreList) {
       for (final j in i.courseScoreList) {
         if (courseId == j.courseId) {
@@ -90,7 +87,7 @@ class CourseScoreCreditJson {
     final result = getCourseByType(type);
 
     for (final key in result.keys.toList()) {
-      for (final j in result[key]) {
+      for (final j in result[key]!) {
         credit += j.credit.toInt();
       }
     }
@@ -110,7 +107,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.category.contains(type) && j.isPass) {
-          result[semester].add(j);
+          result[semester]!.add(j);
         }
       }
     }
@@ -131,7 +128,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.isGeneralLesson && j.isPass) {
-          result[semester].add(j);
+          result[semester]!.add(j);
         }
       }
     }
@@ -149,7 +146,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.isOtherDepartment(department) && j.isPass) {
-          result[semester].add(j);
+          result[semester]!.add(j);
         }
       }
     }
@@ -184,23 +181,20 @@ class GraduationInformationJson {
   Map<String, int> courseTypeMinCredit;
 
   GraduationInformationJson({
-    this.lowCredit,
-    this.courseTypeMinCredit,
-    this.outerDepartmentMaxCredit,
-    this.selectYear,
-    this.selectDivision,
-    this.selectDepartment,
-  }) {
-    selectYear = JsonInit.stringInit(selectYear);
-    selectDivision = JsonInit.stringInit(selectDivision);
-    selectDepartment = JsonInit.stringInit(selectDepartment);
-    lowCredit = lowCredit ?? 0;
-    outerDepartmentMaxCredit = outerDepartmentMaxCredit ?? 0;
-    if (courseTypeMinCredit == null) {
-      courseTypeMinCredit = {};
-      for (final type in constCourseType) {
-        courseTypeMinCredit[type] = 0;
-      }
+    int? lowCredit,
+    Map<String, int>? courseTypeMinCredit,
+    int? outerDepartmentMaxCredit,
+    String? selectYear,
+    String? selectDivision,
+    String? selectDepartment,
+  })  : selectYear = JsonInit.stringInit(selectYear),
+        selectDivision = JsonInit.stringInit(selectDivision),
+        selectDepartment = JsonInit.stringInit(selectDepartment),
+        lowCredit = lowCredit ?? 0,
+        outerDepartmentMaxCredit = outerDepartmentMaxCredit ?? 0,
+        courseTypeMinCredit = courseTypeMinCredit ?? <String, int>{} {
+    for (final type in constCourseType) {
+      this.courseTypeMinCredit.putIfAbsent(type, () => 0);
     }
   }
 
@@ -236,24 +230,22 @@ class SemesterCourseScoreJson {
   double takeCredit; //實得學分數
 
   SemesterCourseScoreJson({
-    this.semester,
-    this.now,
-    this.averageScore,
-    this.courseScoreList,
-    this.history,
-    this.performanceScore,
-    this.takeCredit,
-    this.totalCredit,
-  }) {
-    now = now ?? RankJson();
-    history = history ?? RankJson();
-    courseScoreList = courseScoreList ?? [];
-    semester = semester ?? SemesterJson();
-    averageScore = averageScore ?? 0;
-    performanceScore = performanceScore ?? 0;
-    totalCredit = totalCredit ?? 0;
-    takeCredit = takeCredit ?? 0;
-  }
+    SemesterJson? semester,
+    RankJson? now,
+    double? averageScore,
+    List<CourseScoreInfoJson>? courseScoreList,
+    RankJson? history,
+    double? performanceScore,
+    double? takeCredit,
+    double? totalCredit,
+  })  : now = now ?? RankJson(),
+        history = history ?? RankJson(),
+        courseScoreList = courseScoreList ?? <CourseScoreInfoJson>[],
+        semester = semester ?? SemesterJson(),
+        averageScore = averageScore ?? 0,
+        performanceScore = performanceScore ?? 0,
+        totalCredit = totalCredit ?? 0,
+        takeCredit = takeCredit ?? 0;
 
   bool get isRankEmpty => history.isEmpty && now.isEmpty;
 
@@ -320,10 +312,9 @@ class RankJson {
   RankItemJson course;
   RankItemJson department;
 
-  RankJson({this.course, this.department}) {
-    course = course ?? RankItemJson();
-    department = department ?? RankItemJson();
-  }
+  RankJson({RankItemJson? course, RankItemJson? department})
+      : course = course ?? RankItemJson(),
+        department = department ?? RankItemJson();
 
   bool get isEmpty => course.isEmpty && department.isEmpty;
 
@@ -349,11 +340,7 @@ class RankItemJson {
   double total;
   double percentage;
 
-  RankItemJson({this.percentage, this.rank, this.total}) {
-    percentage = percentage ?? 0;
-    rank = rank ?? 0;
-    total = total ?? 0;
-  }
+  RankItemJson({this.percentage = 0, this.rank = 0, this.total = 0});
 
   bool get isEmpty => rank == 0 && total == 0 && percentage == 0;
 
@@ -387,22 +374,20 @@ class CourseScoreInfoJson {
   String get name => (LanguageUtil.getLangIndex() == LangEnum.en) ? nameEn : nameZh;
 
   CourseScoreInfoJson({
-    this.courseId,
-    this.nameZh,
-    this.nameEn,
-    this.score,
-    this.credit,
-    this.category,
-    this.openClass,
-  }) {
-    courseId = JsonInit.stringInit(courseId);
-    nameZh = JsonInit.stringInit(nameZh);
-    nameEn = JsonInit.stringInit(nameEn);
-    score = JsonInit.stringInit(score);
-    category = JsonInit.stringInit(category);
-    openClass = JsonInit.stringInit(openClass);
-    credit = credit ?? 0;
-  }
+    String? courseId,
+    String? nameZh,
+    String? nameEn,
+    String? score,
+    double? credit,
+    String? category,
+    String? openClass,
+  })  : courseId = JsonInit.stringInit(courseId),
+        nameZh = JsonInit.stringInit(nameZh),
+        nameEn = JsonInit.stringInit(nameEn),
+        score = JsonInit.stringInit(score),
+        category = JsonInit.stringInit(category),
+        openClass = JsonInit.stringInit(openClass),
+        credit = credit ?? 0;
 
   bool get isPass {
     //是否拿到學分

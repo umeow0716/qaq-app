@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/json_init.dart';
 import 'package:flutter_app/src/util/language_util.dart';
@@ -13,45 +11,41 @@ class CourseMainJson {
   String name;
   String id;
   String href;
-  String note; //備註
-  String stage; //階段
-  String credits; //學分
-  String hours; //時數
-  String scheduleHref; // 教學進度大綱
-  Map<Day, String> time; //時間
+  String note;
+  String stage;
+  String credits;
+  String hours;
+  String scheduleHref;
+  Map<Day, String> time;
 
-  CourseMainJson(
-      {this.name, this.href, this.id, this.credits, this.hours, this.stage, this.note, this.time, this.scheduleHref}) {
-    name = JsonInit.stringInit(name);
-    id = JsonInit.stringInit(id);
-    href = JsonInit.stringInit(href);
-    note = JsonInit.stringInit(note);
-    stage = JsonInit.stringInit(stage);
-    credits = JsonInit.stringInit(credits);
-    hours = JsonInit.stringInit(hours);
-    scheduleHref = JsonInit.stringInit(scheduleHref);
-    time = time ?? {};
-  }
+  CourseMainJson({
+    String? name,
+    String? href,
+    String? id,
+    String? credits,
+    String? hours,
+    String? stage,
+    String? note,
+    Map<Day, String>? time,
+    String? scheduleHref,
+  })  : name = JsonInit.stringInit(name),
+        id = JsonInit.stringInit(id),
+        href = JsonInit.stringInit(href),
+        note = JsonInit.stringInit(note),
+        stage = JsonInit.stringInit(stage),
+        credits = JsonInit.stringInit(credits),
+        hours = JsonInit.stringInit(hours),
+        scheduleHref = JsonInit.stringInit(scheduleHref),
+        time = time ?? <Day, String>{};
 
-  bool get isEmpty {
-    return name.isEmpty &&
-        href.isEmpty &&
-        note.isEmpty &&
-        stage.isEmpty &&
-        credits.isEmpty &&
-        hours.isEmpty &&
-        scheduleHref.isEmpty;
-  }
+  bool get isEmpty => name.isEmpty && href.isEmpty && note.isEmpty && stage.isEmpty && credits.isEmpty && hours.isEmpty && scheduleHref.isEmpty;
 
   @override
-  String toString() {
-    return sprintf(
-        "name    :%s \nid      :%s \nhref    :%s \nstage   :%s \ncredits :%s \nhours   :%s \nscheduleHref   :%s \nnote    :%s \n",
-        [name, id, href, stage, credits, hours, scheduleHref, note]);
-  }
+  String toString() => sprintf(
+      'name    :%s \nid      :%s \nhref    :%s \nstage   :%s \ncredits :%s \nhours   :%s \nscheduleHref   :%s \nnote    :%s \n',
+      [name, id, href, stage, credits, hours, scheduleHref, note]);
 
   factory CourseMainJson.fromJson(Map<String, dynamic> json) => _$CourseMainJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$CourseMainJsonToJson(this);
 }
 
@@ -59,40 +53,36 @@ class CourseMainJson {
 class CourseExtraJson {
   String id;
   String name;
-  String href; //課程名稱用於取得英文
-  String category; //類別 (必修...)
-  String selectNumber; //選課人數
-  String withdrawNumber; //徹選人數
-  String openClass; //開課班級(計算學分用)
+  String href;
+  String category;
+  String selectNumber;
+  String withdrawNumber;
+  String openClass;
 
-  CourseExtraJson({this.name, this.category, this.selectNumber, this.withdrawNumber, this.href}) {
-    id = JsonInit.stringInit(id);
-    name = JsonInit.stringInit(name);
-    href = JsonInit.stringInit(href);
-    category = JsonInit.stringInit(category);
-    selectNumber = JsonInit.stringInit(selectNumber);
-    withdrawNumber = JsonInit.stringInit(withdrawNumber);
-    openClass = JsonInit.stringInit(openClass);
-  }
+  CourseExtraJson({
+    String? id,
+    String? name,
+    String? category,
+    String? selectNumber,
+    String? withdrawNumber,
+    String? href,
+    String? openClass,
+  })  : id = JsonInit.stringInit(id),
+        name = JsonInit.stringInit(name),
+        href = JsonInit.stringInit(href),
+        category = JsonInit.stringInit(category),
+        selectNumber = JsonInit.stringInit(selectNumber),
+        withdrawNumber = JsonInit.stringInit(withdrawNumber),
+        openClass = JsonInit.stringInit(openClass);
 
-  bool get isEmpty {
-    return id.isEmpty &&
-        name.isEmpty &&
-        category.isEmpty &&
-        selectNumber.isEmpty &&
-        withdrawNumber.isEmpty &&
-        openClass.isEmpty;
-  }
+  bool get isEmpty => id.isEmpty && name.isEmpty && category.isEmpty && selectNumber.isEmpty && withdrawNumber.isEmpty && openClass.isEmpty;
 
   @override
-  String toString() {
-    return sprintf(
-        "id             :%s \nname           :%s \ncategory       :%s \nselectNumber   :%s \nwithdrawNumber :%s \nopenClass :%s \n",
-        [id, name, category, selectNumber, withdrawNumber, openClass]);
-  }
+  String toString() => sprintf(
+      'id             :%s \nname           :%s \ncategory       :%s \nselectNumber   :%s \nwithdrawNumber :%s \nopenClass :%s \n',
+      [id, name, category, selectNumber, withdrawNumber, openClass]);
 
   factory CourseExtraJson.fromJson(Map<String, dynamic> json) => _$CourseExtraJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$CourseExtraJsonToJson(this);
 }
 
@@ -101,22 +91,16 @@ class ClassJson {
   String name;
   String href;
 
-  ClassJson({this.name, this.href}) {
-    name = JsonInit.stringInit(name);
-    href = JsonInit.stringInit(href);
-  }
+  ClassJson({String? name, String? href})
+      : name = JsonInit.stringInit(name),
+        href = JsonInit.stringInit(href);
 
-  bool get isEmpty {
-    return name.isEmpty && href.isEmpty;
-  }
+  bool get isEmpty => name.isEmpty && href.isEmpty;
 
   @override
-  String toString() {
-    return sprintf("name : %s \n" "href : %s \n", [name, href]);
-  }
+  String toString() => sprintf('name : %s \nhref : %s \n', [name, href]);
 
   factory ClassJson.fromJson(Map<String, dynamic> json) => _$ClassJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$ClassJsonToJson(this);
 }
 
@@ -126,23 +110,16 @@ class ClassroomJson {
   String href;
   bool mainUse;
 
-  ClassroomJson({this.name, this.href, this.mainUse}) {
-    name = JsonInit.stringInit(name);
-    href = JsonInit.stringInit(href);
-    mainUse = mainUse ?? false;
-  }
+  ClassroomJson({String? name, String? href, this.mainUse = false})
+      : name = JsonInit.stringInit(name),
+        href = JsonInit.stringInit(href);
 
-  bool get isEmpty {
-    return name.isEmpty && href.isEmpty;
-  }
+  bool get isEmpty => name.isEmpty && href.isEmpty;
 
   @override
-  String toString() {
-    return sprintf("name    : %s \nhref    : %s \nmainUse : %s \n", [name, href, mainUse.toString()]);
-  }
+  String toString() => sprintf('name    : %s \nhref    : %s \nmainUse : %s \n', [name, href, mainUse.toString()]);
 
   factory ClassroomJson.fromJson(Map<String, dynamic> json) => _$ClassroomJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$ClassroomJsonToJson(this);
 }
 
@@ -151,22 +128,16 @@ class TeacherJson {
   String name;
   String href;
 
-  TeacherJson({this.name, this.href}) {
-    name = JsonInit.stringInit(name);
-    href = JsonInit.stringInit(href);
-  }
+  TeacherJson({String? name, String? href})
+      : name = JsonInit.stringInit(name),
+        href = JsonInit.stringInit(href);
 
-  bool get isEmpty {
-    return name.isEmpty && href.isEmpty;
-  }
+  bool get isEmpty => name.isEmpty && href.isEmpty;
 
   @override
-  String toString() {
-    return sprintf("name : %s \n" "href : %s \n", [name, href]);
-  }
+  String toString() => sprintf('name : %s \nhref : %s \n', [name, href]);
 
   factory TeacherJson.fromJson(Map<String, dynamic> json) => _$TeacherJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$TeacherJsonToJson(this);
 }
 
@@ -175,34 +146,22 @@ class SemesterJson {
   String year;
   String semester;
 
-  SemesterJson({this.year, this.semester}) {
-    year = JsonInit.stringInit(year);
-    semester = JsonInit.stringInit(semester);
-  }
+  SemesterJson({String? year, String? semester})
+      : year = JsonInit.stringInit(year),
+        semester = JsonInit.stringInit(semester);
 
   factory SemesterJson.fromJson(Map<String, dynamic> json) => _$SemesterJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$SemesterJsonToJson(this);
 
-  bool get isEmpty {
-    return year.isEmpty && semester.isEmpty;
-  }
+  bool get isEmpty => year.isEmpty && semester.isEmpty;
 
   @override
-  String toString() {
-    return sprintf("year     : %s \n" "semester : %s \n", [year, semester]);
-  }
+  String toString() => sprintf('year     : %s \nsemester : %s \n', [year, semester]);
 
   @override
-  bool operator ==(dynamic other) {
-    if (other is! SemesterJson) {
-      return false;
-    }
-
-    final isSemesterSame = int.tryParse(other.semester) == int.tryParse(semester);
-    final isYearSame = int.tryParse(other.year) == int.tryParse(year);
-
-    return isSemesterSame && isYearSame;
+  bool operator ==(Object other) {
+    if (other is! SemesterJson) return false;
+    return int.tryParse(other.semester) == int.tryParse(semester) && int.tryParse(other.year) == int.tryParse(year);
   }
 
   @override
@@ -211,44 +170,39 @@ class SemesterJson {
 
 @JsonSerializable()
 class ClassmateJson {
-  String className; //電子一甲
+  String className;
   String studentEnglishName;
   String studentName;
   String studentId;
   String href;
-  bool isSelect; //是否撤選
+  bool isSelect;
 
-  ClassmateJson({this.className, this.studentEnglishName, this.studentName, this.studentId, this.isSelect, this.href}) {
-    className = JsonInit.stringInit(className);
-    studentEnglishName = JsonInit.stringInit(studentEnglishName);
-    studentName = JsonInit.stringInit(studentName);
-    studentId = JsonInit.stringInit(studentId);
-    href = JsonInit.stringInit(href);
-    isSelect = isSelect ?? false;
-  }
+  ClassmateJson({
+    String? className,
+    String? studentEnglishName,
+    String? studentName,
+    String? studentId,
+    this.isSelect = false,
+    String? href,
+  })  : className = JsonInit.stringInit(className),
+        studentEnglishName = JsonInit.stringInit(studentEnglishName),
+        studentName = JsonInit.stringInit(studentName),
+        studentId = JsonInit.stringInit(studentId),
+        href = JsonInit.stringInit(href);
 
-  bool get isEmpty {
-    return className.isEmpty && studentEnglishName.isEmpty && studentName.isEmpty && studentId.isEmpty && href.isEmpty;
-  }
+  bool get isEmpty => className.isEmpty && studentEnglishName.isEmpty && studentName.isEmpty && studentId.isEmpty && href.isEmpty;
 
   @override
-  String toString() {
-    return sprintf(
-        "className           : %s \nstudentEnglishName  : %s \nstudentName         : %s \nstudentId           : %s \nhref                : %s \nisSelect            : %s \n",
-        [className, studentEnglishName, studentName, studentId, href, isSelect.toString()]);
-  }
+  String toString() => sprintf(
+      'className           : %s \nstudentEnglishName  : %s \nstudentName         : %s \nstudentId           : %s \nhref                : %s \nisSelect            : %s \n',
+      [className, studentEnglishName, studentName, studentId, href, isSelect.toString()]);
 
   String getName() {
-    String name;
-    if (LanguageUtil.getLangIndex() == LangEnum.en) {
-      name = studentEnglishName;
-    }
-    name = name ?? studentName;
-    name = (name.contains(RegExp(r"\w"))) ? name : studentName;
+    var name = LanguageUtil.getLangIndex() == LangEnum.en ? studentEnglishName : studentName;
+    if (!name.contains(RegExp(r'\w'))) name = studentName;
     return name;
   }
 
   factory ClassmateJson.fromJson(Map<String, dynamic> json) => _$ClassmateJsonFromJson(json);
-
   Map<String, dynamic> toJson() => _$ClassmateJsonToJson(this);
 }

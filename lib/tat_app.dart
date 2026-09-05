@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cookie_jar/cookie_jar.dart';

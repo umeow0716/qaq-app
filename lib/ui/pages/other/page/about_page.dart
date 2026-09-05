@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,14 +11,14 @@ import 'package:flutter_app/ui/other/route_utils.dart';
 enum OnListViewPress { appUpdate, contribution, privacyPolicy, version, dev }
 
 class AboutPage extends StatefulWidget {
-  const AboutPage({Key key}) : super(key: key);
+  const AboutPage({Key? key}) : super(key: key);
 
   @override
   State<AboutPage> createState() => _AboutPageState();
 }
 
 class _AboutPageState extends State<AboutPage> {
-  List<Map> listViewData = [];
+  List<Map<String, Object?>> listViewData = <Map<String, Object?>>[];
 
   static bool inDevMode = false;
 
@@ -125,12 +123,12 @@ class _AboutPageState extends State<AboutPage> {
       body: ListView.separated(
         itemCount: listViewData.length,
         itemBuilder: (context, index) {
-          Widget widget;
-          widget = _buildAbout(listViewData[index]);
+          final widget = _buildAbout(listViewData[index]);
           return InkWell(
             child: WidgetAnimator(widget),
             onTap: () {
-              _onListViewPress(listViewData[index]['onPress']);
+              final action = listViewData[index]['onPress'];
+              if (action is OnListViewPress) _onListViewPress(action);
             },
           );
         },
@@ -145,7 +143,7 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
-  Container _buildAbout(Map data) {
+  Container _buildAbout(Map<String, Object?> data) {
     return Container(
       //color: Colors.yellow,
       padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0, bottom: 20.0),
@@ -153,14 +151,14 @@ class _AboutPageState extends State<AboutPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Icon(
-            data['icon'],
-            color: data['color'],
+            data['icon'] as IconData,
+            color: data['color'] as Color?,
           ),
           const SizedBox(
             width: 20.0,
           ),
           Text(
-            data['title'],
+            data['title']?.toString() ?? '',
             style: const TextStyle(fontSize: 18),
           ),
         ],

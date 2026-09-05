@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'dart:async';
 import 'dart:convert';
@@ -160,7 +159,7 @@ class NTUTConnector {
     final url = '$_getPictureUrl?realname=$userPhoto';
 
     imageInfo['url'] = {'value': url};
-    imageInfo['header'] = await Connector.getLoginHeaders(url);
+    imageInfo['header'] = await Connector.getLoginHeaders(url) ?? <String, String>{};
 
     return imageInfo;
   }

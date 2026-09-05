@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
@@ -45,7 +44,7 @@ class CourseTableTask extends CourseSystemTask<CourseTableJson> {
             final day = Day.values[i];
             final time = courseMainInfo.course.time[day];
             courseInfo.main = courseMainInfo;
-            add |= courseTable.setCourseDetailByTimeString(day, time, courseInfo);
+            add |= courseTable.setCourseDetailByTimeString(day, time ?? '', courseInfo);
           }
           if (!add) {
             courseTable.setCourseDetailByTime(Day.UnKnown, SectionNumber.T_UnKnown, courseInfo);

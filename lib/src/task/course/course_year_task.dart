@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/r.dart';
 
@@ -14,7 +12,7 @@ class CourseYearTask extends CourseSystemTask<List<String>> {
     final status = await super.execute();
     if (status == TaskStatus.success) {
       super.onStart(R.current.searchingYear);
-      List<String> value = await CourseConnector.getYearList();
+      final List<String>? value = await CourseConnector.getYearList();
       super.onEnd();
       if (value != null) {
         result = value;

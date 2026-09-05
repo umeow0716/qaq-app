@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -22,8 +20,8 @@ enum ISchoolPlusConnectorStatus { loginSuccess, loginGetSSOIndexError, loginRedi
 enum IPlusReturnStatus { success, fail, noPermission }
 
 class ReturnWithStatus<T> {
-  IPlusReturnStatus status;
-  T result;
+  IPlusReturnStatus status = IPlusReturnStatus.fail;
+  T? result;
 }
 
 class ISchoolPlusConnector {
@@ -48,12 +46,17 @@ class ISchoolPlusConnector {
       final ssoIndexTagNode = html.parse(ssoIndexResponse);
       final ssoIndexNodes = ssoIndexTagNode.getElementsByTagName("input");
       final ssoIndexJumpUrl = ssoIndexTagNode.getElementsByTagName("form")[0].attributes["action"];
+      if (ssoIndexJumpUrl == null || ssoIndexJumpUrl.isEmpty) {
+        return ISchoolPlusConnectorStatus.loginGetSSOIndexError;
+      }
 
       final Map<String, String> oauthData = {};
       for (final node in ssoIndexNodes) {
         final name = node.attributes['name'];
         final value = node.attributes['value'];
-        oauthData[name] = value;
+        if (name != null && value != null) {
+          oauthData[name] = value;
+        }
       }
 
       for (int retry = 0; retry < 3; retry++) {
@@ -71,7 +74,11 @@ class ISchoolPlusConnector {
         // Step 2-2
         // The redirect location should be "https://istudy.ntut.edu.tw/login2.php", and the response should not contain
         // "connection `lost`", if it does, a retry of getting redirection location will perform.
-        final login2Parameter = ConnectorParameter(jumpResult.headers['location'][0]);
+        final redirectLocations = jumpResult.headers['location'];
+        if (redirectLocations == null || redirectLocations.isEmpty) {
+          continue;
+        }
+        final login2Parameter = ConnectorParameter(redirectLocations.first);
         final login2Result = await Connector.getDataByGet(login2Parameter);
         if (login2Result.contains("lost")) {
           log("[TAT] ischool_plus_connector.dart: connection lost during redirection, retrying...");
@@ -120,7 +127,9 @@ class ISchoolPlusConnector {
       for (int i = 0; i < nodes.length; i++) {
         html.Element node = nodes[i].querySelectorAll('td')[1];
 
-        String information = node.querySelector('div').innerHtml;
+        final infoNode = node.querySelector('div');
+        if (infoNode == null) continue;
+        String information = infoNode.innerHtml;
         int splitIndex = information.indexOf(' ');
 
         String studentId = information.substring(0, splitIndex);
@@ -150,11 +159,11 @@ class ISchoolPlusConnector {
 
   static Future<ReturnWithStatus<List<CourseFileJson>>> getCourseFile(String courseId) async {
     ConnectorParameter parameter;
-    String result;
-    html.Document tagNode;
-    html.Element node, itemNode, resourceNode;
+    String result = '';
+    late html.Document tagNode;
+    late html.Element node, itemNode;
     RegExp exp;
-    RegExpMatch matches;
+    RegExpMatch? matches;
     List<html.Element> nodes, itemNodes, resourceNodes;
     var value = ReturnWithStatus<List<CourseFileJson>>();
     try {
@@ -168,13 +177,22 @@ class ISchoolPlusConnector {
       result = await Connector.getDataByGet(parameter);
       exp = RegExp(r"cid=(?<cid>[\w|-]+,)");
       matches = exp.firstMatch(result);
-      String cid = matches.group(1);
+      final cid = matches?.group(1);
+      if (cid == null || cid.isEmpty) {
+        value.status = IPlusReturnStatus.fail;
+        return value;
+      }
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/pathtree.php");
       parameter.data = {'cid': cid};
 
       result = await Connector.getDataByGet(parameter);
       tagNode = html.parse(result);
-      node = tagNode.getElementById("fetchResourceForm");
+      final fetchResourceForm = tagNode.getElementById("fetchResourceForm");
+      if (fetchResourceForm == null) {
+        value.status = IPlusReturnStatus.fail;
+        return value;
+      }
+      node = fetchResourceForm;
       nodes = node.getElementsByTagName("input");
 
       Map<String, String> downloadPost = {
@@ -191,9 +209,9 @@ class ISchoolPlusConnector {
 
       for (html.Element node in nodes) {
         //將資料團入上方Map
-        String key = node.attributes['name'];
-        if (downloadPost.containsKey(key)) {
-          downloadPost[key] = node.attributes['value'];
+        final key = node.attributes['name'];
+        if (key != null && downloadPost.containsKey(key)) {
+          downloadPost[key] = node.attributes['value'] ?? '';
         }
       }
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_loadCA.php"); //取得下載檔案XML
@@ -208,14 +226,17 @@ class ISchoolPlusConnector {
           continue;
         }
         final itemId = itemNode.attributes["identifierref"];
-        for (int i = 0; i < resourceNodes.length; i++) {
-          resourceNode = resourceNodes[i];
-          if (resourceNode.attributes["identifier"] == itemId) {
+        html.Element? resourceNode;
+        for (final candidate in resourceNodes) {
+          if (candidate.attributes["identifier"] == itemId) {
+            resourceNode = candidate;
             break;
           }
         }
-        String base = resourceNode.attributes["xml:base"];
-        String href = '${(base != null) ? base : ''}@${resourceNode.attributes["href"]}';
+        if (resourceNode == null) continue;
+        final base = resourceNode.attributes["xml:base"] ?? '';
+        final resourceHref = resourceNode.attributes["href"] ?? '';
+        String href = '$base@$resourceHref';
 
         CourseFileJson courseFile = CourseFileJson();
         courseFile.name = itemNodes[i].text.split("\t")[0].replaceAll(RegExp(r"[\s|\n| ]"), "");
@@ -237,10 +258,10 @@ class ISchoolPlusConnector {
   }
 
   //List[0] RealUrl , List[1] referer
-  static Future<List<String>> getRealFileUrl(Map<String, String> postParameter) async {
+  static Future<List<String>?> getRealFileUrl(Map<String, String> postParameter) async {
     ConnectorParameter parameter;
     String url;
-    String result;
+    String result = '';
     try {
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_fetchResource.php");
       parameter.data = postParameter;
@@ -249,18 +270,18 @@ class ISchoolPlusConnector {
       response = await Connector.getDataByPostResponse(parameter);
       result = response.toString();
       RegExp exp;
-      RegExpMatch matches;
+      RegExpMatch? matches;
       if (response.statusCode == HttpStatus.ok) {
         exp = RegExp("[\"'](?<url>https?://.+)[\"']");
         //檢測網址 "http://....." or 'https://.....' or "http://..." or 'http://...'
         matches = exp.firstMatch(result);
         bool pass = (matches?.groupCount == null)
             ? false
-            : matches.group(1).toLowerCase().contains("http")
+            : (matches?.group(1) ?? "").toLowerCase().contains("http")
                 ? true
                 : false;
         if (pass) {
-          url = matches.group(1);
+          url = matches!.group(1)!;
           //已經是完整連結
           return [url, url];
         } else {
@@ -268,23 +289,31 @@ class ISchoolPlusConnector {
           matches = exp.firstMatch(result);
           bool pass = (matches?.groupCount == null) ? false : true;
           if (pass) {
-            String realUrl = _iSchoolPlusUrl + matches.group(1);
+            final relativeUrl = matches?.group(1);
+            if (relativeUrl == null) return null;
+            String realUrl = _iSchoolPlusUrl + relativeUrl;
             return [realUrl, realUrl]; //一般下載連結
           } else {
             exp = RegExp("\"(?<url>.+)\""); //檢測""內包含字
             matches = exp.firstMatch(result);
-            url = "${_iSchoolPlusUrl}learn/path/${matches.group(1)}"; //是PDF預覽畫面
+            final previewPath = matches?.group(1);
+            if (previewPath == null) return null;
+            url = "${_iSchoolPlusUrl}learn/path/$previewPath"; //是PDF預覽畫面
             parameter = ConnectorParameter(url); //去PDF預覽頁面取得真實下載網址
             result = await Connector.getDataByGet(parameter);
             exp = RegExp("DEFAULT_URL.+['|\"](?<url>.+)['|\"]"); //取的PDF真實下載位置
             matches = exp.firstMatch(result);
-            String realUrl = "${_iSchoolPlusUrl}learn/path/${matches.group(1)}";
+            final downloadPath = matches?.group(1);
+            if (downloadPath == null) return null;
+            String realUrl = "${_iSchoolPlusUrl}learn/path/$downloadPath";
             return [realUrl, url]; //PDF需要有referer不然會無法下載
           }
         }
       } else if (response.isRedirect || result.isEmpty) {
         //發生跳轉 出現檔案下載預覽頁面
-        url = response.headers[HttpHeaders.locationHeader][0];
+        final locations = response.headers[HttpHeaders.locationHeader];
+        if (locations == null || locations.isEmpty) return null;
+        url = locations.first;
         url = "${_iSchoolPlusUrl}learn/path/$url";
         url = url.replaceAll("download_preview", "download"); //下載預覽頁面換成真實下載網址
         return [url, url];
@@ -297,7 +326,7 @@ class ISchoolPlusConnector {
     return null;
   }
 
-  static String bid;
+  static String bid = '';
 
   static Future<ReturnWithStatus<List<ISchoolPlusAnnouncementJson>>> getCourseAnnouncement(String courseId) async {
     String result;
@@ -322,12 +351,18 @@ class ISchoolPlusConnector {
       parameter.data = data;
       result = await Connector.getDataByPost(parameter);
       tagNode = html.parse(result);
-      bid = tagNode.getElementById("bid").attributes["value"];
+      final bidNode = tagNode.getElementById("bid");
+      bid = bidNode?.attributes["value"] ?? "";
 
-      node = tagNode.getElementById("formSearch");
+      final formSearch = tagNode.getElementById("formSearch");
+      if (formSearch == null) {
+        value.status = IPlusReturnStatus.fail;
+        return value;
+      }
+      node = formSearch;
       nodes = node.getElementsByTagName("input");
-      String selectPage = tagNode.getElementById("selectPage").attributes['value'];
-      String inputPerPage = tagNode.getElementById("inputPerPage").attributes['value'];
+      final selectPage = tagNode.getElementById("selectPage")?.attributes['value'] ?? "1";
+      final inputPerPage = tagNode.getElementById("inputPerPage")?.attributes['value'] ?? "10";
       data = {
         "token": "",
         "bid": "",
@@ -338,9 +373,9 @@ class ISchoolPlusConnector {
         "inputPerPage": inputPerPage
       };
       for (html.Element node in nodes) {
-        String name = node.attributes['name'];
-        if (data.containsKey(name)) {
-          data[name] = node.attributes['value'];
+        final name = node.attributes['name'];
+        if (name != null && data.containsKey(name)) {
+          data[name] = node.attributes['value'] ?? '';
         }
       }
       parameter = ConnectorParameter("https://istudy.ntut.edu.tw/mooc/controllers/forum_ajax.php");
@@ -348,15 +383,26 @@ class ISchoolPlusConnector {
       result = await Connector.getDataByPost(parameter);
       //ISchoolPlusAnnouncementInfoJson iPlusJson = ISchoolPlusAnnouncementInfoJson.fromJson( json.decode(result) );
       Map<String, dynamic> jsonData = {};
-      Map j = json.decode(result);
+      final decoded = json.decode(result);
+      if (decoded is! Map) {
+        value.status = IPlusReturnStatus.fail;
+        return value;
+      }
+      final Map<dynamic, dynamic> j = decoded;
       if (j["code"] == 0) {
-        jsonData = j['data'];
-        int totalRows = int.parse(json.decode(result)['total_rows']);
+        final dataValue = j['data'];
+        if (dataValue is Map) {
+          jsonData = Map<String, dynamic>.from(dataValue);
+        }
+        int totalRows = int.tryParse(j['total_rows']?.toString() ?? '0') ?? 0;
         if (totalRows > 0) {
-          for (String keyName in json.decode(result)['data'].keys.toList()) {
-            ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(jsonData[keyName]);
+          for (final key in jsonData.keys) {
+            final keyName = key.toString();
+            final rawItem = jsonData[keyName];
+            if (rawItem is! Map) continue;
+            ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(Map<String, dynamic>.from(rawItem));
             courseInfo.subject = HtmlUtils.clean(courseInfo.subject); //處理HTM特殊字
-            courseInfo.token = data['token'];
+            courseInfo.token = data['token'] ?? '';
             courseInfo.bid = keyName.split("|").first;
             courseInfo.nid = keyName.split("|").last;
             announcementList.add(courseInfo);
@@ -373,7 +419,7 @@ class ISchoolPlusConnector {
     }
   }
 
-  static Future<Map> getCourseAnnouncementDetail(ISchoolPlusAnnouncementJson value) async {
+  static Future<Map?> getCourseAnnouncementDetail(ISchoolPlusAnnouncementJson value) async {
     String result;
     try {
       ConnectorParameter parameter;
@@ -398,7 +444,7 @@ class ISchoolPlusConnector {
       node = tagNode.getElementsByClassName("main node-info").first;
       Map detail = {};
 
-      String title = node.attributes["data-title"];
+      String title = node.attributes["data-title"] ?? "";
       node = tagNode.getElementsByClassName("author-name").first;
       String sender = node.text;
       node = tagNode.getElementsByClassName("post-time").first;
@@ -413,7 +459,8 @@ class ISchoolPlusConnector {
         node = nodes.first;
         nodes = node.getElementsByTagName("a");
         for (html.Element node in nodes) {
-          String href = node.attributes["href"];
+          String href = node.attributes["href"] ?? "";
+          if (href.isEmpty) continue;
           if (href[0] == '/') {
             href = href.substring(1, href.length);
           }
@@ -459,7 +506,7 @@ class ISchoolPlusConnector {
     }
   }
 
-  static Future<List<String>> getSubscribeNotice() async {
+  static Future<List<String>?> getSubscribeNotice() async {
     ConnectorParameter parameter;
     html.Document tagNode;
     html.Element node;
@@ -538,9 +585,11 @@ class ISchoolPlusConnector {
       parameter = ConnectorParameter(_getCourseName);
       result = await Connector.getDataByGet(parameter);
       tagNode = html.parse(result);
-      node = tagNode.getElementById("selcourse");
+      final courseSelect = tagNode.getElementById("selcourse");
+      if (courseSelect == null) return false;
+      node = courseSelect;
       nodes = node.getElementsByTagName("option");
-      String courseValue;
+      String? courseValue;
       for (int i = 1; i < nodes.length; i++) {
         node = nodes[i];
         String name = node.text.split("_").last;

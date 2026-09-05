@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:async';
 import 'dart:convert';
 
@@ -38,17 +36,17 @@ class LocalStorage {
   final _courseTableList = <CourseTableJson>[];
 
   final _httpClientInterceptors = <Interceptor>[];
-  CookieJar _cookieJar;
+  CookieJar? _cookieJar;
 
-  SharedPreferences _pref;
-  UserDataJson _userData;
-  List<SemesterJson> _courseSemesterList;
-  CourseScoreCreditJson _courseScoreList;
-  SettingJson _setting;
+  late SharedPreferences _pref;
+  late UserDataJson _userData;
+  List<SemesterJson> _courseSemesterList = <SemesterJson>[];
+  late CourseScoreCreditJson _courseScoreList;
+  late SettingJson _setting;
 
   bool get autoCheckAppUpdate => _setting.other.autoCheckAppUpdate;
 
-  bool getFirstUse(String key, {int timeOut}) {
+  bool getFirstUse(String key, {int? timeOut}) {
     if (timeOut != null) {
       final millsTimeOut = timeOut * 1000;
       final wKey = "firstUse$key";
@@ -116,7 +114,7 @@ class LocalStorage {
     }
   }
 
-  String getCourseNameByCourseId(String courseId) {
+  String? getCourseNameByCourseId(String courseId) {
     for (final courseDetail in _courseTableList) {
       final name = courseDetail.getCourseNameByCourseId(courseId);
       if (name != null) {
@@ -150,8 +148,8 @@ class LocalStorage {
     return _courseTableList;
   }
 
-  CourseTableJson getCourseTable(String studentId, SemesterJson courseSemester) {
-    if (courseSemester == null || studentId == null || studentId.isEmpty) {
+  CourseTableJson? getCourseTable(String studentId, SemesterJson courseSemester) {
+    if (studentId.isEmpty) {
       return null;
     }
 
@@ -219,11 +217,11 @@ class LocalStorage {
     return _saveAnnouncementSetting();
   }
 
-  void clearSemesterJsonList() => _courseSemesterList?.clear();
+  void clearSemesterJsonList() => _courseSemesterList.clear();
 
   void _loadSemesterJsonList() {
     final readJsonList = _readStringList(_courseSemesterJsonKey);
-    _courseSemesterList?.clear();
+    _courseSemesterList.clear();
 
     if (readJsonList != null) {
       for (final readJson in readJsonList) {
@@ -234,18 +232,18 @@ class LocalStorage {
 
   void setSemesterJsonList(List<SemesterJson> value) => _courseSemesterList = value;
 
-  SemesterJson getSemesterJsonItem(int index) =>
-      ((_courseSemesterList?.length ?? -1) > index) ? _courseSemesterList[index] : null;
+  SemesterJson? getSemesterJsonItem(int index) =>
+      _courseSemesterList.length > index ? _courseSemesterList[index] : null;
 
   List<SemesterJson> getSemesterList() => _courseSemesterList;
 
-  String getVersion() => _readString("version");
+  String? getVersion() => _readString("version");
 
   Future<void> setVersion(String version) => _writeString("version", version);
 
   Future<void> init({
     List<Interceptor> httpClientInterceptors = const [],
-    CookieJar cookieJar,
+    CookieJar? cookieJar,
   }) async {
     _pref = await SharedPreferences.getInstance();
 
@@ -262,7 +260,6 @@ class LocalStorage {
       interceptors: _httpClientInterceptors,
       cookieJar: _cookieJar,
     );
-    _courseSemesterList = _courseSemesterList ?? [];
     _loadUserData();
     _loadCourseTableList();
     _loadSetting();
@@ -307,11 +304,11 @@ class LocalStorage {
 
   Future<void> _writeInt(String key, int value) => _pref.setInt(key, value);
 
-  int _readInt(String key) => _pref.getInt(key);
+  int? _readInt(String key) => _pref.getInt(key);
 
   Future<void> _writeStringList(String key, List<String> value) => _pref.setStringList(key, value);
 
-  String _readString(String key) => _pref.getString(key);
+  String? _readString(String key) => _pref.getString(key);
 
-  List<String> _readStringList(String key) => _pref.getStringList(key);
+  List<String>? _readStringList(String key) => _pref.getStringList(key);
 }

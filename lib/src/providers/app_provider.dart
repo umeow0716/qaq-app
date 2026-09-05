@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +18,7 @@ class AppProvider extends ChangeNotifier {
 
   ThemeData get theme => (() => _theme)();
   ThemeData _theme = Get.isDarkMode ? AppThemes.darkTheme : AppThemes.lightTheme;
-  final Key key = UniqueKey();
+  final Key? key = UniqueKey();
   final GlobalKey<NavigatorState> navigatorKey = AppNavigator.key;
 
   void setTheme(ThemeData value, String colorName) {

@@ -1,5 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
-
 import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
 import 'package:flutter_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
 import 'package:flutter_app/src/r.dart';
@@ -7,7 +5,7 @@ import 'package:flutter_app/src/r.dart';
 import '../task.dart';
 import 'iplus_system_task.dart';
 
-class IPlusCourseAnnouncementDetailTask extends IPlusSystemTask<Map> {
+class IPlusCourseAnnouncementDetailTask extends IPlusSystemTask<Map<String, dynamic>> {
   final ISchoolPlusAnnouncementJson data;
 
   IPlusCourseAnnouncementDetailTask(this.data) : super("lPlusCourseAnnouncementDetailTask");
@@ -17,10 +15,10 @@ class IPlusCourseAnnouncementDetailTask extends IPlusSystemTask<Map> {
     final status = await super.execute();
     if (status == TaskStatus.success) {
       super.onStart(R.current.getISchoolPlusCourseAnnouncementDetail);
-      final value = await ISchoolPlusConnector.getCourseAnnouncementDetail(data) as Map<dynamic, dynamic>?;
+      final value = await ISchoolPlusConnector.getCourseAnnouncementDetail(data);
       super.onEnd();
       if (value != null) {
-        result = value;
+        result = Map<String, dynamic>.from(value);
         return TaskStatus.success;
       } else {
         return super.onError(R.current.getISchoolPlusCourseAnnouncementDetailError);

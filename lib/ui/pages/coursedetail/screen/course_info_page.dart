@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,7 +18,7 @@ class CourseInfoPage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const CourseInfoPage(this.studentId, this.courseInfo, {Key key}) : super(key: key);
+  const CourseInfoPage(this.studentId, this.courseInfo, {Key? key}) : super(key: key);
 
   final int courseInfoWithAlpha = 0x44;
 
@@ -29,8 +27,8 @@ class CourseInfoPage extends StatefulWidget {
 }
 
 class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAliveClientMixin {
-  CourseMainInfoJson courseMainInfo;
-  CourseExtraInfoJson courseExtraInfo;
+  late CourseMainInfoJson courseMainInfo;
+  late CourseExtraInfoJson courseExtraInfo;
   bool isLoading = true;
   final List<Widget> courseData = [];
   final List<Widget> listItem = [];
@@ -47,12 +45,13 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
   void _addTask() async {
     courseMainInfo = widget.courseInfo.main;
+    courseExtraInfo = widget.courseInfo.extra;
     final courseId = courseMainInfo.course.id;
     final taskFlow = TaskFlow();
     final task = CourseExtraInfoTask(courseId);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      courseExtraInfo = task.result;
+      courseExtraInfo = task.result ?? courseExtraInfo;
     }
     widget.courseInfo.extra = courseExtraInfo;
     final List<CourseStudent> students = await _getCourseStudent();
@@ -190,10 +189,8 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     final task = IPlusGetStudentListTask(courseId: courseMainInfo.course.id);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      List<CourseStudent> students = task.result;
-      if (students != null) {
-        return students;
-      }
+      final students = task.result;
+      if (students != null) return students;
     }
     return <CourseStudent>[];
   }
@@ -204,10 +201,8 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     final task = CourseDepartmentMapTask(year: semester.year, semester: semester.semester);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      Map<String, String> departmentMap = task.result;
-      if (departmentMap != null) {
-        return departmentMap;
-      }
+      final departmentMap = task.result;
+      if (departmentMap != null) return departmentMap;
     }
     return <String, String>{};
   }
@@ -229,7 +224,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
       return R.current.aduit;
     }
 
-    String department = departmentMap[studentId.substring(3, 5)];
+    String? department = departmentMap[studentId.substring(3, 5)];
 
     if (department != null) {
       return department;

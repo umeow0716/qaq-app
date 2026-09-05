@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/debug/log/log.dart';
@@ -9,7 +7,7 @@ import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 
 class CheckPasswordDialog extends StatefulWidget {
-  const CheckPasswordDialog({Key key}) : super(key: key);
+  const CheckPasswordDialog({Key? key}) : super(key: key);
 
   @override
   State<CheckPasswordDialog> createState() => _CheckPasswordDialogState();
@@ -43,6 +41,13 @@ class _CheckPasswordDialogState extends State<CheckPasswordDialog> {
     } on PlatformException catch (e) {
       Log.d(e.code);
     }
+  }
+
+  @override
+  void dispose() {
+    _originPasswordController.dispose();
+    _originPasswordFocus.dispose();
+    super.dispose();
   }
 
   @override
@@ -113,7 +118,7 @@ class _CheckPasswordDialogState extends State<CheckPasswordDialog> {
         TextButton(
             child: Text(R.current.sure),
             onPressed: () {
-              if (_formKey.currentState.validate()) {
+              if (_formKey.currentState?.validate() ?? false) {
                 Get.back<bool>(result: true);
               }
             })
@@ -121,8 +126,8 @@ class _CheckPasswordDialogState extends State<CheckPasswordDialog> {
     );
   }
 
-  String _validatorOriginPassword(String value) {
-    if (value == LocalStorage.instance.getPassword()) {
+  String? _validatorOriginPassword(String? value) {
+    if ((value ?? '') == LocalStorage.instance.getPassword()) {
       _originPasswordErrorMessage = '';
     } else {
       setState(() {

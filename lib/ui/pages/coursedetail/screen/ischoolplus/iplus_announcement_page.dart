@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
@@ -16,24 +14,23 @@ class IPlusAnnouncementPage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const IPlusAnnouncementPage(this.studentId, this.courseInfo, {Key key}) : super(key: key);
+  const IPlusAnnouncementPage(this.studentId, this.courseInfo, {Key? key}) : super(key: key);
 
   @override
   State<IPlusAnnouncementPage> createState() => _IPlusAnnouncementPage();
 }
 
 class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with AutomaticKeepAliveClientMixin {
-  List<ISchoolPlusAnnouncementJson> items;
-  String courseBid;
+  List<ISchoolPlusAnnouncementJson> items = <ISchoolPlusAnnouncementJson>[];
+  String courseBid = '';
   bool needRefresh = false;
-  bool isSupport;
+  bool isSupport = false;
   bool openNotifications = false;
 
   @override
   void initState() {
     super.initState();
     isSupport = LocalStorage.instance.getAccount() == widget.studentId;
-    items = [];
     if (isSupport) {
       _addTask();
     }
@@ -48,11 +45,13 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
     taskFlow.addTask(task);
     taskFlow.addTask(getTask);
     if (await taskFlow.start()) {
-      items = task.result;
-      courseBid = getTask.result["courseBid"];
-      openNotifications = getTask.result["openNotifications"];
+      items = task.result ?? <ISchoolPlusAnnouncementJson>[];
+      final subscribeResult = getTask.result;
+      if (subscribeResult != null) {
+        courseBid = subscribeResult["courseBid"]?.toString() ?? '';
+        openNotifications = subscribeResult["openNotifications"] == true;
+      }
     }
-    items = items ?? [];
 
     if (mounted) {
       setState(() {});
@@ -63,11 +62,12 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
     TaskFlow taskFlow = TaskFlow();
     var task = IPlusCourseAnnouncementDetailTask(value);
     taskFlow.addTask(task);
-    Map detail;
     if (await taskFlow.start()) {
-      detail = task.result;
+      final detail = task.result;
+      if (detail != null) {
+        RouteUtils.toIPlusAnnouncementDetailPage(widget.courseInfo, Map<String, dynamic>.from(detail));
+      }
     }
-    RouteUtils.toIPlusAnnouncementDetailPage(widget.courseInfo, detail);
   }
 
   @override
@@ -83,7 +83,8 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
                 : Center(
                     child: Text(R.current.notSupport),
                   ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: isSupport && courseBid.isNotEmpty
+            ? FloatingActionButton(
           // FloatingActionButton: 浮動按鈕
           onPressed: () async {
             TaskFlow taskFlow = TaskFlow();
@@ -97,7 +98,8 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
           tooltip: R.current.subscribe,
           // 按住按鈕時出現的提示字
           child: (openNotifications) ? const Icon(Icons.notifications_active) : const Icon(Icons.notifications_off),
-        ));
+        )
+            : null);
   }
 
   Widget _buildMailList() {

@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:json_annotation/json_annotation.dart';
 
 part 'ap_tree_json.g.dart';
@@ -12,7 +10,9 @@ class APTreeJson {
   @JsonKey(name: 'parentDn')
   String parentDn;
 
-  APTreeJson(this.apList, this.parentDn);
+  APTreeJson(List<APListJson>? apList, String? parentDn)
+      : apList = apList ?? <APListJson>[],
+        parentDn = parentDn ?? '';
 
   factory APTreeJson.fromJson(Map<String, dynamic> srcJson) => _$APTreeJsonFromJson(srcJson);
 }
@@ -32,7 +32,13 @@ class APListJson {
   @JsonKey(name: 'urlLink')
   String urlLink;
 
-  APListJson(this.apDn, this.description, this.icon, this.type, this.urlLink, this.urlSource);
+  APListJson(String? apDn, String? description, String? icon, String? type, String? urlLink, String? urlSource)
+      : apDn = apDn ?? '',
+        description = description ?? '',
+        icon = icon ?? '',
+        type = type ?? '',
+        urlLink = urlLink ?? '',
+        urlSource = urlSource ?? '';
 
   factory APListJson.fromJson(Map<String, dynamic> srcJson) => _$APListJsonFromJson(srcJson);
 }

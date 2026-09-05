@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter_app/src/model/json_init.dart';
 import 'package:intl/intl.dart';
 
@@ -10,30 +8,25 @@ class CourseFileJson {
   DateTime time;
   List<FileType> fileType;
 
-  CourseFileJson({this.name, this.fileType, this.time}) {
-    name = JsonInit.stringInit(name);
-    fileType = fileType ?? [];
-    time = time ?? DateTime.now();
-  }
+  CourseFileJson({String? name, List<FileType>? fileType, DateTime? time})
+      : name = JsonInit.stringInit(name),
+        fileType = fileType ?? <FileType>[],
+        time = time ?? DateTime.now();
 
   String get timeString {
-    var formatter = DateFormat.yMd();
-    String formatted = formatter.format(time);
-    return formatted;
+    final formatter = DateFormat.yMd();
+    return formatter.format(time);
   }
 }
 
 class FileType {
   CourseFileType type;
   String href;
-  dynamic postData; //ISchoolPlus取得真實連結會使用
+  dynamic postData;
 
-  FileType({this.type, this.href}) {
-    type = type ?? CourseFileType.unknown;
-    href = JsonInit.stringInit(href);
-  }
+  FileType({CourseFileType? type, String? href})
+      : type = type ?? CourseFileType.unknown,
+        href = JsonInit.stringInit(href);
 
-  String get fileUrl {
-    return href;
-  }
+  String get fileUrl => href;
 }

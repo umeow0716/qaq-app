@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -35,14 +33,14 @@ enum OnListViewPress {
 class OtherPage extends StatefulWidget {
   final PageController pageController;
 
-  const OtherPage(this.pageController, {Key key}) : super(key: key);
+  const OtherPage(this.pageController, {Key? key}) : super(key: key);
 
   @override
   State<OtherPage> createState() => _OtherPageState();
 }
 
 class _OtherPageState extends State<OtherPage> {
-  final optionList = [
+  final List<Map<String, Object?>> optionList = [
     {
       "icon": EvaIcons.settings2Outline,
       "color": Colors.orange,
@@ -114,7 +112,7 @@ class _OtherPageState extends State<OtherPage> {
         break;
       case OnListViewPress.login:
         RouteUtils.toLoginScreen().then((value) {
-          if (value) widget.pageController.jumpToPage(0);
+          if (value == true) widget.pageController.jumpToPage(0);
         });
         break;
       case OnListViewPress.fileViewer:
@@ -154,7 +152,7 @@ class _OtherPageState extends State<OtherPage> {
           SizedBox(
             child: FutureBuilder<Map<String, Map<String, String>>>(
               future: NTUTConnector.getUserImageRequestInfo(),
-              builder: (_, snapshot) => snapshot.data != null ? _buildHeader(snapshot.data) : const SizedBox.shrink(),
+              builder: (_, snapshot) => snapshot.data != null ? _buildHeader(snapshot.data!) : const SizedBox.shrink(),
             ),
           ),
         const SizedBox(
@@ -178,14 +176,14 @@ class _OtherPageState extends State<OtherPage> {
     );
   }
 
-  Widget _buildHeader(Map userImageInfo) {
+  Widget _buildHeader(Map<String, Map<String, String>> userImageInfo) {
     final userInfo = LocalStorage.instance.getUserInfo();
     String givenName = userInfo.givenName;
     String userMail = userInfo.userMail;
     final userImage = CachedNetworkImage(
       cacheManager: LocalStorage.instance.cacheManager,
-      imageUrl: userImageInfo["url"]["value"],
-      httpHeaders: userImageInfo["header"],
+      imageUrl: userImageInfo["url"]?["value"] ?? "",
+      httpHeaders: userImageInfo["header"] ?? const <String, String>{},
       imageBuilder: (context, imageProvider) => CircleAvatar(
         radius: 40.0,
         backgroundImage: imageProvider,
@@ -240,7 +238,7 @@ class _OtherPageState extends State<OtherPage> {
               child: FutureBuilder<bool>(
                 future: taskFlow.start(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done && snapshot.data) {
+                  if (snapshot.connectionState == ConnectionState.done && snapshot.data == true) {
                     return userImage;
                   }
                   return SpinKitRotatingCircle(color: Theme.of(context).colorScheme.secondary);
@@ -264,10 +262,11 @@ class _OtherPageState extends State<OtherPage> {
     );
   }
 
-  Widget _buildSetting(Map data) {
+  Widget _buildSetting(Map<String, Object?> data) {
     return InkWell(
       onTap: () {
-        _onListViewPress(data['onPress']);
+        final action = data['onPress'];
+        if (action is OnListViewPress) _onListViewPress(action);
       },
       child: Container(
         padding: const EdgeInsets.only(top: 24.0, left: 24.0, right: 24.0, bottom: 24.0),
@@ -275,14 +274,14 @@ class _OtherPageState extends State<OtherPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Icon(
-              data['icon'],
-              color: data['color'],
+              data['icon'] as IconData,
+              color: data['color'] as Color?,
             ),
             const SizedBox(
               width: 20.0,
             ),
             Text(
-              data['title'],
+              data['title']?.toString() ?? '',
               style: const TextStyle(fontSize: 18),
             ),
           ],

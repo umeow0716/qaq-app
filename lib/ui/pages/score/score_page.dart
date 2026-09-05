@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
@@ -191,10 +190,12 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       taskFlow.callback = (task) {
         rate++;
         progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
-        final CourseSyllabusJson courseSyllabusJson = task.result;
-        final courseScoreInfo = courseScoreCredit.getCourseByCourseId(courseSyllabusJson.courseId.toString());
-        courseScoreInfo.category = courseSyllabusJson.category;
-        courseScoreInfo.openClass = courseSyllabusJson.className;
+        final result = task.result;
+        if (result is! CourseSyllabusJson) return;
+        final courseScoreInfo = courseScoreCredit.getCourseByCourseId(result.courseId);
+        if (courseScoreInfo == null) return;
+        courseScoreInfo.category = result.category;
+        courseScoreInfo.openClass = result.className;
       };
 
       await taskFlow.start();

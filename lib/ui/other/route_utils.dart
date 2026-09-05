@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -22,27 +21,27 @@ import 'package:get/get.dart';
 class RouteUtils {
   static Transition transition = (Platform.isAndroid) ? Transition.downToUp : Transition.cupertino;
 
-  static Future? toLoginScreen() {
-    return Get.off(
+  static Future<dynamic> toLoginScreen() async {
+    return await Get.off(
       () => const LoginScreen(),
       transition: transition,
     );
   }
 
-  static Future? launchMainPage() => Get.offAll(
+  static Future<dynamic> launchMainPage() async => await Get.offAll(
         () => const MainScreen(),
         transition: transition,
       );
 
-  static Future? toDevPage() {
-    return Get.to(
+  static Future<dynamic> toDevPage() async {
+    return await Get.to(
       () => const DevPage(),
       transition: transition,
     );
   }
 
-  static Future? toSubSystemPage(String title, String arg) {
-    return Get.to(
+  static Future<dynamic> toSubSystemPage(String title, String? arg) async {
+    return await Get.to(
       () => SubSystemPage(
         title: title,
         arg: arg,
@@ -52,8 +51,8 @@ class RouteUtils {
     );
   }
 
-  static Future? toFileViewerPage(String title, String path) {
-    return Get.to(
+  static Future<dynamic> toFileViewerPage(String title, String path) async {
+    return await Get.to(
       () => FileViewerPage(
         title: title,
         path: path,
@@ -62,35 +61,35 @@ class RouteUtils {
     );
   }
 
-  static Future? toISchoolPage(String studentId, CourseInfoJson courseInfo) {
-    return Get.to(
+  static Future<dynamic> toISchoolPage(String studentId, CourseInfoJson courseInfo) async {
+    return await Get.to(
       () => ISchoolPage(studentId, courseInfo),
       transition: transition,
     );
   }
 
-  static Future? toPrivacyPolicyPage() {
-    return Get.to(
+  static Future<dynamic> toPrivacyPolicyPage() async {
+    return await Get.to(
       () => const PrivacyPolicyPage(),
       transition: transition,
     );
   }
 
-  static Future? toContributorsPage() {
-    return Get.to(
+  static Future<dynamic> toContributorsPage() async {
+    return await Get.to(
       () => ContributorsPage(),
       transition: transition,
     );
   }
 
-  static Future? toAboutPage() {
-    return Get.to(
+  static Future<dynamic> toAboutPage() async {
+    return await Get.to(
       () => const AboutPage(),
       transition: transition,
     );
   }
 
-  static Future? toSettingPage(PageController controller) => Get.to(
+  static Future<dynamic> toSettingPage(PageController controller) async => await Get.to(
         () => SettingPage(controller),
         transition: transition,
       );
@@ -106,22 +105,22 @@ class RouteUtils {
         shouldUseAppCookies: shouldUseAppCookies,
       );
 
-  static Future? toLogConsolePage() {
-    return Get.to(
+  static Future<dynamic> toLogConsolePage() async {
+    return await Get.to(
       () => LogConsole(dark: true),
       transition: transition,
     );
   }
 
 
-  static Future? toIPlusAnnouncementDetailPage(CourseInfoJson courseInfo, Map detail) {
-    return Get.to(
+  static Future<dynamic> toIPlusAnnouncementDetailPage(CourseInfoJson courseInfo, Map<String, dynamic> detail) async {
+    return await Get.to(
       () => IPlusAnnouncementDetailPage(courseInfo, detail),
       transition: transition,
     );
   }
 
-  static Future? toVideoPlayer(String url, CourseInfoJson courseInfo, String name) => Get.to(
+  static Future<dynamic> toVideoPlayer(String url, CourseInfoJson courseInfo, String name) async => await Get.to(
         () => ClassVideoPlayer(url, courseInfo, name),
         transition: transition,
       );

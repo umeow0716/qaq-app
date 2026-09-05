@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/file/file_download.dart';
@@ -13,10 +11,10 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class IPlusAnnouncementDetailPage extends StatefulWidget {
-  final Map data;
+  final Map<String, dynamic> data;
   final CourseInfoJson courseInfo;
 
-  const IPlusAnnouncementDetailPage(this.courseInfo, this.data, {Key key}) : super(key: key);
+  const IPlusAnnouncementDetailPage(this.courseInfo, this.data, {Key? key}) : super(key: key);
 
   @override
   State<IPlusAnnouncementDetailPage> createState() => _IPlusAnnouncementDetailPage();
@@ -40,7 +38,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
               if (!addLink) {
                 setState(() {
                   addLink = true;
-                  widget.data["body"] = HtmlUtils.addLink(widget.data["body"]);
+                  widget.data["body"] = HtmlUtils.addLink(widget.data["body"]?.toString() ?? "");
                 });
               }
             },
@@ -70,7 +68,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      widget.data["title"],
+                      widget.data["title"]?.toString() ?? "",
                       textAlign: TextAlign.left,
                       style: const TextStyle(fontSize: 20),
                     ),
@@ -81,11 +79,11 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(widget.data["sender"]),
+                    child: Text(widget.data["sender"]?.toString() ?? ""),
                   ),
                   Expanded(
                     child: Text(
-                      widget.data["postTime"],
+                      widget.data["postTime"]?.toString() ?? "",
                       textAlign: TextAlign.end,
                     ),
                   )
@@ -105,8 +103,11 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
   }
 
   Widget _showFileList() {
-    List<String> fileNameList = widget.data['file'].keys.toList(); //key : 文件名稱  value : 文件下載url
-    Map fileUrlMap = widget.data["file"];
+    final rawFileMap = widget.data['file'];
+    final Map<String, String> fileUrlMap = rawFileMap is Map
+        ? rawFileMap.map((key, value) => MapEntry(key.toString(), value.toString()))
+        : <String, String>{};
+    final List<String> fileNameList = fileUrlMap.keys.toList(); //key : 文件名稱  value : 文件下載url
     if (fileNameList.isEmpty) {
       return Container(
         color: Colors.black12,
@@ -131,8 +132,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
             shrinkWrap: true,
             itemCount: fileNameList.length,
             itemBuilder: (context, index) {
-              Widget fileWidget;
-              fileWidget = Padding(
+              final fileWidget = Padding(
                 padding: const EdgeInsets.only(top: 10, bottom: 10),
                 child: Row(
                   children: <Widget>[
@@ -146,7 +146,10 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
               return InkWell(
                 child: WidgetAnimator(fileWidget),
                 onTap: () {
-                  _downloadFile(fileUrlMap[fileNameList[index]], fileNameList[index]);
+                  final url = fileUrlMap[fileNameList[index]];
+                  if (url != null && url.isNotEmpty) {
+                    _downloadFile(url, fileNameList[index]);
+                  }
                 },
               );
             },
@@ -165,7 +168,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
 
   Widget _showHtmlWidget() {
     return HtmlWidget(
-      widget.data["body"],
+      widget.data["body"]?.toString() ?? "",
       onTapUrl: (url) {
         onUrlTap(url);
         return true;
@@ -186,7 +189,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
     }
   }
 
-  _launchURL(String url) async {
+  Future<void> _launchURL(String url) async {
     final preparedUrl = Uri.tryParse(url);
     if (preparedUrl != null && await canLaunchUrl(preparedUrl)) {
       RouteUtils.toWebViewPage(initialUrl: preparedUrl);

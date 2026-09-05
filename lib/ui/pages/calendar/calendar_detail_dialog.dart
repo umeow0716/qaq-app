@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/ntut/ntut_calendar_json.dart';
 import 'package:flutter_app/src/r.dart';
@@ -10,7 +8,7 @@ import 'package:sprintf/sprintf.dart';
 class CalendarDetailDialog extends StatefulWidget {
   final NTUTCalendarJson calendarDetail;
 
-  const CalendarDetailDialog({Key key, this.calendarDetail}) : super(key: key);
+  const CalendarDetailDialog({Key? key, required this.calendarDetail}) : super(key: key);
 
   @override
   State<CalendarDetailDialog> createState() => _CalendarDetailDialogState();

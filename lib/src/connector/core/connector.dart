@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -48,7 +46,7 @@ class Connector {
     }
   }
 
-  static Future<Map<String, String>> getLoginHeaders(String url) async {
+  static Future<Map<String, String>?> getLoginHeaders(String url) async {
     try {
       final cookieJar = DioConnector.instance.cookiesManager;
       final headers = Map<String, String>.from(DioConnector.instance.headers);
@@ -64,26 +62,26 @@ class Connector {
     }
   }
 
-  static Future<String> getFileName(String url) async {
-    String fileName;
+  static Future<String?> getFileName(String url) async {
+    String? fileName;
     try {
       ConnectorParameter parameter = ConnectorParameter(url);
       Map<String, List<String>> headers = await DioConnector.instance.getHeadersByGet(parameter);
       if (headers.containsKey("content-disposition")) {
         //代表有名字
-        List<String> name = headers["content-disposition"];
+        final name = headers["content-disposition"]!;
         RegExp exp = RegExp("['|\"](?<name>.+)['|\"]");
-        RegExpMatch matches = exp.firstMatch(name[0]);
-        fileName = matches.group(1);
+        final matches = exp.firstMatch(name[0]);
+        fileName = matches?.group(1);
       } else if (headers.containsKey("content-type")) {
-        List<String> name = headers["content-type"];
+        final name = headers["content-type"]!;
         if (name[0].toLowerCase().contains("pdf")) {
           //是application/pdf
           fileName = '.pdf';
         }
       }
       if (headers.containsKey("content-length")) {
-        String size = headers["content-length"][0];
+        final size = headers["content-length"]![0];
         Log.d("file size = $size");
       }
       Log.d("getFileName $fileName");

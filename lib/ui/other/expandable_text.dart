@@ -1,70 +1,62 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 
 class ExpandableText extends StatefulWidget {
   final String text;
-
   final int maxLines;
-
-  final TextStyle style;
-
+  final TextStyle? style;
   final bool expand;
 
-  const ExpandableText({Key key, this.text, this.maxLines, this.style, this.expand}) : super(key: key);
+  const ExpandableText({
+    Key? key,
+    required this.text,
+    required this.maxLines,
+    this.style,
+    this.expand = false,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _ExpandableTextState();
 }
 
 class _ExpandableTextState extends State<ExpandableText> {
+  late bool _expand;
+
+  @override
+  void initState() {
+    super.initState();
+    _expand = widget.expand;
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool expand = widget.expand ?? false;
     return LayoutBuilder(builder: (context, size) {
-      final span = TextSpan(text: widget.text ?? '', style: widget.style);
+      final span = TextSpan(text: widget.text, style: widget.style);
+      final tp = TextPainter(text: span, maxLines: widget.maxLines, textDirection: TextDirection.ltr)
+        ..layout(maxWidth: size.maxWidth);
 
-      final tp = TextPainter(text: span, maxLines: widget.maxLines, textDirection: TextDirection.ltr);
+      if (!tp.didExceedMaxLines) return Text(widget.text, style: widget.style);
 
-      tp.layout(maxWidth: size.maxWidth);
-
-      if (tp.didExceedMaxLines) {
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            setState(() {
-              expand = !expand;
-            });
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  const Expanded(
-                    child: Text(""),
-                  ),
-                  (expand)
-                      ? const Icon(
-                          Icons.arrow_drop_up,
-                          size: 20,
-                        )
-                      : const Icon(
-                          Icons.arrow_drop_down,
-                          size: 20,
-                        ),
-                ],
-              ),
-              expand
-                  ? Text(widget.text ?? '', style: widget.style)
-                  : Text(widget.text ?? '',
-                      maxLines: widget.maxLines, overflow: TextOverflow.ellipsis, style: widget.style),
-            ],
-          ),
-        );
-      } else {
-        return Text(widget.text ?? '', style: widget.style);
-      }
+      return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => setState(() => _expand = !_expand),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Expanded(child: Text('')),
+                Icon(_expand ? Icons.arrow_drop_up : Icons.arrow_drop_down, size: 20),
+              ],
+            ),
+            Text(
+              widget.text,
+              maxLines: _expand ? null : widget.maxLines,
+              overflow: _expand ? null : TextOverflow.ellipsis,
+              style: widget.style,
+            ),
+          ],
+        ),
+      );
     });
   }
 }

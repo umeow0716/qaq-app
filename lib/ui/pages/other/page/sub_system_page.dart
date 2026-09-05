@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/ntut_connector.dart';
 import 'package:flutter_app/src/model/ntut/ap_tree_json.dart';
@@ -9,9 +7,9 @@ import 'package:flutter_app/ui/other/route_utils.dart';
 
 class SubSystemPage extends StatefulWidget {
   final String title;
-  final String arg;
+  final String? arg;
 
-  const SubSystemPage({Key key, this.title, this.arg}) : super(key: key);
+  const SubSystemPage({Key? key, required this.title, this.arg}) : super(key: key);
 
   @override
   State<SubSystemPage> createState() => _SubSystemPageState();
@@ -19,7 +17,7 @@ class SubSystemPage extends StatefulWidget {
 
 class _SubSystemPageState extends State<SubSystemPage> {
   bool isLoading = true;
-  APTreeJson apTree;
+  APTreeJson? apTree;
 
   @override
   void initState() {
@@ -27,7 +25,7 @@ class _SubSystemPageState extends State<SubSystemPage> {
     loadTree(widget.arg);
   }
 
-  void loadTree(String arg) async {
+  void loadTree(String? arg) async {
     setState(() {
       isLoading = true;
     });
@@ -57,11 +55,13 @@ class _SubSystemPageState extends State<SubSystemPage> {
   }
 
   Widget buildTree() {
+    final tree = apTree;
+    if (tree == null) return const SizedBox.shrink();
     return ListView.builder(
       shrinkWrap: true,
-      itemCount: apTree.apList.length,
+      itemCount: tree.apList.length,
       itemBuilder: (BuildContext context, int index) {
-        APListJson ap = apTree.apList[index];
+        final ap = tree.apList[index];
         return InkWell(
           child: SizedBox(
             height: 50,

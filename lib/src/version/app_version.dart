@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/store/local_storage.dart';

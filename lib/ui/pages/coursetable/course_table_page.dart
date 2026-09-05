@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -30,7 +28,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sprintf/sprintf.dart';
 
 class CourseTablePage extends StatefulWidget {
-  const CourseTablePage({Key key}) : super(key: key);
+  const CourseTablePage({Key? key}) : super(key: key);
 
   @override
   State<CourseTablePage> createState() => _CourseTablePageState();
@@ -41,7 +39,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
   final FocusNode _studentFocus = FocusNode();
   final GlobalKey _key = GlobalKey();
   bool isLoading = true;
-  CourseTableJson courseTableData;
+  CourseTableJson? courseTableData;
   static double dayHeight = 25;
   static double studentIdHeight = 40;
   static double courseHeight = 60;
@@ -82,17 +80,16 @@ class _CourseTablePageState extends State<CourseTablePage> {
     task.openLoadingDialog = false;
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      List<String> v = task.result;
-      List<String> value = [];
-      v = v ?? [];
+      final List<String> v = task.result ?? <String>[];
+      final List<String> value = <String>[];
       for (int i = 0; i < v.length; i++) {
         String courseName = v[i];
-        CourseInfoJson courseInfo = courseTableData.getCourseInfoByCourseName(courseName);
+        final courseInfo = courseTableData?.getCourseInfoByCourseName(courseName);
         if (courseInfo != null) {
           value.add(courseName);
         }
       }
-      if (value != null && value.isNotEmpty) {
+      if (value.isNotEmpty) {
         Get.dialog(
           AlertDialog(
             title: Text(R.current.findNewMessage),
@@ -106,7 +103,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                     child: Text(value[index]),
                     onPressed: () {
                       String courseName = value[index];
-                      CourseInfoJson courseInfo = courseTableData.getCourseInfoByCourseName(courseName);
+                      final courseInfo = courseTableData?.getCourseInfoByCourseName(courseName);
                       if (courseInfo != null) {
                         _showCourseDetail(courseInfo);
                       } else {
@@ -139,7 +136,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
   @override
   void setState(fn) {
-    if (mounted && context != null) {
+    if (mounted) {
       super.setState(fn);
     }
   }
@@ -147,14 +144,17 @@ class _CourseTablePageState extends State<CourseTablePage> {
   @override
   void dispose() {
     _studentFocus.dispose();
+    _studentIdControl.dispose();
     super.dispose();
   }
 
   void _loadLocalSettings() {
-    final renderObject = _key.currentContext.findRenderObject();
-    courseHeight = (renderObject.semanticBounds.size.height - studentIdHeight - dayHeight) / showCourseTableNum;
+    final renderObject = _key.currentContext?.findRenderObject();
+    if (renderObject != null) {
+      courseHeight = (renderObject.semanticBounds.size.height - studentIdHeight - dayHeight) / showCourseTableNum;
+    }
     final courseTable = LocalStorage.instance.getCourseSetting().info;
-    if (courseTable == null || courseTable.isEmpty) {
+    if (courseTable.isEmpty) {
       _getCourseTable(studentId: courseTable.studentId, semesterSetting: courseTable.courseSemester);
     } else {
       _showCourseTable(courseTable);
@@ -166,36 +166,39 @@ class _CourseTablePageState extends State<CourseTablePage> {
     final task = CourseSemesterTask(studentId);
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
-      LocalStorage.instance.setSemesterJsonList(task.result);
+      final result = task.result;
+      if (result != null) {
+        LocalStorage.instance.setSemesterJsonList(result);
+      }
     }
   }
 
-  void _getCourseTable({SemesterJson semesterSetting, String studentId, bool refresh = false}) async {
+  void _getCourseTable({SemesterJson? semesterSetting, String? studentId, bool refresh = false}) async {
     await Future.delayed(const Duration(microseconds: 100)); //等待頁面刷新
-    UserDataJson userData = LocalStorage.instance.getUserData();
-    studentId = studentId?.trim() ?? '';
-    studentId = (studentId.isEmpty ? null : studentId) ?? userData.account;
-    if (courseTableData?.studentId != studentId) {
+    final userData = LocalStorage.instance.getUserData();
+    var effectiveStudentId = studentId?.trim() ?? '';
+    if (effectiveStudentId.isEmpty) effectiveStudentId = userData.account;
+
+    if (courseTableData?.studentId != effectiveStudentId) {
       LocalStorage.instance.clearSemesterJsonList(); //需重設因為更換了studentId
     }
-    SemesterJson semesterJson;
+
+    SemesterJson? semesterJson;
     if (semesterSetting == null || semesterSetting.semester.isEmpty || semesterSetting.year.isEmpty) {
-      await _getSemesterList(studentId);
+      await _getSemesterList(effectiveStudentId);
       semesterJson = LocalStorage.instance.getSemesterJsonItem(0);
     } else {
       semesterJson = semesterSetting;
     }
-    if (semesterJson == null) {
-      return;
-    }
+    if (semesterJson == null) return;
 
-    CourseTableJson courseTable;
+    CourseTableJson? courseTable;
     if (!refresh) {
-      courseTable = LocalStorage.instance.getCourseTable(studentId, semesterSetting); //去取找是否已經暫存
+      courseTable = LocalStorage.instance.getCourseTable(effectiveStudentId, semesterJson); //去取找是否已經暫存
     }
     if (courseTable == null) {
-      TaskFlow taskFlow = TaskFlow();
-      var task = CourseTableTask(studentId, semesterJson);
+      final taskFlow = TaskFlow();
+      final task = CourseTableTask(effectiveStudentId, semesterJson);
       taskFlow.addTask(task);
       if (await taskFlow.start()) {
         courseTable = task.result;
@@ -204,7 +207,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
     if (courseTable != null) {
       LocalStorage.instance.getCourseSetting().info = courseTable;
-      LocalStorage.instance.saveCourseSetting();
+      await LocalStorage.instance.saveCourseSetting();
       _showCourseTable(courseTable);
     }
   }
@@ -222,18 +225,21 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
   void _showSemesterList() async {
     _unFocusStudentInput();
-    if (LocalStorage.instance.getSemesterList()?.isEmpty == true) {
+    if (LocalStorage.instance.getSemesterList().isEmpty) {
       final taskFlow = TaskFlow();
       final task = CourseSemesterTask(_studentIdControl.text);
       taskFlow.addTask(task);
       if (await taskFlow.start()) {
-        LocalStorage.instance.setSemesterJsonList(task.result);
+        final result = task.result;
+        if (result != null) {
+          LocalStorage.instance.setSemesterJsonList(result);
+        }
       }
     }
 
     final List<SemesterJson> semesterList = LocalStorage.instance.getSemesterList();
 
-    if (semesterList?.isEmpty ?? true) {
+    if (semesterList.isEmpty) {
       return;
     }
 
@@ -242,7 +248,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         content: SizedBox(
           width: double.minPositive,
           child: ListView.builder(
-            itemCount: semesterList?.length ?? 0,
+            itemCount: semesterList.length,
             shrinkWrap: true,
             itemBuilder: (context, index) => _getSemesterItem(semesterList[index]),
           ),
@@ -255,7 +261,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
   _onPopupMenuSelect(int value) {
     switch (value) {
       case 0:
-        final credit = courseTableData?.getTotalCredit()?.toString();
+        final credit = courseTableData?.getTotalCredit().toString();
         if (credit != null) {
           MyToast.show(sprintf("%s:%s", [R.current.credit, credit]));
         }
@@ -272,10 +278,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
   }
 
   void _setFavorite(bool like) {
+    final courseTable = courseTableData;
+    if (courseTable == null) return;
     if (like) {
-      LocalStorage.instance.addCourseTable(courseTableData);
+      LocalStorage.instance.addCourseTable(courseTable);
     } else {
-      LocalStorage.instance.removeCourseTable(courseTableData);
+      LocalStorage.instance.removeCourseTable(courseTable);
     }
     LocalStorage.instance.saveCourseTableList();
   }
@@ -302,7 +310,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                       children: [],
                     ),
                     endActionPane: ActionPane(
-                      motion: null,
+                      motion: const ScrollMotion(),
                       children: [
                         SlidableAction(
                           label: R.current.delete,
@@ -724,9 +732,6 @@ class _CourseTablePageState extends State<CourseTablePage> {
   }
 
   void _showCourseTable(CourseTableJson courseTable) async {
-    if (courseTable == null) {
-      return;
-    }
     getCourseNotice(); //查詢訂閱的課程是否有公告
     courseTableData = courseTable;
     _studentIdControl.text = courseTable.studentId;
@@ -741,17 +746,19 @@ class _CourseTablePageState extends State<CourseTablePage> {
     });
     favorite = (LocalStorage.instance.getCourseTable(courseTable.studentId, courseTable.courseSemester) != null);
     if (favorite) {
-      LocalStorage.instance.addCourseTable(courseTableData);
+      LocalStorage.instance.addCourseTable(courseTable);
     }
   }
 
   static const platform = MethodChannel(AppConfig.methodChannelName);
 
-  Future screenshot() async {
+  Future<void> screenshot() async {
     final originHeight = courseHeight;
-    final renderObject = _key.currentContext.findRenderObject();
+    final renderObject = _key.currentContext?.findRenderObject();
+    final boundaryObject = overRepaintKey.currentContext?.findRenderObject();
+    if (renderObject == null || boundaryObject is! RenderRepaintBoundary) return;
     final height = renderObject.semanticBounds.size.height - studentIdHeight - dayHeight;
-    final RenderRepaintBoundary boundary = overRepaintKey.currentContext.findRenderObject();
+    final boundary = boundaryObject;
     final directory = await getApplicationSupportDirectory();
     final path = directory.path;
 
@@ -770,6 +777,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     });
 
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return;
     final pngBytes = byteData.buffer.asUint8List();
     final imgFile = File('$path/course_widget.png');
 
@@ -779,7 +787,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
     Log.d("complete $result");
 
-    if (result) {
+    if (result == true) {
       MyToast.show(R.current.settingComplete);
     } else {
       MyToast.show(R.current.settingCompleteWithError);

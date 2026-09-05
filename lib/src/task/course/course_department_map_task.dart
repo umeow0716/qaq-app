@@ -1,4 +1,3 @@
-// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/r.dart';
@@ -22,8 +21,12 @@ class CourseDepartmentMapTask extends CourseSystemTask<Map<String, String>> {
       super.onEnd();
 
       final collection = <String, String>{};
-      collection.addAll(value);
-      collection.addAll(twoYearProgramDepartmentMap);
+      if (value != null) {
+        collection.addAll(value);
+      }
+      if (twoYearProgramDepartmentMap != null) {
+        collection.addAll(twoYearProgramDepartmentMap);
+      }
 
       if (collection.isNotEmpty) {
         result = collection;

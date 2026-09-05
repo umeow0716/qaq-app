@@ -1,5 +1,3 @@
-// TODO: remove sdk version selector after migrating to null-safety.
-// @dart=2.10
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
@@ -14,7 +12,7 @@ class CourseTableControl {
   bool isHideB = false;
   bool isHideC = false;
   bool isHideD = false;
-  CourseTableJson courseTable;
+  CourseTableJson? courseTable;
   List<String> dayStringList = [
     R.current.Monday,
     R.current.Tuesday,
@@ -45,18 +43,18 @@ class CourseTableControl {
   List<String> sectionStringList = ["1", "2", "3", "4", "N", "5", "6", "7", "8", "9", "A", "B", "C", "D"];
   static int dayLength = 8;
   static int sectionLength = 14;
-  Map<String, Color> colorMap;
+  final Map<String, Color> colorMap = <String, Color>{};
 
   void set(CourseTableJson value) {
     courseTable = value;
-    isHideSaturday = !courseTable.isDayInCourseTable(Day.Saturday);
-    isHideSunday = !courseTable.isDayInCourseTable(Day.Sunday);
-    isHideUnKnown = !courseTable.isDayInCourseTable(Day.UnKnown);
-    isHideN = !courseTable.isSectionNumberInCourseTable(SectionNumber.T_N);
-    isHideA = (!courseTable.isSectionNumberInCourseTable(SectionNumber.T_A));
-    isHideB = (!courseTable.isSectionNumberInCourseTable(SectionNumber.T_B));
-    isHideC = (!courseTable.isSectionNumberInCourseTable(SectionNumber.T_C));
-    isHideD = (!courseTable.isSectionNumberInCourseTable(SectionNumber.T_D));
+    isHideSaturday = !value.isDayInCourseTable(Day.Saturday);
+    isHideSunday = !value.isDayInCourseTable(Day.Sunday);
+    isHideUnKnown = !value.isDayInCourseTable(Day.UnKnown);
+    isHideN = !value.isSectionNumberInCourseTable(SectionNumber.T_N);
+    isHideA = !value.isSectionNumberInCourseTable(SectionNumber.T_A);
+    isHideB = !value.isSectionNumberInCourseTable(SectionNumber.T_B);
+    isHideC = !value.isSectionNumberInCourseTable(SectionNumber.T_C);
+    isHideD = !value.isSectionNumberInCourseTable(SectionNumber.T_D);
     isHideA &= (isHideB & isHideC & isHideD);
     isHideB &= (isHideC & isHideD);
     isHideC &= isHideD;
@@ -74,7 +72,7 @@ class CourseTableControl {
     return intList;
   }
 
-  CourseInfoJson getCourseInfo(int intDay, int intNumber) {
+  CourseInfoJson? getCourseInfo(int intDay, int intNumber) {
     final day = Day.values[intDay];
     final number = SectionNumber.values[intNumber];
 
@@ -82,20 +80,16 @@ class CourseTableControl {
       return null;
     }
 
-    return courseTable?.courseInfoMap[day][number];
+    return courseTable?.courseInfoMap[day]?[number];
   }
 
   Color getCourseInfoColor(int intDay, int intNumber) {
     final courseInfo = getCourseInfo(intDay, intNumber);
 
-    if (colorMap == null) {
-      return Colors.white;
-    }
-
     for (final key in colorMap.keys) {
       if (courseInfo != null) {
         if (key == courseInfo.main.course.id) {
-          return colorMap[key];
+          return colorMap[key] ?? Colors.white;
         }
       }
     }
@@ -104,10 +98,12 @@ class CourseTableControl {
   }
 
   void _initColorList() {
-    colorMap = {};
-    List<String> courseInfoList = courseTable.getCourseIdList();
-    int colorCount = courseInfoList.length;
-    colorCount = (colorCount == 0) ? 1 : colorCount;
+    colorMap.clear();
+    final table = courseTable;
+    if (table == null) return;
+    final courseInfoList = table.getCourseIdList();
+    final colorCount = courseInfoList.length;
+    if (colorCount == 0) return;
 
     final colors = AppColors.courseTableColors.toList()..shuffle();
 
