@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
 import 'package:flutter_app/src/config/app_link.dart';
@@ -13,28 +12,17 @@ class PrivacyPolicyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: Text(R.current.PrivacyPolicy),
-        ),
-        body: FutureBuilder<String>(
-          future: Connector.getDataByGet(ConnectorParameter(AppLink.privacyPolicyUrlString)),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return Markdown(
-                selectable: true,
-                data: snapshot.data ?? '',
-              );
-            } else if (snapshot.hasError) {
-              return const Center(
-                child: Icon(Icons.error),
-              );
-            }
-            return const Center(
-              child: SpinKitDoubleBounce(
-                color: AppColors.mainColor,
-              ),
-            );
-          },
-        ),
-      );
+    appBar: AppBar(title: Text(R.current.PrivacyPolicy)),
+    body: FutureBuilder<String>(
+      future: Connector.getDataByGet(ConnectorParameter(AppLink.privacyPolicyUrlString)),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Markdown(selectable: true, data: snapshot.data ?? '');
+        } else if (snapshot.hasError) {
+          return const Center(child: Icon(Icons.error));
+        }
+        return const Center(child: SpinKitDoubleBounce(color: AppColors.mainColor));
+      },
+    ),
+  );
 }

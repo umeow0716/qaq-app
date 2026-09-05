@@ -6,17 +6,17 @@ class ScoreCalculationWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(5),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                R.current.scoreCalculationWarning,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.all(5),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            R.current.scoreCalculationWarning,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }

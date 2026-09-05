@@ -13,11 +13,13 @@ class ResponseCookieFilter extends Interceptor {
     final setCookieHeaders = response.headers[HttpHeaders.setCookieHeader];
 
     if (setCookieHeaders != null && setCookieHeaders.isNotEmpty) {
-      final filteredHeaders = setCookieHeaders.where((header) {
-        final separatorIndex = header.indexOf('=');
-        final cookieName = (separatorIndex < 0 ? header : header.substring(0, separatorIndex)).trim();
-        return !blockedCookieNamePatterns.any((pattern) => pattern.hasMatch(cookieName));
-      }).toList(growable: false);
+      final filteredHeaders = setCookieHeaders
+          .where((header) {
+            final separatorIndex = header.indexOf('=');
+            final cookieName = (separatorIndex < 0 ? header : header.substring(0, separatorIndex)).trim();
+            return !blockedCookieNamePatterns.any((pattern) => pattern.hasMatch(cookieName));
+          })
+          .toList(growable: false);
 
       response.headers.removeAll(HttpHeaders.setCookieHeader);
       for (final header in filteredHeaders) {

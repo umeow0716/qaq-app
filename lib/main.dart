@@ -6,12 +6,9 @@ import 'package:flutter_app/tat_app.dart';
 import 'debug/log/log.dart';
 
 void main() {
-  runZonedGuarded(
-    () async {
-      WidgetsFlutterBinding.ensureInitialized();
-      Log.init();
-      await runTATApp();
-    },
-    (error, stackTrace) => Log.error(error, stackTrace),
-  );
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    Log.init();
+    await runTATApp();
+  }, (error, stackTrace) => Log.error(error, stackTrace));
 }

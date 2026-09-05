@@ -16,7 +16,6 @@ class DioConnector {
     "Upgrade-Insecure-Requests": "1",
   };
 
-
   static final dioOptions = BaseOptions(
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 10),
@@ -43,10 +42,7 @@ class DioConnector {
     },
   };
 
-  final dio = Dio(dioOptions)
-    ..httpClientAdapter = EarlyInterceptorAdapter(
-      headerDecorators: headerDecorators,
-    );
+  final dio = Dio(dioOptions)..httpClientAdapter = EarlyInterceptorAdapter(headerDecorators: headerDecorators);
 
   CookieJar? _cookieJar;
 
@@ -59,10 +55,7 @@ class DioConnector {
   static String _big5Decoder(List<int> responseBytes, RequestOptions options, ResponseBody responseBody) =>
       big5.decode(responseBytes);
 
-  Future<void> init({
-    required List<Interceptor> interceptors,
-    CookieJar? cookieJar,
-  }) async {
+  Future<void> init({required List<Interceptor> interceptors, CookieJar? cookieJar}) async {
     if (cookieJar != null) {
       _cookieJar = cookieJar;
     }
@@ -111,10 +104,7 @@ class DioConnector {
   }
 
   Future<Map<String, List<String>>> getHeadersByGet(ConnectorParameter parameter) async {
-    final response = await dio.get<ResponseBody>(
-      parameter.url,
-      options: Options(responseType: ResponseType.stream),
-    );
+    final response = await dio.get<ResponseBody>(parameter.url, options: Options(responseType: ResponseType.stream));
 
     if (response.statusCode == HttpStatus.ok) {
       return response.headers.map;
@@ -166,21 +156,16 @@ class DioConnector {
   }) async {
     await dio
         .downloadUri(
-      Uri.parse(url),
-      savePath,
-      onReceiveProgress: progressCallback,
-      cancelToken: cancelToken,
-      options: Options(
-        receiveTimeout: Duration.zero,
-        headers: header,
-      ),
-    )
-        .catchError(
-      (onError, stack) {
-        Log.eWithStack(onError.toString(), stack);
-        throw onError;
-      },
-    );
+          Uri.parse(url),
+          savePath,
+          onReceiveProgress: progressCallback,
+          cancelToken: cancelToken,
+          options: Options(receiveTimeout: Duration.zero, headers: header),
+        )
+        .catchError((onError, stack) {
+          Log.eWithStack(onError.toString(), stack);
+          throw onError;
+        });
   }
 
   Map<String, String> get headers => _headers;

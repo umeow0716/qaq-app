@@ -23,7 +23,7 @@ class ScoreConnector {
     try {
       final Map<String, String> ssoIndexData = {
         "apOu": "aa_003_LB_oauth",
-        "datetime1": DateTime.now().millisecondsSinceEpoch.toString()
+        "datetime1": DateTime.now().millisecondsSinceEpoch.toString(),
       };
       final ssoIndexParameter = ConnectorParameter(_ssoLoginUrl);
       ssoIndexParameter.data = ssoIndexData;
@@ -106,7 +106,8 @@ class ScoreConnector {
       final List<String> evalQuestionnaireCheckTexts = ['教學評量', 'Course Evaluation Questionnaire'];
       if (evalQuestionnaireCheckTexts.any((text) => result.contains(text))) {
         throw const FormatException(
-            "[TAT] score_connector.dart: evalQuestionnaireCheckTexts was found in request result");
+          "[TAT] score_connector.dart: evalQuestionnaireCheckTexts was found in request result",
+        );
       }
 
       tagNode = parse(result);
@@ -118,7 +119,7 @@ class ScoreConnector {
         final siblingOfTitle = parent?.localName == "form"
             ? parent?.nextElementSibling
             : // 當成績單已發布 父元素為form 父元素的旁邊元素才是 分數table
-            titleNode.nextElementSibling; // 當成績單未發布 父元素為body 原元素旁邊元素就會是 分數table
+              titleNode.nextElementSibling; // 當成績單未發布 父元素為body 原元素旁邊元素就會是 分數table
 
         if (siblingOfTitle == null || siblingOfTitle.localName != "table") continue;
         final tableNode = siblingOfTitle;
@@ -149,9 +150,13 @@ class ScoreConnector {
           score.nameZh = scoreNode.getElementsByTagName("th")[2].text.replaceAll(RegExp(r"[\s| ]"), "");
           score.nameEn = scoreNode.getElementsByTagName("th")[3].text.replaceAll(RegExp("\n"), "");
           RegExp creditDoubleFilter = RegExp(r'\d+(\.\d+)?');
-          final Iterable<RegExpMatch> creditDoubleMatches =
-              creditDoubleFilter.allMatches(scoreNode.getElementsByTagName("th")[6].text);
-          final List<String> creditDoubles = creditDoubleMatches.map((match) => match.group(0)).whereType<String>().toList();
+          final Iterable<RegExpMatch> creditDoubleMatches = creditDoubleFilter.allMatches(
+            scoreNode.getElementsByTagName("th")[6].text,
+          );
+          final List<String> creditDoubles = creditDoubleMatches
+              .map((match) => match.group(0))
+              .whereType<String>()
+              .toList();
 
           score.credit = double.parse(creditDoubles[0]);
           score.score = scoreNode.getElementsByTagName("th")[7].text.replaceAll(RegExp(r"[\s| ]"), "");
@@ -159,8 +164,9 @@ class ScoreConnector {
         }
         try {
           courseScore.averageScore = double.parse(scoreNodes[scoreNodes.length - 5].getElementsByTagName("td")[0].text);
-          courseScore.performanceScore =
-              double.parse(scoreNodes[scoreNodes.length - 4].getElementsByTagName("td")[0].text);
+          courseScore.performanceScore = double.parse(
+            scoreNodes[scoreNodes.length - 4].getElementsByTagName("td")[0].text,
+          );
           courseScore.totalCredit = double.parse(scoreNodes[scoreNodes.length - 3].getElementsByTagName("td")[0].text);
           courseScore.takeCredit = double.parse(scoreNodes[scoreNodes.length - 2].getElementsByTagName("td")[0].text);
         } catch (e) {
@@ -195,12 +201,14 @@ class ScoreConnector {
         rankNow.department = rankItemDepartment;
         rankItemCourse.rank = double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[2].text);
         rankItemCourse.total = double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[3].text);
-        rankItemCourse.percentage =
-            double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[4].text.replaceAll(RegExp(r"[%|\s]"), ""));
+        rankItemCourse.percentage = double.parse(
+          rankNodes[i * 3 + 2].getElementsByTagName("td")[4].text.replaceAll(RegExp(r"[%|\s]"), ""),
+        );
         rankItemDepartment.rank = double.parse(rankNodes[i * 3].getElementsByTagName("td")[1].text);
         rankItemDepartment.total = double.parse(rankNodes[i * 3].getElementsByTagName("td")[2].text);
-        rankItemDepartment.percentage =
-            double.parse(rankNodes[i * 3].getElementsByTagName("td")[3].text.replaceAll(RegExp(r"[%|\s]"), ""));
+        rankItemDepartment.percentage = double.parse(
+          rankNodes[i * 3].getElementsByTagName("td")[3].text.replaceAll(RegExp(r"[%|\s]"), ""),
+        );
 
         //取得歷年成績排名
         RankJson rankHistory = RankJson();
@@ -210,12 +218,14 @@ class ScoreConnector {
         rankHistory.department = rankItemDepartment;
         rankItemCourse.rank = double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[5].text);
         rankItemCourse.total = double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[6].text);
-        rankItemCourse.percentage =
-            double.parse(rankNodes[i * 3 + 2].getElementsByTagName("td")[7].text.replaceAll("%", ""));
+        rankItemCourse.percentage = double.parse(
+          rankNodes[i * 3 + 2].getElementsByTagName("td")[7].text.replaceAll("%", ""),
+        );
         rankItemDepartment.rank = double.parse(rankNodes[i * 3].getElementsByTagName("td")[4].text);
         rankItemDepartment.total = double.parse(rankNodes[i * 3].getElementsByTagName("td")[5].text);
-        rankItemDepartment.percentage =
-            double.parse(rankNodes[i * 3].getElementsByTagName("td")[6].text.replaceAll("%", ""));
+        rankItemDepartment.percentage = double.parse(
+          rankNodes[i * 3].getElementsByTagName("td")[6].text.replaceAll("%", ""),
+        );
 
         for (SemesterCourseScoreJson score in courseScoreList) {
           if (score.semester == semester) {

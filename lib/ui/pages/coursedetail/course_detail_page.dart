@@ -32,10 +32,12 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
     super.initState();
     tabPageList.add(TabPage(R.current.course, Icons.info, CourseInfoPage(widget.studentId, widget.courseInfo)));
     if (widget.studentId == LocalStorage.instance.getAccount()) {
-      tabPageList.add(TabPage(
-          R.current.announcement, Icons.announcement, IPlusAnnouncementPage(widget.studentId, widget.courseInfo)));
       tabPageList.add(
-          TabPage(R.current.fileAndVideo, Icons.file_download, IPlusFilePage(widget.studentId, widget.courseInfo)));
+        TabPage(R.current.announcement, Icons.announcement, IPlusAnnouncementPage(widget.studentId, widget.courseInfo)),
+      );
+      tabPageList.add(
+        TabPage(R.current.fileAndVideo, Icons.file_download, IPlusFilePage(widget.studentId, widget.courseInfo)),
+      );
     }
 
     _tabController = TabController(vsync: this, length: tabPageList.length);
@@ -56,9 +58,7 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
         final canPop = currentState == null || currentState.canPop();
         return PopScope<void>(
           canPop: canPop,
-          child: Container(
-            child: tabPageView(),
-          ),
+          child: Container(child: tabPageView()),
         );
       },
     );
@@ -71,9 +71,7 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
       length: tabPageList.length,
       child: Scaffold(
         appBar: AppBar(
-          leading: BackButton(
-            onPressed: () => Get.back(),
-          ),
+          leading: BackButton(onPressed: () => Get.back()),
           title: FittedBox(child: Text(course.name)),
           bottom: TabBar(
             indicatorPadding: const EdgeInsets.all(0),

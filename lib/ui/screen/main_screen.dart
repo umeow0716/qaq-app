@@ -1,4 +1,3 @@
-
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
@@ -35,7 +34,6 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
   }
 
-
   void appInit() async {
     try {
       await initLanguage();
@@ -67,7 +65,6 @@ class _MainScreenState extends State<MainScreen> {
     return loginTask.execute();
   }
 
-
   void initNotifications() async {
     await Notifications.instance.init();
   }
@@ -79,72 +76,52 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) => Consumer<AppProvider>(
-        builder: (context, appProvider, child) {
-          return PopScope<void>(
-            canPop: _closeAppCount > 0,
-            onPopInvokedWithResult: (didPop, result) {
-              if (didPop) {
-                _closeAppCount = 0;
-                return;
-              }
-              setState(() {
-                _closeAppCount = 1;
-              });
-              MyToast.show(R.current.closeOnce);
-              Future.delayed(const Duration(seconds: 2)).then((_) {
-                if (!mounted) return;
-                setState(() {
-                  _closeAppCount = 0;
-                });
-              });
-            },
-            child: Scaffold(
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              body: _buildPageView(),
-              bottomNavigationBar: _buildBottomNavigationBar(),
-            ),
-          );
+    builder: (context, appProvider, child) {
+      return PopScope<void>(
+        canPop: _closeAppCount > 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) {
+            _closeAppCount = 0;
+            return;
+          }
+          setState(() {
+            _closeAppCount = 1;
+          });
+          MyToast.show(R.current.closeOnce);
+          Future.delayed(const Duration(seconds: 2)).then((_) {
+            if (!mounted) return;
+            setState(() {
+              _closeAppCount = 0;
+            });
+          });
         },
+        child: Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          body: _buildPageView(),
+          bottomNavigationBar: _buildBottomNavigationBar(),
+        ),
       );
+    },
+  );
 
   Widget _buildPageView() => PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _pageList,
-      );
+    controller: _pageController,
+    onPageChanged: _onPageChanged,
+    physics: const NeverScrollableScrollPhysics(),
+    children: _pageList,
+  );
 
   Widget _buildBottomNavigationBar() => BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: _onTap,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(
-              EvaIcons.clockOutline,
-            ),
-            label: R.current.titleCourse,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(
-              EvaIcons.calendarOutline,
-            ),
-            label: R.current.calendar,
-          ),
-          BottomNavigationBarItem(
-              icon: const Icon(
-                EvaIcons.bookOpenOutline,
-              ),
-              label: R.current.titleScore),
-          BottomNavigationBarItem(
-            icon: const Icon(
-              EvaIcons.menu,
-            ),
-            label: R.current.titleOther,
-          ),
-        ],
-      );
-
+    currentIndex: _currentIndex,
+    type: BottomNavigationBarType.fixed,
+    onTap: _onTap,
+    items: [
+      BottomNavigationBarItem(icon: const Icon(EvaIcons.clockOutline), label: R.current.titleCourse),
+      BottomNavigationBarItem(icon: const Icon(EvaIcons.calendarOutline), label: R.current.calendar),
+      BottomNavigationBarItem(icon: const Icon(EvaIcons.bookOpenOutline), label: R.current.titleScore),
+      BottomNavigationBarItem(icon: const Icon(EvaIcons.menu), label: R.current.titleOther),
+    ],
+  );
 
   void _onTap(int index) {
     _pageController.jumpToPage(index);

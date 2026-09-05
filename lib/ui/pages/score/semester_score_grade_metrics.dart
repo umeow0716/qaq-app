@@ -19,32 +19,20 @@ class SemesterScoreGradeMetrics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
+    children: [
+      MetricsTitle(title: R.current.semesterGrades),
+      GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        childAspectRatio: 3,
         children: [
-          MetricsTitle(title: R.current.semesterGrades),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 3,
-            children: [
-              GradeMetricsCell(
-                name: R.current.totalAverage,
-                value: totalAverageScoreValue,
-              ),
-              GradeMetricsCell(
-                name: R.current.performanceScores,
-                value: performanceScoreValue,
-              ),
-              GradeMetricsCell(
-                name: R.current.practiceCredit,
-                value: totalCreditValue,
-              ),
-              GradeMetricsCell(
-                name: R.current.creditsEarned,
-                value: creditsEarnedValue,
-              ),
-            ],
-          ),
+          GradeMetricsCell(name: R.current.totalAverage, value: totalAverageScoreValue),
+          GradeMetricsCell(name: R.current.performanceScores, value: performanceScoreValue),
+          GradeMetricsCell(name: R.current.practiceCredit, value: totalCreditValue),
+          GradeMetricsCell(name: R.current.creditsEarned, value: creditsEarnedValue),
         ],
-      );
+      ),
+    ],
+  );
 }

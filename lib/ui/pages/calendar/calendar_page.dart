@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/controllers/calendar_controller.dart';
 import 'package:flutter_app/src/model/ntut/ntut_calendar_json.dart';
@@ -25,10 +24,7 @@ class CalendarPage extends StatelessWidget {
                 side: BorderSide(color: eventBorderColor),
                 borderRadius: BorderRadius.circular(12),
               ),
-              onTap: () => Get.dialog(
-                CalendarDetailDialog(calendarDetail: event),
-                barrierDismissible: true,
-              ),
+              onTap: () => Get.dialog(CalendarDetailDialog(calendarDetail: event), barrierDismissible: true),
             ),
           ),
         );
@@ -37,70 +33,54 @@ class CalendarPage extends StatelessWidget {
   }
 
   Widget _buildTableCalendar(CalendarController controller) => TableCalendar(
-        focusedDay: controller.focusDayRx.value,
-        firstDay: controller.firstDay,
-        lastDay: controller.lastDay,
-        locale: controller.currentCalendarLocaleString,
-        calendarFormat: controller.calendarFormatRx.value,
-        eventLoader: controller.getEventsFromDay,
-        holidayPredicate: controller.isHoliday,
-        selectedDayPredicate: controller.isSelectingSelectedDay,
-        startingDayOfWeek: StartingDayOfWeek.monday,
-        onFormatChanged: controller.onFormatChanged,
-        onDaySelected: controller.onDaySelected,
-        onPageChanged: controller.onPageChanged,
-        headerStyle: HeaderStyle(
-          formatButtonTextStyle: const TextStyle().copyWith(color: Colors.white, fontSize: 15.0),
-          formatButtonDecoration: BoxDecoration(
-            color: Colors.deepOrange[400],
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-        ),
-        calendarStyle: const CalendarStyle(
-          isTodayHighlighted: true,
-          selectedDecoration: BoxDecoration(
-            color: Colors.lightBlueAccent,
-            shape: BoxShape.circle,
-          ),
-          selectedTextStyle: TextStyle(color: Colors.white),
-          todayDecoration: BoxDecoration(
-            color: Colors.deepOrange,
-            shape: BoxShape.circle,
-          ),
-          todayTextStyle: TextStyle(color: Colors.white),
-          outsideDaysVisible: false,
-          weekendTextStyle: TextStyle(color: Colors.red),
-          markerDecoration: BoxDecoration(
-            color: Colors.teal,
-            shape: BoxShape.circle,
-          ),
-        ),
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle: TextStyle(height: 1),
-          weekendStyle: TextStyle(height: 1, color: Colors.red),
-        ),
-      );
+    focusedDay: controller.focusDayRx.value,
+    firstDay: controller.firstDay,
+    lastDay: controller.lastDay,
+    locale: controller.currentCalendarLocaleString,
+    calendarFormat: controller.calendarFormatRx.value,
+    eventLoader: controller.getEventsFromDay,
+    holidayPredicate: controller.isHoliday,
+    selectedDayPredicate: controller.isSelectingSelectedDay,
+    startingDayOfWeek: StartingDayOfWeek.monday,
+    onFormatChanged: controller.onFormatChanged,
+    onDaySelected: controller.onDaySelected,
+    onPageChanged: controller.onPageChanged,
+    headerStyle: HeaderStyle(
+      formatButtonTextStyle: const TextStyle().copyWith(color: Colors.white, fontSize: 15.0),
+      formatButtonDecoration: BoxDecoration(color: Colors.deepOrange[400], borderRadius: BorderRadius.circular(16.0)),
+    ),
+    calendarStyle: const CalendarStyle(
+      isTodayHighlighted: true,
+      selectedDecoration: BoxDecoration(color: Colors.lightBlueAccent, shape: BoxShape.circle),
+      selectedTextStyle: TextStyle(color: Colors.white),
+      todayDecoration: BoxDecoration(color: Colors.deepOrange, shape: BoxShape.circle),
+      todayTextStyle: TextStyle(color: Colors.white),
+      outsideDaysVisible: false,
+      weekendTextStyle: TextStyle(color: Colors.red),
+      markerDecoration: BoxDecoration(color: Colors.teal, shape: BoxShape.circle),
+    ),
+    daysOfWeekStyle: const DaysOfWeekStyle(
+      weekdayStyle: TextStyle(height: 1),
+      weekendStyle: TextStyle(height: 1, color: Colors.red),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => FutureBuilder(
-        future: CalendarController.instance.findFirstEventsFromToday(),
-        builder: (context, _) => Scaffold(
-          appBar: AppBar(
-            title: Text(R.current.calendar),
-          ),
-          body: Obx(() {
-            final controller = CalendarController.instance;
-            return Column(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                _buildTableCalendar(controller),
-                const SizedBox(height: 16.0),
-                Expanded(
-                  child: _buildEventList(context, controller.selectedEventsRx),
-                ),
-              ],
-            );
-          }),
-        ),
-      );
+    future: CalendarController.instance.findFirstEventsFromToday(),
+    builder: (context, _) => Scaffold(
+      appBar: AppBar(title: Text(R.current.calendar)),
+      body: Obx(() {
+        final controller = CalendarController.instance;
+        return Column(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            _buildTableCalendar(controller),
+            const SizedBox(height: 16.0),
+            Expanded(child: _buildEventList(context, controller.selectedEventsRx)),
+          ],
+        );
+      }),
+    ),
+  );
 }

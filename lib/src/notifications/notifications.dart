@@ -61,11 +61,7 @@ class Notifications {
   void _requestIOSPermissions() {
     flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+        ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   void _configureDidReceiveLocalNotificationSubject() {
@@ -194,29 +190,19 @@ class Notifications {
 }
 
 class ReceivedNotification {
-  ReceivedNotification({
-    int? id,
-    required String? title,
-    required this.body,
-    required this.payload,
-  })  : id = id ?? Notifications.instance.notificationId,
-        title = title != null ? (title.length > 26 ? "${title.substring(0, 26)}..." : title) : 'TAT';
+  ReceivedNotification({int? id, required String? title, required this.body, required this.payload})
+    : id = id ?? Notifications.instance.notificationId,
+      title = title != null ? (title.length > 26 ? "${title.substring(0, 26)}..." : title) : 'TAT';
 
   int id;
   String title;
   String? body;
   String? payload;
 
-  ReceivedNotification copyWith({
-    int? id,
-    String? title,
-    String? body,
-    String? payload,
-  }) =>
-      ReceivedNotification(
-        id: id ?? this.id,
-        title: title ?? this.title,
-        body: body ?? this.body,
-        payload: payload ?? this.payload,
-      );
+  ReceivedNotification copyWith({int? id, String? title, String? body, String? payload}) => ReceivedNotification(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    payload: payload ?? this.payload,
+  );
 }

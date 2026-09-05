@@ -197,8 +197,9 @@ class LocalStorage {
 
   void _loadCourseScoreCredit() {
     final readJson = _readString(_scoreCreditJsonKey);
-    _courseScoreList =
-        (readJson != null) ? CourseScoreCreditJson.fromJson(json.decode(readJson)) : CourseScoreCreditJson();
+    _courseScoreList = (readJson != null)
+        ? CourseScoreCreditJson.fromJson(json.decode(readJson))
+        : CourseScoreCreditJson();
   }
 
   bool _loadCourseCategoryCache() {
@@ -217,10 +218,7 @@ class LocalStorage {
           final openClass = value['openClass'];
           if (category is! String || category.isEmpty) continue;
 
-          _courseCategoryCache[entry.key] = {
-            'category': category,
-            'openClass': openClass is String ? openClass : '',
-          };
+          _courseCategoryCache[entry.key] = {'category': category, 'openClass': openClass is String ? openClass : ''};
         }
       }
     }
@@ -232,10 +230,7 @@ class LocalStorage {
       if (courseId.isEmpty) continue;
 
       if (courseInfo.category.isNotEmpty && !_courseCategoryCache.containsKey(courseId)) {
-        _courseCategoryCache[courseId] = {
-          'category': courseInfo.category,
-          'openClass': courseInfo.openClass,
-        };
+        _courseCategoryCache[courseId] = {'category': courseInfo.category, 'openClass': courseInfo.openClass};
         changed = true;
       }
 
@@ -260,17 +255,10 @@ class LocalStorage {
     final category = cached['category'] ?? '';
     if (category.isEmpty) return null;
 
-    return (
-      category: category,
-      openClass: cached['openClass'] ?? '',
-    );
+    return (category: category, openClass: cached['openClass'] ?? '');
   }
 
-  void setCourseCategoryCache(
-    String courseId, {
-    required String category,
-    required String openClass,
-  }) {
+  void setCourseCategoryCache(String courseId, {required String category, required String openClass}) {
     if (courseId.isEmpty || category.isEmpty) return;
 
     final cachedOpenClass = _courseCategoryCache[courseId]?['openClass'] ?? '';
@@ -280,10 +268,7 @@ class LocalStorage {
     };
   }
 
-  Future<void> saveCourseCategoryCache() => _writeString(
-        _courseCategoryCacheKey,
-        json.encode(_courseCategoryCache),
-      );
+  Future<void> saveCourseCategoryCache() => _writeString(_courseCategoryCacheKey, json.encode(_courseCategoryCache));
 
   Future<void> saveCourseSetting() => _saveSetting();
 
@@ -331,10 +316,7 @@ class LocalStorage {
 
   Future<void> setVersion(String version) => _writeString("version", version);
 
-  Future<void> init({
-    List<Interceptor> httpClientInterceptors = const [],
-    CookieJar? cookieJar,
-  }) async {
+  Future<void> init({List<Interceptor> httpClientInterceptors = const [], CookieJar? cookieJar}) async {
     _pref = await SharedPreferences.getInstance();
 
     if (httpClientInterceptors.isNotEmpty) {
@@ -346,10 +328,7 @@ class LocalStorage {
       _cookieJar = cookieJar;
     }
 
-    await DioConnector.instance.init(
-      interceptors: _httpClientInterceptors,
-      cookieJar: _cookieJar,
-    );
+    await DioConnector.instance.init(interceptors: _httpClientInterceptors, cookieJar: _cookieJar);
     _loadUserData();
     _loadCourseTableList();
     _loadSetting();

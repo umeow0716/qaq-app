@@ -48,8 +48,8 @@ class SimpleLoginResult {
       accountStatus = AccountStatus.normal;
     }
 
-    final isSuccess = success &&
-        (accountStatus == AccountStatus.normal || accountStatus == AccountStatus.passwordWillExpired);
+    final isSuccess =
+        success && (accountStatus == AccountStatus.normal || accountStatus == AccountStatus.passwordWillExpired);
 
     return SimpleLoginResult(
       isSuccess: isSuccess,

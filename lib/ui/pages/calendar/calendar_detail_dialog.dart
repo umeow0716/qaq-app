@@ -23,12 +23,7 @@ class _CalendarDetailDialogState extends State<CalendarDetailDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Center(
-        child: Text(
-          widget.calendarDetail.calTitle,
-          textAlign: TextAlign.center,
-        ),
-      ),
+      title: Center(child: Text(widget.calendarDetail.calTitle, textAlign: TextAlign.center)),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -36,44 +31,32 @@ class _CalendarDetailDialogState extends State<CalendarDetailDialog> {
           Row(
             children: [
               const Icon(Icons.access_time),
-              const SizedBox(
-                width: 4,
-              ),
+              const SizedBox(width: 4),
               Expanded(
-                child: Text(sprintf("%s-%s", [
-                  DateFormat.yMMMd().format(widget.calendarDetail.startTime),
-                  DateFormat.yMMMd().format(widget.calendarDetail.endTime)
-                ])),
-              )
+                child: Text(
+                  sprintf("%s-%s", [
+                    DateFormat.yMMMd().format(widget.calendarDetail.startTime),
+                    DateFormat.yMMMd().format(widget.calendarDetail.endTime),
+                  ]),
+                ),
+              ),
             ],
           ),
-          const SizedBox(
-            height: 6,
-          ),
+          const SizedBox(height: 6),
           Row(
             children: [
               const Icon(Icons.person_outline),
-              const SizedBox(
-                width: 4,
-              ),
-              Expanded(
-                child: Text(widget.calendarDetail.creatorName),
-              )
+              const SizedBox(width: 4),
+              Expanded(child: Text(widget.calendarDetail.creatorName)),
             ],
           ),
-          const SizedBox(
-            height: 6,
-          ),
+          const SizedBox(height: 6),
           if (widget.calendarDetail.calContent.isNotEmpty)
             Row(
               children: [
                 const Icon(Icons.info),
-                const SizedBox(
-                  width: 4,
-                ),
-                Expanded(
-                  child: Text(widget.calendarDetail.calContent),
-                )
+                const SizedBox(width: 4),
+                Expanded(child: Text(widget.calendarDetail.calContent)),
               ],
             ),
         ],

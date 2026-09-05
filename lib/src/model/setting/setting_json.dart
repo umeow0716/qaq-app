@@ -12,16 +12,17 @@ class SettingJson {
   AnnouncementSettingJson announcement;
 
   SettingJson({CourseSettingJson? course, OtherSettingJson? other, AnnouncementSettingJson? announcement})
-      : course = course ?? CourseSettingJson(),
-        other = other ?? OtherSettingJson(),
-        announcement = announcement ?? AnnouncementSettingJson();
+    : course = course ?? CourseSettingJson(),
+      other = other ?? OtherSettingJson(),
+      announcement = announcement ?? AnnouncementSettingJson();
 
   bool get isEmpty => course.isEmpty && other.isEmpty && announcement.isEmpty;
 
   @override
   String toString() => sprintf(
-      '---------course--------        \n%s \n---------other--------         \n%s \n---------announcement--------  \n%s \n',
-      [course.toString(), other.toString(), announcement.toString()]);
+    '---------course--------        \n%s \n---------other--------         \n%s \n---------announcement--------  \n%s \n',
+    [course.toString(), other.toString(), announcement.toString()],
+  );
 
   factory SettingJson.fromJson(Map<String, dynamic> json) => _$SettingJsonFromJson(json);
   Map<String, dynamic> toJson() => _$SettingJsonToJson(this);

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
@@ -26,10 +25,12 @@ class AppProvider extends ChangeNotifier {
     SharedPreferences.getInstance().then((prefs) {
       prefs.setString("theme", colorName).then((val) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
-        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-          statusBarColor: colorName == "dark" ? AppColors.darkPrimary : AppColors.mainColor,
-          statusBarIconBrightness: colorName == "dark" ? Brightness.light : Brightness.dark,
-        ));
+        SystemChrome.setSystemUIOverlayStyle(
+          SystemUiOverlayStyle(
+            statusBarColor: colorName == "dark" ? AppColors.darkPrimary : AppColors.mainColor,
+            statusBarIconBrightness: colorName == "dark" ? Brightness.light : Brightness.dark,
+          ),
+        );
       });
     });
     notifyListeners();

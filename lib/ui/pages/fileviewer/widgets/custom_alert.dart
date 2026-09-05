@@ -17,10 +17,7 @@ class CustomAlert extends StatelessWidget {
       data: const MediaQueryData(),
       child: GestureDetector(
         child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 0.5,
-            sigmaY: 0.5,
-          ),
+          filter: ImageFilter.blur(sigmaX: 0.5, sigmaY: 0.5),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.max,

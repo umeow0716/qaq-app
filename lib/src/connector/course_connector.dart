@@ -35,7 +35,7 @@ class CourseConnector {
         "apUrl": "https://aps.ntut.edu.tw/course/tw/courseSID.jsp",
         "apOu": "aa_0010-oauth",
         "sso": "true",
-        "datetime1": DateTime.now().millisecondsSinceEpoch.toString()
+        "datetime1": DateTime.now().millisecondsSinceEpoch.toString(),
       };
       var parameter = ConnectorParameter(_ssoLoginUrl);
       parameter.data = data;
@@ -119,8 +119,9 @@ class CourseConnector {
         if (href == null || href.isEmpty) {
           continue;
         }
-        String divisionParameter =
-            href.split("&").firstWhere((parameter) => parameter.contains("division"), orElse: () => "");
+        String divisionParameter = href
+            .split("&")
+            .firstWhere((parameter) => parameter.contains("division"), orElse: () => "");
         if (divisionParameter == "") {
           continue;
         }
@@ -160,10 +161,7 @@ class CourseConnector {
 
   static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId) async {
     try {
-      Map<String, String> data = {
-        "code": courseId,
-        "format": "-1",
-      };
+      Map<String, String> data = {"code": courseId, "format": "-1"};
       var parameter = ConnectorParameter(_postCourseCNUrl);
       parameter.data = data;
       var result = await Connector.getDataByPost(parameter);
@@ -185,7 +183,10 @@ class CourseConnector {
       final Iterable<RegExpMatch> studentSemesterDetailMatches = studentSemesterDetailFilter.allMatches(titleString);
       // "studentSemesterDetails" should consist of three numerical values
       // ex: [110310144, 112, 1]
-      final List<String> studentSemesterDetails = studentSemesterDetailMatches.map((match) => match.group(0)).whereType<String>().toList();
+      final List<String> studentSemesterDetails = studentSemesterDetailMatches
+          .map((match) => match.group(0))
+          .whereType<String>()
+          .toList();
       if (studentSemesterDetails.isEmpty) {
         throw RangeError("[TAT] course_connector.dart: studentSemesterDetails list is empty");
       }
@@ -215,7 +216,8 @@ class CourseConnector {
       // the category of the course will be set to ▲ (校訂專業必修) as default
       if (classExtraInfoNodes[18].text.trim() != "" &&
           classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes.containsKey("href")) {
-        courseExtra.href = _courseCNHost + (classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes["href"] ?? "");
+        courseExtra.href =
+            _courseCNHost + (classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes["href"] ?? "");
         parameter = ConnectorParameter(courseExtra.href);
         result = await Connector.getDataByPost(parameter);
         tagNode = parse(result);
@@ -238,9 +240,7 @@ class CourseConnector {
 
   static Future<CourseSyllabusJson> getCourseCategory(String courseId) async {
     try {
-      Map<String, String> data = {
-        "snum": courseId,
-      };
+      Map<String, String> data = {"snum": courseId};
       ConnectorParameter parameter = ConnectorParameter(_getSyllabusCNUrl);
       parameter.data = data;
       String result = await Connector.getDataByGet(parameter);
@@ -251,18 +251,19 @@ class CourseConnector {
       var syllabusRow = trs[1].getElementsByTagName("td");
 
       var model = CourseSyllabusJson(
-          yearSemester: syllabusRow[0].text,
-          courseId: syllabusRow[1].text,
-          courseName: syllabusRow[2].text,
-          phase: syllabusRow[3].text,
-          credit: syllabusRow[4].text,
-          hour: syllabusRow[5].text,
-          category: syllabusRow[6].text,
-          teachers: syllabusRow[7].text,
-          className: syllabusRow[8].text,
-          applyStudentCount: syllabusRow[9].text,
-          withdrawStudentCount: syllabusRow[10].text,
-          note: syllabusRow[11].text);
+        yearSemester: syllabusRow[0].text,
+        courseId: syllabusRow[1].text,
+        courseName: syllabusRow[2].text,
+        phase: syllabusRow[3].text,
+        credit: syllabusRow[4].text,
+        hour: syllabusRow[5].text,
+        category: syllabusRow[6].text,
+        teachers: syllabusRow[7].text,
+        className: syllabusRow[8].text,
+        applyStudentCount: syllabusRow[9].text,
+        withdrawStudentCount: syllabusRow[10].text,
+        note: syllabusRow[11].text,
+      );
 
       return model;
     } catch (e, stack) {
@@ -278,10 +279,7 @@ class CourseConnector {
       Element node;
       List<Element> nodes;
 
-      Map<String, String> data = {
-        "code": studentId,
-        "format": "-3",
-      };
+      Map<String, String> data = {"code": studentId, "format": "-3"};
       parameter = ConnectorParameter(_postCourseCNUrl);
       parameter.data = data;
       Response response = await Connector.getDataByPostResponse(parameter);
@@ -325,12 +323,7 @@ class CourseConnector {
       Document tagNode;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
-      Map<String, String> data = {
-        "code": studentId,
-        "format": "-2",
-        "year": semester.year,
-        "sem": semester.semester,
-      };
+      Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
       parameter = ConnectorParameter(_postCourseENUrl);
       parameter.data = data;
       parameter.charsetName = 'utf-8';
@@ -419,12 +412,7 @@ class CourseConnector {
       Element node;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
-      Map<String, String> data = {
-        "code": studentId,
-        "format": "-2",
-        "year": semester.year,
-        "sem": semester.semester,
-      };
+      Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
       parameter = ConnectorParameter(_postCourseCNUrl);
       parameter.data = data;
       Response response = await Connector.getDataByPostResponse(parameter);
@@ -518,12 +506,7 @@ class CourseConnector {
       Element node;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
-      Map<String, String> data = {
-        "code": studentId,
-        "format": "-3",
-        "year": semester.year,
-        "sem": semester.semester,
-      };
+      Map<String, String> data = {"code": studentId, "format": "-3", "year": semester.year, "sem": semester.semester};
       parameter = ConnectorParameter(_postTeacherCourseCNUrl);
       parameter.data = data;
       parameter.charsetName = 'big5';

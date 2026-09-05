@@ -33,10 +33,7 @@ class _AnimatorState extends State<Animator> {
       builder: (BuildContext context, double value, Widget? child) {
         return Opacity(
           opacity: value,
-          child: Transform.translate(
-            offset: Offset(0.0, (1 - value) * 20),
-            child: child,
-          ),
+          child: Transform.translate(offset: Offset(0.0, (1 - value) * 20), child: child),
         );
       },
     );

@@ -1,4 +1,3 @@
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
@@ -28,52 +27,42 @@ class ScoreTile extends StatelessWidget {
     return index == -1 ? null : index;
   }
 
-  Widget get _courseNameText => AutoSizeText(
-        courseName,
-        style: const TextStyle(fontSize: 16.0),
-      );
+  Widget get _courseNameText => AutoSizeText(courseName, style: const TextStyle(fontSize: 16.0));
 
   Widget get _categoryMenu => ValueListenableBuilder(
-        valueListenable: _selectedCategory,
-        builder: (_, value, _) => DropdownButton(
-          underline: const SizedBox.shrink(),
-          value: value ?? _getInitialCategoryIndex(),
-          items: constCourseType
-              .asMap()
-              .entries
-              .map((category) => _buildCategoryMenuItem(category.value, category.key))
-              .toList(),
-          onChanged: (newCategory) {
-            _selectedCategory.value = newCategory;
-            onCategoryChanged?.call(newCategory);
-          },
-        ),
-      );
+    valueListenable: _selectedCategory,
+    builder: (_, value, _) => DropdownButton(
+      underline: const SizedBox.shrink(),
+      value: value ?? _getInitialCategoryIndex(),
+      items: constCourseType
+          .asMap()
+          .entries
+          .map((category) => _buildCategoryMenuItem(category.value, category.key))
+          .toList(),
+      onChanged: (newCategory) {
+        _selectedCategory.value = newCategory;
+        onCategoryChanged?.call(newCategory);
+      },
+    ),
+  );
 
   Widget get _scoreValueText => SizedBox(
-        width: 40,
-        child: Text(
-          scoreValue,
-          style: const TextStyle(fontSize: 16.0),
-          textAlign: TextAlign.end,
-        ),
-      );
+    width: 40,
+    child: Text(scoreValue, style: const TextStyle(fontSize: 16.0), textAlign: TextAlign.end),
+  );
 
   DropdownMenuItem<int> _buildCategoryMenuItem(String category, int index) => DropdownMenuItem(
-        value: index,
-        child: Text(
-          category,
-          style: const TextStyle(fontSize: 16.0),
-        ),
-      );
+    value: index,
+    child: Text(category, style: const TextStyle(fontSize: 16.0)),
+  );
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(child: _courseNameText),
-          if (category.isNotEmpty) _categoryMenu,
-          _scoreValueText,
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Expanded(child: _courseNameText),
+      if (category.isNotEmpty) _categoryMenu,
+      _scoreValueText,
+    ],
+  );
 }

@@ -21,7 +21,7 @@ class CourseTableControl {
     R.current.Friday,
     R.current.Saturday,
     R.current.Sunday,
-    R.current.UnKnown
+    R.current.UnKnown,
   ];
   List<String> timeList = [
     "08:10 - 09:00",
@@ -37,7 +37,7 @@ class CourseTableControl {
     "18:30 - 19:20",
     "19:20 - 20:10",
     "20:20 - 21:10",
-    "21:10 - 22:00"
+    "21:10 - 22:00",
   ];
 
   List<String> sectionStringList = ["1", "2", "3", "4", "N", "5", "6", "7", "8", "9", "A", "B", "C", "D"];

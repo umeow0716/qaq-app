@@ -114,10 +114,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Container(
-      padding: const EdgeInsets.only(top: 20),
-      child: _buildAnimationList(),
-    );
+    return Container(padding: const EdgeInsets.only(top: 20), child: _buildAnimationList());
   }
 
   Widget _buildAnimationList() {
@@ -134,10 +131,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
               child: FadeInAnimation(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    child: listItem[index],
-                  ),
+                  child: Container(padding: const EdgeInsets.only(left: 20, right: 20), child: listItem[index]),
                   onTap: () {},
                 ),
               ),
@@ -172,11 +166,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 28),
           child: Center(
-            child: Text(
-              studentError,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
+            child: Text(studentError, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
           ),
         ),
       );
@@ -244,12 +234,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
       child: Row(
         children: <Widget>[
           const Icon(Icons.details),
-          Expanded(
-            child: Text(
-              text,
-              style: textStyle,
-            ),
-          ),
+          Expanded(child: Text(text, style: textStyle)),
         ],
       ),
     );
@@ -310,35 +295,17 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
         ? Theme.of(context).colorScheme.surface
         : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(widget.courseInfoWithAlpha);
     return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
       padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: <Widget>[
           SizedBox(width: 4, height: height),
-          Expanded(
-            child: Text(
-              departmentName,
-              textAlign: TextAlign.center,
-            ),
-          ),
+          Expanded(child: Text(departmentName, textAlign: TextAlign.center)),
           SizedBox(width: 4, height: height),
-          Expanded(
-            child: Text(
-              studentId,
-              textAlign: TextAlign.center,
-            ),
-          ),
+          Expanded(child: Text(studentId, textAlign: TextAlign.center)),
           SizedBox(width: 4, height: height),
-          Expanded(
-            child: Text(
-              studentName,
-              textAlign: TextAlign.center,
-            ),
-          ),
+          Expanded(child: Text(studentName, textAlign: TextAlign.center)),
         ],
       ),
     );
@@ -350,17 +317,9 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
       child: Row(
         children: [
           const Icon(Icons.details),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 18))),
           (url.isNotEmpty)
-              ? ElevatedButton(
-                  child: Text(buttonText),
-                  onPressed: () => _launchWebView(buttonText, url),
-                )
+              ? ElevatedButton(child: Text(buttonText), onPressed: () => _launchWebView(buttonText, url))
               : const SizedBox.shrink(),
         ],
       ),
@@ -371,14 +330,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     const textStyle = TextStyle(fontSize: 24);
     return Container(
       padding: const EdgeInsets.only(top: 5, bottom: 5),
-      child: Row(
-        children: <Widget>[
-          Text(
-            title,
-            style: textStyle,
-          ),
-        ],
-      ),
+      child: Row(children: <Widget>[Text(title, style: textStyle)]),
     );
   }
 
@@ -393,10 +345,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                text,
-                style: textStyle,
-              ),
+              Text(text, style: textStyle),
               const SizedBox(width: 4),
               urlList[i].isNotEmpty
                   ? FittedBox(
@@ -421,17 +370,11 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Icon(Icons.details),
-              Text(
-                title,
-                style: textStyle,
-              ),
+              Text(title, style: textStyle),
             ],
           ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: classroomItemList,
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: classroomItemList),
           ),
         ],
       ),

@@ -38,85 +38,82 @@ class FileDownload {
 
     // This flag is used to prevent the dialog from being displayed multiple times.
     bool hasError = false;
-    await DioConnector.instance.download(
-      url,
-      (responseHeaders) {
-        final Map<String, List<String>> headers = responseHeaders.map;
-        if (headers.containsKey("content-disposition")) {
-          final name = headers["content-disposition"];
-          final exp = RegExp("['|\"](?<name>.+)['|\"]");
-          final matches = name != null ? exp.firstMatch(name[0]) : null;
-          realFileName = matches?.group(1);
-        } else if (headers.containsKey("content-type")) {
-          final name = headers["content-type"];
-          if (name?[0].toLowerCase().contains("pdf") == true) {
-            realFileName = '.pdf';
-          }
-        }
-        if (!name.contains(".")) {
-          if (realFileName != null) {
-            fileExtension = realFileName?.split(".").reversed.toList()[0];
-            realFileName = "$name.$fileExtension";
-          } else {
-            final maybeName = url.split("/").toList().last;
-            if (maybeName.contains(".")) {
-              fileExtension = maybeName.split(".").toList().last;
-              realFileName = "$name.$fileExtension";
+    await DioConnector.instance
+        .download(
+          url,
+          (responseHeaders) {
+            final Map<String, List<String>> headers = responseHeaders.map;
+            if (headers.containsKey("content-disposition")) {
+              final name = headers["content-disposition"];
+              final exp = RegExp("['|\"](?<name>.+)['|\"]");
+              final matches = name != null ? exp.firstMatch(name[0]) : null;
+              realFileName = matches?.group(1);
+            } else if (headers.containsKey("content-type")) {
+              final name = headers["content-type"];
+              if (name?[0].toLowerCase().contains("pdf") == true) {
+                realFileName = '.pdf';
+              }
             }
-          }
-        } else {
-          final List<String> s = name.split(".");
-          s.removeLast();
-          if (realFileName != null && realFileName?.contains(".") == true) {
-            realFileName = '${s.join()}.${realFileName?.split(".").last ?? ""}';
-          }
-        }
-        realFileName = realFileName ?? name;
-        return "$path/$realFileName";
-      },
-      progressCallback: onReceiveProgress,
-      cancelToken: cancelToken,
-      header: {"referer": referer},
-    ).catchError(
-      (onError) async {
-        hasError = true;
-        Log.d(onError.toString());
-        await Future.delayed(const Duration(milliseconds: 100));
-        Notifications.instance.cancelNotification(value.id);
+            if (!name.contains(".")) {
+              if (realFileName != null) {
+                fileExtension = realFileName?.split(".").reversed.toList()[0];
+                realFileName = "$name.$fileExtension";
+              } else {
+                final maybeName = url.split("/").toList().last;
+                if (maybeName.contains(".")) {
+                  fileExtension = maybeName.split(".").toList().last;
+                  realFileName = "$name.$fileExtension";
+                }
+              }
+            } else {
+              final List<String> s = name.split(".");
+              s.removeLast();
+              if (realFileName != null && realFileName?.contains(".") == true) {
+                realFileName = '${s.join()}.${realFileName?.split(".").last ?? ""}';
+              }
+            }
+            realFileName = realFileName ?? name;
+            return "$path/$realFileName";
+          },
+          progressCallback: onReceiveProgress,
+          cancelToken: cancelToken,
+          header: {"referer": referer},
+        )
+        .catchError((onError) async {
+          hasError = true;
+          Log.d(onError.toString());
+          await Future.delayed(const Duration(milliseconds: 100));
+          Notifications.instance.cancelNotification(value.id);
 
-        value.body = R.current.downloadError;
-        value.id = Notifications.instance.notificationId;
-        value.payload = json.encode({
-          "type": "download_fail",
-          "id": value.id,
+          value.body = R.current.downloadError;
+          value.id = Notifications.instance.notificationId;
+          value.payload = json.encode({"type": "download_fail", "id": value.id});
+
+          await Notifications.instance.showNotification(value);
+          MsgDialog(
+            MsgDialogParameter(
+              desc: realFileName,
+              title: R.current.downloadError,
+              removeCancelButton: true,
+              dialogType: DialogType.warning,
+            ),
+          ).show();
         });
-
-        await Notifications.instance.showNotification(value);
-        MsgDialog(MsgDialogParameter(
-          desc: realFileName,
-          title: R.current.downloadError,
-          removeCancelButton: true,
-          dialogType: DialogType.warning,
-        )).show();
-      },
-    );
 
     if (!hasError) {
       await Notifications.instance.cancelNotification(value.id);
       value.body = R.current.downloadComplete;
       value.id = Notifications.instance.notificationId;
-      value.payload = json.encode({
-        "type": "download_complete",
-        "path": '$path/$realFileName',
-        "id": value.id,
-      });
+      value.payload = json.encode({"type": "download_complete", "path": '$path/$realFileName', "id": value.id});
       await Notifications.instance.showNotification(value);
-      MsgDialog(MsgDialogParameter(
-        desc: realFileName,
-        title: R.current.downloadComplete,
-        removeCancelButton: true,
-        dialogType: DialogType.success,
-      )).show();
+      MsgDialog(
+        MsgDialogParameter(
+          desc: realFileName,
+          title: R.current.downloadComplete,
+          removeCancelButton: true,
+          dialogType: DialogType.success,
+        ),
+      ).show();
     }
   }
 }

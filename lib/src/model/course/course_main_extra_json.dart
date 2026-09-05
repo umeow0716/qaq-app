@@ -11,16 +11,17 @@ class CourseExtraInfoJson {
   List<ClassmateJson> classmate;
 
   CourseExtraInfoJson({SemesterJson? courseSemester, CourseExtraJson? course, List<ClassmateJson>? classmate})
-      : classmate = classmate ?? <ClassmateJson>[],
-        courseSemester = courseSemester ?? SemesterJson(),
-        course = course ?? CourseExtraJson();
+    : classmate = classmate ?? <ClassmateJson>[],
+      courseSemester = courseSemester ?? SemesterJson(),
+      course = course ?? CourseExtraJson();
 
   bool get isEmpty => classmate.isEmpty && courseSemester.isEmpty && course.isEmpty;
 
   @override
   String toString() => sprintf(
-      '---------courseSemester--------  \n%s \n---------course--------          \n%s \n---------classmateList--------   \n%s \n',
-      [courseSemester.toString(), course.toString(), classmate.toString()]);
+    '---------courseSemester--------  \n%s \n---------course--------          \n%s \n---------classmateList--------   \n%s \n',
+    [courseSemester.toString(), course.toString(), classmate.toString()],
+  );
 
   factory CourseExtraInfoJson.fromJson(Map<String, dynamic> json) => _$CourseExtraInfoJsonFromJson(json);
   Map<String, dynamic> toJson() => _$CourseExtraInfoJsonToJson(this);
@@ -38,10 +39,10 @@ class CourseMainInfoJson {
     List<TeacherJson>? teacher,
     List<ClassroomJson>? classroom,
     List<ClassJson>? openClass,
-  })  : course = course ?? CourseMainJson(),
-        teacher = teacher ?? <TeacherJson>[],
-        classroom = classroom ?? <ClassroomJson>[],
-        openClass = openClass ?? <ClassJson>[];
+  }) : course = course ?? CourseMainJson(),
+       teacher = teacher ?? <TeacherJson>[],
+       classroom = classroom ?? <ClassroomJson>[],
+       openClass = openClass ?? <ClassJson>[];
 
   String getOpenClassName() => openClass.map((value) => value.name).join(' ');
   String getTeacherName() => teacher.map((value) => value.name).join(' ');
@@ -53,8 +54,9 @@ class CourseMainInfoJson {
 
   @override
   String toString() => sprintf(
-      '---------course--------         \n%s \n---------teacherList--------    \n%s \n---------classroomList--------  \n%s \n---------openClassList--------  \n%s \n',
-      [course.toString(), teacher.toString(), classroom.toString(), openClass.toString()]);
+    '---------course--------         \n%s \n---------teacherList--------    \n%s \n---------classroomList--------  \n%s \n---------openClassList--------  \n%s \n',
+    [course.toString(), teacher.toString(), classroom.toString(), openClass.toString()],
+  );
 
   factory CourseMainInfoJson.fromJson(Map<String, dynamic> json) => _$CourseMainInfoJsonFromJson(json);
   Map<String, dynamic> toJson() => _$CourseMainInfoJsonToJson(this);

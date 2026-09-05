@@ -20,11 +20,7 @@ class FileViewerPage extends StatefulWidget {
   final String title;
   final String path;
 
-  const FileViewerPage({
-    super.key,
-    required this.title,
-    required this.path,
-  });
+  const FileViewerPage({super.key, required this.title, required this.path});
 
   @override
   State<FileViewerPage> createState() => _FileViewerPageState();
@@ -100,9 +96,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back,
-            ),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () {
               if (paths.length == 1) {
                 Navigator.pop(context);
@@ -119,9 +113,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
           title: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.title),
-            ],
+            children: [Text(widget.title)],
           ),
           bottom: PathBar(
             child: SizedBox(
@@ -175,10 +167,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                             ),
                           );
                   },
-                  separatorBuilder: (_, _) => Icon(
-                    Icons.arrow_forward_ios,
-                    color: labelAndIconColor,
-                  ),
+                  separatorBuilder: (_, _) => Icon(Icons.arrow_forward_ios, color: labelAndIconColor),
                 ),
               ),
             ),
@@ -186,24 +175,17 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
           actions: [
             IconButton(
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const SortSheet(),
-                ).then((v) {
+                showModalBottomSheet(context: context, builder: (context) => const SortSheet()).then((v) {
                   getFiles();
                 });
               },
               tooltip: R.current.sortBy,
-              icon: const Icon(
-                Icons.sort,
-              ),
+              icon: const Icon(Icons.sort),
             ),
           ],
         ),
         body: files.isEmpty
-            ? Center(
-                child: Text(R.current.nothingHere),
-              )
+            ? Center(child: Text(R.current.nothingHere))
             : ListView.builder(
                 itemCount: files.length,
                 itemBuilder: (BuildContext context, int index) {
@@ -217,12 +199,12 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                               await Directory(file.path)
                                   .delete(recursive: true) //將會刪除資料夾內所有東西
                                   .catchError((e) {
-                                if (e.toString().contains("Permission denied")) {
-                                  MyToast.show(R.current.cannotWrite);
-                                }
+                                    if (e.toString().contains("Permission denied")) {
+                                      MyToast.show(R.current.cannotWrite);
+                                    }
 
-                                return Directory(file.path);
-                              });
+                                    return Directory(file.path);
+                                  });
                               getFiles();
                             }
                           },
@@ -278,18 +260,9 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 15),
-              Text(
-                R.current.createNewFolder,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              Text(R.current.createNewFolder, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 25),
-              TextField(
-                controller: name,
-                keyboardType: TextInputType.text,
-              ),
+              TextField(controller: name, keyboardType: TextInputType.text),
               const SizedBox(height: 40),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -299,18 +272,11 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                     width: 130,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
                         side: BorderSide(color: Theme.of(context).colorScheme.secondary),
                         backgroundColor: colorScheme.secondary,
                       ),
-                      child: Text(
-                        R.current.cancel,
-                        style: TextStyle(
-                          color: colorScheme.onSecondary,
-                        ),
-                      ),
+                      child: Text(R.current.cancel, style: TextStyle(color: colorScheme.onSecondary)),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -320,16 +286,9 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.tertiary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
                       ),
-                      child: Text(
-                        R.current.createFolder,
-                        style: TextStyle(
-                          color: colorScheme.onTertiary,
-                        ),
-                      ),
+                      child: Text(R.current.createFolder, style: TextStyle(color: colorScheme.onTertiary)),
                       onPressed: () async {
                         if (name.text.isNotEmpty) {
                           if (!Directory("$path/${name.text}").existsSync()) {
@@ -375,18 +334,9 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 15),
-              Text(
-                R.current.renameItem,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              Text(R.current.renameItem, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 25),
-              TextField(
-                controller: name,
-                keyboardType: TextInputType.text,
-              ),
+              TextField(controller: name, keyboardType: TextInputType.text),
               const SizedBox(height: 40),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -396,18 +346,11 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                     width: 130,
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
                         side: BorderSide(color: Theme.of(context).colorScheme.secondary),
                         backgroundColor: colorScheme.secondary,
                       ),
-                      child: Text(
-                        R.current.cancel,
-                        style: TextStyle(
-                          color: colorScheme.onSecondary,
-                        ),
-                      ),
+                      child: Text(R.current.cancel, style: TextStyle(color: colorScheme.onSecondary)),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -416,17 +359,10 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                     width: 130,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
                         backgroundColor: colorScheme.tertiary,
                       ),
-                      child: Text(
-                        R.current.rename,
-                        style: TextStyle(
-                          color: colorScheme.onTertiary,
-                        ),
-                      ),
+                      child: Text(R.current.rename, style: TextStyle(color: colorScheme.onTertiary)),
                       onPressed: () async {
                         if (name.text.isNotEmpty) {
                           if (type == "file") {
@@ -434,11 +370,11 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                               await File(path)
                                   .rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}")
                                   .catchError((e) {
-                                if (e.toString().contains("Permission denied")) {
-                                  MyToast.show(R.current.cannotWrite);
-                                }
-                                return File(path);
-                              });
+                                    if (e.toString().contains("Permission denied")) {
+                                      MyToast.show(R.current.cannotWrite);
+                                    }
+                                    return File(path);
+                                  });
                             } else {
                               MyToast.show(R.current.fileNameAlreadyExists);
                             }
@@ -449,11 +385,11 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                               await Directory(path)
                                   .rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}")
                                   .catchError((e) {
-                                if (e.toString().contains("Permission denied")) {
-                                  MyToast.show(R.current.cannotWrite);
-                                }
-                                return Directory(path);
-                              });
+                                    if (e.toString().contains("Permission denied")) {
+                                      MyToast.show(R.current.cannotWrite);
+                                    }
+                                    return Directory(path);
+                                  });
                             }
                           }
                           Get.back();

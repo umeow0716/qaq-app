@@ -9,11 +9,7 @@ import 'task.dart';
 typedef OnSuccessCallBack = Function(Task);
 
 class TaskFlow {
-  TaskFlow()
-      : _queue = [],
-        _completeTask = [],
-        _failTask = [],
-        callback = null;
+  TaskFlow() : _queue = [], _completeTask = [], _failTask = [], callback = null;
 
   final List<Task> _queue;
   final List<Task> _completeTask;

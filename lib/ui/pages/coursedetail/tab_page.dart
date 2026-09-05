@@ -11,9 +11,7 @@ class TabPage {
     final tab = Column(
       children: <Widget>[
         Icon(icons),
-        FittedBox(
-          child: AutoSizeText(title, maxLines: 1, minFontSize: 6),
-        ),
+        FittedBox(child: AutoSizeText(title, maxLines: 1, minFontSize: 6)),
       ],
     );
     final tabPage = useNavigatorKey
@@ -37,12 +35,7 @@ class TabPageList {
 
   List<Widget> getTabList() {
     return tabPageList
-        .map(
-          (tabPage) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: tabPage.tab,
-          ),
-        )
+        .map((tabPage) => Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: tabPage.tab))
         .toList();
   }
 

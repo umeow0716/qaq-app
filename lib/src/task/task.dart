@@ -1,9 +1,4 @@
-enum TaskStatus {
-  success,
-  shouldGiveUp,
-  shouldRestart,
-  shouldIgnore,
-}
+enum TaskStatus { success, shouldGiveUp, shouldRestart, shouldIgnore }
 
 abstract class Task<T> {
   Task(this.name);

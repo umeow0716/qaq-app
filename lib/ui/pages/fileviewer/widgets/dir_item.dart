@@ -11,33 +11,14 @@ class DirectoryItem extends StatelessWidget {
   final VoidCallback tap;
   final void Function(int)? popTap;
 
-  const DirectoryItem({
-    super.key,
-    required this.file,
-    required this.tap,
-    required this.popTap,
-  });
+  const DirectoryItem({super.key, required this.file, required this.tap, required this.popTap});
 
   @override
   Widget build(BuildContext context) => ListTile(
-        onTap: tap,
-        contentPadding: const EdgeInsets.all(0),
-        leading: const SizedBox(
-          height: 40,
-          width: 40,
-          child: Center(
-            child: Icon(
-              LucideIcons.folder,
-            ),
-          ),
-        ),
-        title: Text(
-          basename(file.path),
-          style: const TextStyle(
-            fontSize: 14,
-          ),
-          maxLines: 2,
-        ),
-        trailing: popTap == null ? null : DirPopup(path: file.path, popTap: popTap),
-      );
+    onTap: tap,
+    contentPadding: const EdgeInsets.all(0),
+    leading: const SizedBox(height: 40, width: 40, child: Center(child: Icon(LucideIcons.folder))),
+    title: Text(basename(file.path), style: const TextStyle(fontSize: 14), maxLines: 2),
+    trailing: popTap == null ? null : DirPopup(path: file.path, popTap: popTap),
+  );
 }

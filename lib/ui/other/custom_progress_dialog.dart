@@ -40,27 +40,27 @@ class CustomProgressDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedPadding(
-        padding: MediaQuery.of(context).viewInsets + const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-        duration: insetAnimationDuration,
-        curve: insetAnimationCurve,
-        child: MediaQuery.removeViewInsets(
-          removeLeft: true,
-          removeTop: true,
-          removeRight: true,
-          removeBottom: true,
-          context: context,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(),
-              child: Material(
-                elevation: 24.0,
-                color: _getColor(context),
-                type: MaterialType.card,
-                borderRadius: const BorderRadius.all(Radius.circular(5)),
-                child: child,
-              ),
-            ),
+    padding: MediaQuery.of(context).viewInsets + const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+    duration: insetAnimationDuration,
+    curve: insetAnimationCurve,
+    child: MediaQuery.removeViewInsets(
+      removeLeft: true,
+      removeTop: true,
+      removeRight: true,
+      removeBottom: true,
+      context: context,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(),
+          child: Material(
+            elevation: 24.0,
+            color: _getColor(context),
+            type: MaterialType.card,
+            borderRadius: const BorderRadius.all(Radius.circular(5)),
+            child: child,
           ),
         ),
-      );
+      ),
+    ),
+  );
 }

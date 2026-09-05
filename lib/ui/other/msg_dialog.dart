@@ -8,21 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/src/navigation/app_navigator.dart';
 import 'package:flutter_app/src/r.dart';
 
-enum DialogType {
-  noHeader,
-  info,
-  warning,
-  error,
-  success,
-}
+enum DialogType { noHeader, info, warning, error, success }
 
-enum AnimType {
-  scale,
-  leftSlide,
-  rightSlide,
-  bottomSlide,
-  topSlide,
-}
+enum AnimType { scale, leftSlide, rightSlide, bottomSlide, topSlide }
 
 class MsgDialogParameter {
   String? title;
@@ -84,44 +72,29 @@ class MsgDialog {
           reverseCurve: Curves.easeInCubic,
         );
 
-        final fadedChild = FadeTransition(
-          opacity: curvedAnimation,
-          child: child,
-        );
+        final fadedChild = FadeTransition(opacity: curvedAnimation, child: child);
 
         return switch (parameter.animType) {
           AnimType.scale => ScaleTransition(
-              scale: Tween<double>(begin: 0.88, end: 1).animate(curvedAnimation),
-              child: fadedChild,
-            ),
+            scale: Tween<double>(begin: 0.88, end: 1).animate(curvedAnimation),
+            child: fadedChild,
+          ),
           AnimType.leftSlide => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(-1, 0),
-                end: Offset.zero,
-              ).animate(curvedAnimation),
-              child: fadedChild,
-            ),
+            position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(curvedAnimation),
+            child: fadedChild,
+          ),
           AnimType.rightSlide => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(curvedAnimation),
-              child: fadedChild,
-            ),
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(curvedAnimation),
+            child: fadedChild,
+          ),
           AnimType.bottomSlide => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(curvedAnimation),
-              child: fadedChild,
-            ),
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(curvedAnimation),
+            child: fadedChild,
+          ),
           AnimType.topSlide => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, -1),
-                end: Offset.zero,
-              ).animate(curvedAnimation),
-              child: fadedChild,
-            ),
+            position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(curvedAnimation),
+            child: fadedChild,
+          ),
         };
       },
     );
@@ -159,24 +132,12 @@ class _MsgDialogView extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).dialogTheme.backgroundColor ??
-                          Theme.of(context).colorScheme.surface,
+                      color: Theme.of(context).dialogTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x33000000),
-                          blurRadius: 18,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
+                      boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8))],
                     ),
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        24,
-                        hasHeader ? 58 : 24,
-                        24,
-                        22,
-                      ),
+                      padding: EdgeInsets.fromLTRB(24, hasHeader ? 58 : 24, 24, 22),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -184,18 +145,14 @@ class _MsgDialogView extends StatelessWidget {
                             Text(
                               parameter.title!.trim(),
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           if (hasTitle && hasDescription) const SizedBox(height: 12),
                           if (hasDescription)
                             Text(
                               parameter.desc!.trim(),
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    height: 1.45,
-                                  ),
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
                             ),
                           if (hasButtons) const SizedBox(height: 24),
                           if (hasButtons) _buildButtons(context),
@@ -212,23 +169,10 @@ class _MsgDialogView extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: visual.color,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.surface,
-                            width: 4,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x26000000),
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
+                          border: Border.all(color: Theme.of(context).colorScheme.surface, width: 4),
+                          boxShadow: const [BoxShadow(color: Color(0x26000000), blurRadius: 8, offset: Offset(0, 3))],
                         ),
-                        child: Icon(
-                          visual.icon,
-                          color: Colors.white,
-                          size: 46,
-                        ),
+                        child: Icon(visual.icon, color: Colors.white, size: 46),
                       ),
                     ),
                 ],
@@ -249,10 +193,7 @@ class _MsgDialogView extends StatelessWidget {
           child: _DialogButton(
             text: parameter.cancelButtonText ?? R.current.cancel,
             color: _cancelColor,
-            onPressed: () => _closeAndRun(
-              context,
-              parameter.onCancelButtonClicked,
-            ),
+            onPressed: () => _closeAndRun(context, parameter.onCancelButtonClicked),
           ),
         ),
       );
@@ -265,10 +206,7 @@ class _MsgDialogView extends StatelessWidget {
           child: _DialogButton(
             text: parameter.okButtonText ?? R.current.sure,
             color: _okColor,
-            onPressed: () => _closeAndRun(
-              context,
-              parameter.onOkButtonClicked,
-            ),
+            onPressed: () => _closeAndRun(context, parameter.onOkButtonClicked),
           ),
         ),
       );
@@ -284,11 +222,7 @@ class _MsgDialogView extends StatelessWidget {
 }
 
 class _DialogButton extends StatelessWidget {
-  const _DialogButton({
-    required this.text,
-    required this.color,
-    required this.onPressed,
-  });
+  const _DialogButton({required this.text, required this.color, required this.onPressed});
 
   final String text;
   final Color color;
@@ -321,22 +255,10 @@ class _DialogVisual {
   static _DialogVisual? fromType(DialogType type) {
     return switch (type) {
       DialogType.noHeader => null,
-      DialogType.info => const _DialogVisual(
-          Color(0xFF2196F3),
-          Icons.info_outline_rounded,
-        ),
-      DialogType.warning => const _DialogVisual(
-          Color(0xFFFFB300),
-          Icons.priority_high_rounded,
-        ),
-      DialogType.error => const _DialogVisual(
-          Color(0xFFF44336),
-          Icons.close_rounded,
-        ),
-      DialogType.success => const _DialogVisual(
-          Color(0xFF00CA71),
-          Icons.check_rounded,
-        ),
+      DialogType.info => const _DialogVisual(Color(0xFF2196F3), Icons.info_outline_rounded),
+      DialogType.warning => const _DialogVisual(Color(0xFFFFB300), Icons.priority_high_rounded),
+      DialogType.error => const _DialogVisual(Color(0xFFF44336), Icons.close_rounded),
+      DialogType.success => const _DialogVisual(Color(0xFF00CA71), Icons.check_rounded),
     };
   }
 }

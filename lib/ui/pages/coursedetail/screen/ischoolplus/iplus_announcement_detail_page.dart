@@ -21,16 +21,13 @@ class IPlusAnnouncementDetailPage extends StatefulWidget {
 }
 
 class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
-
   bool addLink = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(
-          onPressed: () => Get.back(),
-        ),
+        leading: BackButton(onPressed: () => Get.back()),
         title: Text(widget.courseInfo.main.course.name),
         actions: <Widget>[
           PopupMenuButton<int>(
@@ -42,18 +39,11 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
                 });
               }
             },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem(
-                value: 0,
-                child: Text(R.current.identifyLinks),
-              ),
-            ],
-          )
+            itemBuilder: (BuildContext context) => [PopupMenuItem(value: 0, child: Text(R.current.identifyLinks))],
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: _showAnnouncementDetail(),
-      ),
+      body: SingleChildScrollView(child: _showAnnouncementDetail()),
     );
   }
 
@@ -78,21 +68,11 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
               // 顯示格線
               Row(
                 children: <Widget>[
-                  Expanded(
-                    child: Text(widget.data["sender"]?.toString() ?? ""),
-                  ),
-                  Expanded(
-                    child: Text(
-                      widget.data["postTime"]?.toString() ?? "",
-                      textAlign: TextAlign.end,
-                    ),
-                  )
+                  Expanded(child: Text(widget.data["sender"]?.toString() ?? "")),
+                  Expanded(child: Text(widget.data["postTime"]?.toString() ?? "", textAlign: TextAlign.end)),
                 ],
               ),
-              Container(
-                color: Colors.black12,
-                height: 1,
-              ),
+              Container(color: Colors.black12, height: 1),
               _showHtmlWidget(),
               _showFileList(),
             ],
@@ -109,25 +89,12 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
         : <String, String>{};
     final List<String> fileNameList = fileUrlMap.keys.toList(); //key : 文件名稱  value : 文件下載url
     if (fileNameList.isEmpty) {
-      return Container(
-        color: Colors.black12,
-        height: 1,
-      );
+      return Container(color: Colors.black12, height: 1);
     } else {
       return Column(
         children: <Widget>[
-          Container(
-            color: Colors.black12,
-            height: 1,
-          ),
-          Row(
-            children: <Widget>[
-              Text(
-                R.current.file,
-                textAlign: TextAlign.start,
-              ),
-            ],
-          ),
+          Container(color: Colors.black12, height: 1),
+          Row(children: <Widget>[Text(R.current.file, textAlign: TextAlign.start)]),
           ListView.separated(
             shrinkWrap: true,
             itemCount: fileNameList.length,
@@ -136,10 +103,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
                 padding: const EdgeInsets.only(top: 10, bottom: 10),
                 child: Row(
                   children: <Widget>[
-                    Text(
-                      fileNameList[index],
-                      style: const TextStyle(fontSize: 15, color: Colors.blue),
-                    )
+                    Text(fileNameList[index], style: const TextStyle(fontSize: 15, color: Colors.blue)),
                   ],
                 ),
               );
@@ -155,10 +119,7 @@ class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
             },
             separatorBuilder: (context, index) {
               // 顯示格線
-              return Container(
-                color: Colors.black12,
-                height: 1,
-              );
+              return Container(color: Colors.black12, height: 1);
             },
           ),
         ],

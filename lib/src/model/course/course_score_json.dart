@@ -12,7 +12,7 @@ const constCourseType = [
   "☆", //	選	共同選修
   "●", //	  必	部訂專業必修
   "▲", //	  必	校訂專業必修
-  "★" //	  選	專業選修
+  "★", //	  選	專業選修
 ];
 
 @JsonSerializable()
@@ -20,9 +20,11 @@ class CourseScoreCreditJson {
   GraduationInformationJson graduationInformation;
   List<SemesterCourseScoreJson> semesterCourseScoreList;
 
-  CourseScoreCreditJson({GraduationInformationJson? graduationInformation, List<SemesterCourseScoreJson>? semesterCourseScoreList})
-      : graduationInformation = graduationInformation ?? GraduationInformationJson(),
-        semesterCourseScoreList = semesterCourseScoreList ?? <SemesterCourseScoreJson>[];
+  CourseScoreCreditJson({
+    GraduationInformationJson? graduationInformation,
+    List<SemesterCourseScoreJson>? semesterCourseScoreList,
+  }) : graduationInformation = graduationInformation ?? GraduationInformationJson(),
+       semesterCourseScoreList = semesterCourseScoreList ?? <SemesterCourseScoreJson>[];
 
   //利用學期取得課程資訊
   SemesterCourseScoreJson? getCourseBySemester(SemesterJson semesterJson) {
@@ -187,12 +189,12 @@ class GraduationInformationJson {
     String? selectYear,
     String? selectDivision,
     String? selectDepartment,
-  })  : selectYear = JsonInit.stringInit(selectYear),
-        selectDivision = JsonInit.stringInit(selectDivision),
-        selectDepartment = JsonInit.stringInit(selectDepartment),
-        lowCredit = lowCredit ?? 0,
-        outerDepartmentMaxCredit = outerDepartmentMaxCredit ?? 0,
-        courseTypeMinCredit = courseTypeMinCredit ?? <String, int>{} {
+  }) : selectYear = JsonInit.stringInit(selectYear),
+       selectDivision = JsonInit.stringInit(selectDivision),
+       selectDepartment = JsonInit.stringInit(selectDepartment),
+       lowCredit = lowCredit ?? 0,
+       outerDepartmentMaxCredit = outerDepartmentMaxCredit ?? 0,
+       courseTypeMinCredit = courseTypeMinCredit ?? <String, int>{} {
     for (final type in constCourseType) {
       this.courseTypeMinCredit.putIfAbsent(type, () => 0);
     }
@@ -206,16 +208,16 @@ class GraduationInformationJson {
 
   @override
   String toString() => sprintf(
-        "---------selectYear--------     \n%s \n---------selectDivision--------          \n%s \n---------selectDepartment--------      \n%s \n---------lowCredit--------  \n%s \n---------outerDepartmentMacCredit--------     :%s \ncourseTypeMinCredit :%s \n",
-        [
-          selectYear,
-          selectDivision,
-          selectDepartment,
-          lowCredit.toString(),
-          outerDepartmentMaxCredit.toString(),
-          courseTypeMinCredit.toString(),
-        ],
-      );
+    "---------selectYear--------     \n%s \n---------selectDivision--------          \n%s \n---------selectDepartment--------      \n%s \n---------lowCredit--------  \n%s \n---------outerDepartmentMacCredit--------     :%s \ncourseTypeMinCredit :%s \n",
+    [
+      selectYear,
+      selectDivision,
+      selectDepartment,
+      lowCredit.toString(),
+      outerDepartmentMaxCredit.toString(),
+      courseTypeMinCredit.toString(),
+    ],
+  );
 }
 
 @JsonSerializable()
@@ -238,14 +240,14 @@ class SemesterCourseScoreJson {
     double? performanceScore,
     double? takeCredit,
     double? totalCredit,
-  })  : now = now ?? RankJson(),
-        history = history ?? RankJson(),
-        courseScoreList = courseScoreList ?? <CourseScoreInfoJson>[],
-        semester = semester ?? SemesterJson(),
-        averageScore = averageScore ?? 0,
-        performanceScore = performanceScore ?? 0,
-        totalCredit = totalCredit ?? 0,
-        takeCredit = takeCredit ?? 0;
+  }) : now = now ?? RankJson(),
+       history = history ?? RankJson(),
+       courseScoreList = courseScoreList ?? <CourseScoreInfoJson>[],
+       semester = semester ?? SemesterJson(),
+       averageScore = averageScore ?? 0,
+       performanceScore = performanceScore ?? 0,
+       totalCredit = totalCredit ?? 0,
+       takeCredit = takeCredit ?? 0;
 
   bool get isRankEmpty => history.isEmpty && now.isEmpty;
 
@@ -289,18 +291,18 @@ class SemesterCourseScoreJson {
 
   @override
   String toString() => sprintf(
-        "---------semester--------     \n%s \n---------now--------          \n%s \n---------history--------      \n%s \n---------courseScore--------  \n%s \naverageScore     :%s \nperformanceScore :%s \ntotalCredit      :%s \ntakeCredit       :%s \n",
-        [
-          semester.toString(),
-          now.toString(),
-          history.toString(),
-          courseScoreList.toString(),
-          averageScore.toString(),
-          performanceScore.toString(),
-          totalCredit.toString(),
-          takeCredit.toString(),
-        ],
-      );
+    "---------semester--------     \n%s \n---------now--------          \n%s \n---------history--------      \n%s \n---------courseScore--------  \n%s \naverageScore     :%s \nperformanceScore :%s \ntotalCredit      :%s \ntakeCredit       :%s \n",
+    [
+      semester.toString(),
+      now.toString(),
+      history.toString(),
+      courseScoreList.toString(),
+      averageScore.toString(),
+      performanceScore.toString(),
+      totalCredit.toString(),
+      takeCredit.toString(),
+    ],
+  );
 
   factory SemesterCourseScoreJson.fromJson(Map<String, dynamic> json) => _$SemesterCourseScoreJsonFromJson(json);
 
@@ -313,19 +315,17 @@ class RankJson {
   RankItemJson department;
 
   RankJson({RankItemJson? course, RankItemJson? department})
-      : course = course ?? RankItemJson(),
-        department = department ?? RankItemJson();
+    : course = course ?? RankItemJson(),
+      department = department ?? RankItemJson();
 
   bool get isEmpty => course.isEmpty && department.isEmpty;
 
   @override
   String toString() {
     return sprintf(
-      "---------course--------     \n%s \n" "---------department--------          \n%s \n",
-      [
-        course.toString(),
-        department.toString(),
-      ],
+      "---------course--------     \n%s \n"
+      "---------department--------          \n%s \n",
+      [course.toString(), department.toString()],
     );
   }
 
@@ -346,14 +346,11 @@ class RankItemJson {
 
   @override
   String toString() {
-    return sprintf(
-      "percentage     :%s \nrank           :%s \ntotal          :%s \n",
-      [
-        percentage.toString(),
-        rank.toString(),
-        total.toString(),
-      ],
-    );
+    return sprintf("percentage     :%s \nrank           :%s \ntotal          :%s \n", [
+      percentage.toString(),
+      rank.toString(),
+      total.toString(),
+    ]);
   }
 
   factory RankItemJson.fromJson(Map<String, dynamic> json) => _$RankItemJsonFromJson(json);
@@ -381,13 +378,13 @@ class CourseScoreInfoJson {
     double? credit,
     String? category,
     String? openClass,
-  })  : courseId = JsonInit.stringInit(courseId),
-        nameZh = JsonInit.stringInit(nameZh),
-        nameEn = JsonInit.stringInit(nameEn),
-        score = JsonInit.stringInit(score),
-        category = JsonInit.stringInit(category),
-        openClass = JsonInit.stringInit(openClass),
-        credit = credit ?? 0;
+  }) : courseId = JsonInit.stringInit(courseId),
+       nameZh = JsonInit.stringInit(nameZh),
+       nameEn = JsonInit.stringInit(nameEn),
+       score = JsonInit.stringInit(score),
+       category = JsonInit.stringInit(category),
+       openClass = JsonInit.stringInit(openClass),
+       credit = credit ?? 0;
 
   bool get isPass {
     //是否拿到學分
@@ -432,14 +429,11 @@ class CourseScoreInfoJson {
 
   @override
   String toString() {
-    return sprintf(
-      "name           :%s \nscore           :%s \ncredit          :%s \n",
-      [
-        nameZh.toString(),
-        score.toString(),
-        credit.toString(),
-      ],
-    );
+    return sprintf("name           :%s \nscore           :%s \ncredit          :%s \n", [
+      nameZh.toString(),
+      score.toString(),
+      credit.toString(),
+    ]);
   }
 
   factory CourseScoreInfoJson.fromJson(Map<String, dynamic> json) => _$CourseScoreInfoJsonFromJson(json);

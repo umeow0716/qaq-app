@@ -1,4 +1,3 @@
-
 import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/task/iplus/iplus_system_task.dart';
@@ -17,10 +16,7 @@ class IPlusGetCourseSubscribeTask extends IPlusSystemTask<Map<String, dynamic>> 
       final courseBid = await ISchoolPlusConnector.getBid(id);
       final openNotifications = await ISchoolPlusConnector.getCourseSubscribe(courseBid);
       super.onEnd();
-      result = {
-        "courseBid": courseBid,
-        "openNotifications": openNotifications,
-      };
+      result = {"courseBid": courseBid, "openNotifications": openNotifications};
       return TaskStatus.success;
     }
     return status;

@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -28,10 +27,7 @@ class NTUTConnector {
     final parameter = ConnectorParameter(_loginUrl)
       ..userAgent = _portalApiUserAgent
       ..referer = _loginUrl
-      ..data = {
-        "muid": account,
-        "mpassword": password,
-      };
+      ..data = {"muid": account, "mpassword": password};
 
     final response = await Connector.getDataByPostResponse(parameter);
     if (response.statusCode != HttpStatus.ok) {
@@ -49,10 +45,7 @@ class NTUTConnector {
       // The portal frontend expects the account cookie in addition to the
       // server-managed session cookie returned by login.do.
       final accountCookie = Cookie('muid', account.toLowerCase())..path = '/';
-      await DioConnector.instance.cookiesManager.saveFromResponse(
-        Uri.parse(host),
-        [accountCookie],
-      );
+      await DioConnector.instance.cookiesManager.saveFromResponse(Uri.parse(host), [accountCookie]);
 
       final userInfo = UserInfoJson(
         givenName: loginResult.userNaturalName,
@@ -121,10 +114,7 @@ class NTUTConnector {
     final startDate = formatter.format(startTime);
     final endDate = formatter.format(endTime);
     try {
-      final data = {
-        "startDate": startDate,
-        "endDate": endDate,
-      };
+      final data = {"startDate": startDate, "endDate": endDate};
       final parameter = ConnectorParameter(_getCalendarUrl);
       parameter.data = data;
       final result = await Connector.getDataByGet(parameter);
@@ -168,11 +158,7 @@ class NTUTConnector {
     try {
       final parameter = ConnectorParameter(_changePasswordUrl);
       final oldPassword = LocalStorage.instance.getPassword();
-      parameter.data = {
-        "userPassword": password,
-        "oldPassword": oldPassword,
-        "pwdForceMdy": "profile",
-      };
+      parameter.data = {"userPassword": password, "oldPassword": oldPassword, "pwdForceMdy": "profile"};
       final result = await Connector.getDataByPost(parameter);
       final jsonResult = json.decode(result);
       if (jsonResult["success"] == 'true') {

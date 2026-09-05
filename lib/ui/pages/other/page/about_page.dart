@@ -35,26 +35,26 @@ class _AboutPageState extends State<AboutPage> {
         "icon": EvaIcons.refreshOutline,
         "title": R.current.checkVersion,
         "color": Colors.orange,
-        "onPress": OnListViewPress.appUpdate
+        "onPress": OnListViewPress.appUpdate,
       },
       {
         "icon": EvaIcons.awardOutline,
         "title": R.current.Contribution,
         "color": Colors.lightGreen,
-        "onPress": OnListViewPress.contribution
+        "onPress": OnListViewPress.contribution,
       },
       {
         "icon": EvaIcons.shieldOffOutline,
         "color": Colors.blueGrey,
         "title": R.current.PrivacyPolicy,
-        "onPress": OnListViewPress.privacyPolicy
+        "onPress": OnListViewPress.privacyPolicy,
       },
       {
         "icon": EvaIcons.infoOutline,
         "color": Colors.blue,
         "title": R.current.versionInfo,
-        "onPress": OnListViewPress.version
-      }
+        "onPress": OnListViewPress.version,
+      },
     ]);
     _addDevListItem();
   }
@@ -66,7 +66,7 @@ class _AboutPageState extends State<AboutPage> {
           "icon": EvaIcons.options,
           "color": Colors.amberAccent,
           "title": R.current.developerMode,
-          "onPress": OnListViewPress.dev
+          "onPress": OnListViewPress.dev,
         });
       });
     }
@@ -114,9 +114,7 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(R.current.about),
-      ),
+      appBar: AppBar(title: Text(R.current.about)),
       body: ListView.separated(
         itemCount: listViewData.length,
         itemBuilder: (context, index) {
@@ -131,10 +129,7 @@ class _AboutPageState extends State<AboutPage> {
         },
         separatorBuilder: (context, index) {
           // 顯示格線
-          return Container(
-            color: Colors.black12,
-            height: 1,
-          );
+          return Container(color: Colors.black12, height: 1);
         },
       ),
     );
@@ -147,17 +142,9 @@ class _AboutPageState extends State<AboutPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(
-            data['icon'] as IconData,
-            color: data['color'] as Color?,
-          ),
-          const SizedBox(
-            width: 20.0,
-          ),
-          Text(
-            data['title']?.toString() ?? '',
-            style: const TextStyle(fontSize: 18),
-          ),
+          Icon(data['icon'] as IconData, color: data['color'] as Color?),
+          const SizedBox(width: 20.0),
+          Text(data['title']?.toString() ?? '', style: const TextStyle(fontSize: 18)),
         ],
       ),
     );

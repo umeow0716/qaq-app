@@ -1,4 +1,3 @@
-
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -38,14 +37,9 @@ Future<void> runTATApp() async {
     await webViewPage.close();
   }
 
-  await LocalStorage.instance.init(
-    httpClientInterceptors: apiInterceptors,
-    cookieJar: cookieJar,
-  );
+  await LocalStorage.instance.init(httpClientInterceptors: apiInterceptors, cookieJar: cookieJar);
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  WidgetsBinding.instance.addObserver(
-    _TATLifeCycleEventHandler(detachedCallBack: handleAppDetached),
-  );
+  WidgetsBinding.instance.addObserver(_TATLifeCycleEventHandler(detachedCallBack: handleAppDetached));
 
   runApp(
     MultiProvider(
@@ -63,34 +57,33 @@ class _TATApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Consumer<AppProvider>(
-      builder: (context, appProvider, child) => GetMaterialApp(
-            title: AppConfig.appName,
-            theme: appProvider.theme,
-            navigatorKey: appProvider.navigatorKey,
-            darkTheme: AppThemes.darkTheme,
-            localizationsDelegates: const [
-              S.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate
-            ],
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-              child: BotToastInit().call(context, child),
-            ),
-            navigatorObservers: [BotToastNavigatorObserver()],
-            supportedLocales: S.delegate.supportedLocales,
-            home: const MainScreen(),
-            logWriterCallback: (String text, {bool? isError}) {
-              Log.d(text);
-            },
-          ));
+    builder: (context, appProvider, child) => GetMaterialApp(
+      title: AppConfig.appName,
+      theme: appProvider.theme,
+      navigatorKey: appProvider.navigatorKey,
+      darkTheme: AppThemes.darkTheme,
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+      ],
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+        child: BotToastInit().call(context, child),
+      ),
+      navigatorObservers: [BotToastNavigatorObserver()],
+      supportedLocales: S.delegate.supportedLocales,
+      home: const MainScreen(),
+      logWriterCallback: (String text, {bool? isError}) {
+        Log.d(text);
+      },
+    ),
+  );
 }
 
 class _TATLifeCycleEventHandler extends WidgetsBindingObserver {
-  _TATLifeCycleEventHandler({
-    required this.detachedCallBack,
-  });
+  _TATLifeCycleEventHandler({required this.detachedCallBack});
   final _FutureVoidCallBack detachedCallBack;
 
   @override

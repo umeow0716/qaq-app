@@ -26,9 +26,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   /// and key is the target header name, suggest using the standard [HttpHeaders] library.
   /// Before outputting the final response, if a header provides a corresponding modifier,
   /// it will use the modifier to modify the header, so , the final output header value will be the modified version.
-  EarlyInterceptorAdapter({
-    this.headerDecorators,
-  }) : _defaultHttpClient = HttpClient();
+  EarlyInterceptorAdapter({this.headerDecorators}) : _defaultHttpClient = HttpClient();
 
   final HttpClient _defaultHttpClient;
   final Completer<void> _adapterLife = Completer<void>();
@@ -56,10 +54,10 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     final reqFuture = httpClient.openUrl(options.method, options.uri);
 
     Never throwConnectingTimeout() => throw DioException(
-          requestOptions: options,
-          error: 'Connecting timed out [${options.connectTimeout?.inMilliseconds ?? 0}ms]',
-          type: DioExceptionType.connectionTimeout,
-        );
+      requestOptions: options,
+      error: 'Connecting timed out [${options.connectTimeout?.inMilliseconds ?? 0}ms]',
+      type: DioExceptionType.connectionTimeout,
+    );
 
     final HttpClientRequest request;
     try {
@@ -158,22 +156,15 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
       responseStream.statusCode,
       headers: headers,
       isRedirect: responseStream.isRedirect || responseStream.redirects.isNotEmpty,
-      redirects: responseStream.redirects
-          .map(
-            (e) => RedirectRecord(
-              e.statusCode,
-              e.method,
-              e.location,
-            ),
-          )
-          .toList(),
+      redirects: responseStream.redirects.map((e) => RedirectRecord(e.statusCode, e.method, e.location)).toList(),
       statusMessage: responseStream.reasonPhrase,
     );
   }
 
   HttpClient _configHttpClient(Future<void>? cancelFuture, Duration? connectionTimeout) {
-    final configuredConnectionTimeout =
-        connectionTimeout == null || connectionTimeout == Duration.zero ? null : connectionTimeout;
+    final configuredConnectionTimeout = connectionTimeout == null || connectionTimeout == Duration.zero
+        ? null
+        : connectionTimeout;
 
     if (cancelFuture != null) {
       final httpClient = HttpClient()

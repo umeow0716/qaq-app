@@ -24,10 +24,10 @@ class CourseTableJson {
     Map<Day, Map<SectionNumber, CourseInfoJson>>? courseInfoMap,
     String? studentId,
     String? studentName,
-  })  : studentId = JsonInit.stringInit(studentId),
-        studentName = JsonInit.stringInit(studentName),
-        courseSemester = courseSemester ?? SemesterJson(),
-        courseInfoMap = courseInfoMap ?? <Day, Map<SectionNumber, CourseInfoJson>>{} {
+  }) : studentId = JsonInit.stringInit(studentId),
+       studentName = JsonInit.stringInit(studentName),
+       courseSemester = courseSemester ?? SemesterJson(),
+       courseInfoMap = courseInfoMap ?? <Day, Map<SectionNumber, CourseInfoJson>>{} {
     for (final day in Day.values) {
       this.courseInfoMap.putIfAbsent(day, () => <SectionNumber, CourseInfoJson>{});
     }
@@ -83,9 +83,11 @@ class CourseTableJson {
         courseInfoString += '${courseInfoMap[day]?[number]}\n';
       }
     }
-    return sprintf(
-        'studentId :%s \n ---------courseSemester-------- \n%s \n---------courseInfo--------     \n%s \n',
-        [studentId, courseSemester.toString(), courseInfoString]);
+    return sprintf('studentId :%s \n ---------courseSemester-------- \n%s \n---------courseInfo--------     \n%s \n', [
+      studentId,
+      courseSemester.toString(),
+      courseInfoString,
+    ]);
   }
 
   bool get isEmpty => studentId.isEmpty && courseSemester.isEmpty;
@@ -160,14 +162,14 @@ class CourseInfoJson {
   CourseExtraInfoJson extra;
 
   CourseInfoJson({CourseMainInfoJson? main, CourseExtraInfoJson? extra})
-      : main = main ?? CourseMainInfoJson(),
-        extra = extra ?? CourseExtraInfoJson();
+    : main = main ?? CourseMainInfoJson(),
+      extra = extra ?? CourseExtraInfoJson();
 
   bool get isEmpty => main.isEmpty && extra.isEmpty;
 
   @override
-  String toString() => sprintf(
-      '---------main--------  \n%s \n---------extra-------- \n%s \n', [main.toString(), extra.toString()]);
+  String toString() =>
+      sprintf('---------main--------  \n%s \n---------extra-------- \n%s \n', [main.toString(), extra.toString()]);
 
   factory CourseInfoJson.fromJson(Map<String, dynamic> json) => _$CourseInfoJsonFromJson(json);
   Map<String, dynamic> toJson() => _$CourseInfoJsonToJson(this);

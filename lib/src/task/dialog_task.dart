@@ -29,10 +29,7 @@ class DialogTask<T> extends Task<T> {
 
   Future<TaskStatus> onError(String message) async {
     errorMessage = message;
-    final parameter = MsgDialogParameter(
-      desc: message,
-      dialogType: DialogType.warning,
-    );
+    final parameter = MsgDialogParameter(desc: message, dialogType: DialogType.warning);
     return await onErrorParameter(parameter);
   }
 

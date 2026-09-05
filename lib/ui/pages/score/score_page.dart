@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
@@ -46,11 +45,13 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   bool _isLoading = true;
 
   Widget get _summaryTile {
-    final titleWidget = _buildTile(sprintf("%s %d/%d", [
-      R.current.creditSummary,
-      courseScoreCredit.getTotalCourseCredit(),
-      courseScoreCredit.graduationInformation.lowCredit,
-    ]));
+    final titleWidget = _buildTile(
+      sprintf("%s %d/%d", [
+        R.current.creditSummary,
+        courseScoreCredit.getTotalCourseCredit(),
+        courseScoreCredit.graduationInformation.lowCredit,
+      ]),
+    );
 
     final widgetList = [
       _buildType(constCourseType[0], R.current.compulsoryCompulsory),
@@ -61,11 +62,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       _buildType(constCourseType[5], R.current.professionalElectives),
     ];
 
-    return AppExpansionTile(
-      title: titleWidget,
-      initiallyExpanded: appExpansionInitiallyExpanded,
-      children: widgetList,
-    );
+    return AppExpansionTile(title: titleWidget, initiallyExpanded: appExpansionInitiallyExpanded, children: widgetList);
   }
 
   Widget get _generalLessonItemTile {
@@ -87,19 +84,17 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       }
     }
 
-    final titleWidget = _buildTile(sprintf("%s\n%s: %d %s: %d", [
-      R.current.generalLessonSummary,
-      R.current.takeCore,
-      coreCredit,
-      R.current.takeSelect,
-      selectCredit,
-    ]));
-
-    return AppExpansionTile(
-      title: titleWidget,
-      initiallyExpanded: appExpansionInitiallyExpanded,
-      children: widgetList,
+    final titleWidget = _buildTile(
+      sprintf("%s\n%s: %d %s: %d", [
+        R.current.generalLessonSummary,
+        R.current.takeCore,
+        coreCredit,
+        R.current.takeSelect,
+        selectCredit,
+      ]),
     );
+
+    return AppExpansionTile(title: titleWidget, initiallyExpanded: appExpansionInitiallyExpanded, children: widgetList);
   }
 
   Widget get _otherDepartmentItemTile {
@@ -118,18 +113,16 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       }
     }
 
-    final titleWidget = _buildTile(sprintf("%s: %d  %s: %d", [
-      R.current.takeForeignDepartmentCredits,
-      otherDepartmentCredit,
-      R.current.takeForeignDepartmentCreditsLimit,
-      otherDepartmentMaxCredit
-    ]));
-
-    return AppExpansionTile(
-      title: titleWidget,
-      initiallyExpanded: appExpansionInitiallyExpanded,
-      children: widgetList,
+    final titleWidget = _buildTile(
+      sprintf("%s: %d  %s: %d", [
+        R.current.takeForeignDepartmentCredits,
+        otherDepartmentCredit,
+        R.current.takeForeignDepartmentCreditsLimit,
+        otherDepartmentMaxCredit,
+      ]),
     );
+
+    return AppExpansionTile(title: titleWidget, initiallyExpanded: appExpansionInitiallyExpanded, children: widgetList);
   }
 
   @override
@@ -146,11 +139,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     }
   }
 
-  void _applyCourseCategory(
-    String courseId, {
-    required String category,
-    required String openClass,
-  }) {
+  void _applyCourseCategory(String courseId, {required String category, required String openClass}) {
     for (final semesterScore in courseScoreList) {
       for (final courseInfo in semesterScore.courseScoreList) {
         if (courseInfo.courseId != courseId) continue;
@@ -170,11 +159,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
         if (courseId.isEmpty) continue;
 
         if (courseInfo.category.isNotEmpty) {
-          storage.setCourseCategoryCache(
-            courseId,
-            category: courseInfo.category,
-            openClass: courseInfo.openClass,
-          );
+          storage.setCourseCategoryCache(courseId, category: courseInfo.category, openClass: courseInfo.openClass);
           continue;
         }
 
@@ -215,25 +200,14 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
 
     taskFlow.callback = (task) {
       rate++;
-      progressRateDialog.update(
-        nowProgress: rate / total,
-        progressString: sprintf("%d/%d", [rate, total]),
-      );
+      progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
 
       if (task is! CourseCategoryTask) return;
       final result = task.result;
       if (result is! CourseSyllabusJson || result.category.isEmpty) return;
 
-      _applyCourseCategory(
-        task.code,
-        category: result.category,
-        openClass: result.className,
-      );
-      storage.setCourseCategoryCache(
-        task.code,
-        category: result.category,
-        openClass: result.className,
-      );
+      _applyCourseCategory(task.code, category: result.category, openClass: result.className);
+      storage.setCourseCategoryCache(task.code, category: result.category, openClass: result.className);
     };
 
     await taskFlow.start();
@@ -294,40 +268,37 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: tabLabelList.length,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(R.current.searchScore),
-            actions: [
-              ScorePageAppBarActionButtons(
-                onRefreshPressed: _addScoreRankTask,
-                onCalculateCreditPressed: _addSearchCourseTypeTask,
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabController,
-              labelColor: AppColors.mainColor,
-              unselectedLabelColor: Colors.white,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  topRight: Radius.circular(10),
-                ),
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-              isScrollable: true,
-              tabs: tabLabelList,
-              onTap: (int index) {
-                setState(() => _currentTabIndex = index);
-              },
-            ),
+    length: tabLabelList.length,
+    child: Scaffold(
+      appBar: AppBar(
+        title: Text(R.current.searchScore),
+        actions: [
+          ScorePageAppBarActionButtons(
+            onRefreshPressed: _addScoreRankTask,
+            onCalculateCreditPressed: _addSearchCourseTypeTask,
           ),
-          body: SingleChildScrollView(
-            child: (_isLoading || tabChildList.isEmpty) ? const SizedBox.shrink() : tabChildList[_currentTabIndex],
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppColors.mainColor,
+          unselectedLabelColor: Colors.white,
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicator: BoxDecoration(
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
+          isScrollable: true,
+          tabs: tabLabelList,
+          onTap: (int index) {
+            setState(() => _currentTabIndex = index);
+          },
         ),
-      );
+      ),
+      body: SingleChildScrollView(
+        child: (_isLoading || tabChildList.isEmpty) ? const SizedBox.shrink() : tabChildList[_currentTabIndex],
+      ),
+    ),
+  );
 
   void _buildTabBar() {
     tabLabelList.clear();
@@ -340,10 +311,8 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
           AnimationLimiter(
             child: Column(
               children: AnimationConfiguration.toStaggeredList(
-                childAnimationBuilder: (widget) => SlideAnimation(
-                  verticalOffset: 50.0,
-                  child: FadeInAnimation(child: widget),
-                ),
+                childAnimationBuilder: (widget) =>
+                    SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
                 children: [
                   _summaryTile,
                   _generalLessonItemTile,
@@ -388,25 +357,20 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   }
 
   Widget _buildTabLabel(String title) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Tab(text: title),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Tab(text: title),
+  );
 
   Widget _buildTile(String title) => Container(
-        height: 60,
-        width: 300,
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            width: 2,
-            color: context.read<AppProvider>().theme.colorScheme.tertiary,
-          ),
-        ),
-        child: Center(
-          child: Text(title, textAlign: TextAlign.center),
-        ),
-      );
+    height: 60,
+    width: 300,
+    margin: const EdgeInsets.symmetric(vertical: 10),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(width: 2, color: context.read<AppProvider>().theme.colorScheme.tertiary),
+    ),
+    child: Center(child: Text(title, textAlign: TextAlign.center)),
+  );
 
   Widget _buildType(String type, String title) {
     final nowCredit = courseScoreCredit.getCreditByType(type);
@@ -417,15 +381,8 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
         padding: const EdgeInsets.all(5),
         child: Row(
           children: [
-            Expanded(
-              child: Text(
-                sprintf("%s%s :", [
-                  type,
-                  title,
-                ]),
-              ),
-            ),
-            Text(sprintf("%d/%d", [nowCredit, minCredit]))
+            Expanded(child: Text(sprintf("%s%s :", [type, title]))),
+            Text(sprintf("%d/%d", [nowCredit, minCredit])),
           ],
         ),
       ),
@@ -451,10 +408,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
                   padding: const EdgeInsets.all(8),
                   itemCount: courseInfoList.length,
                   itemBuilder: (_, index) {
-                    return SizedBox(
-                      height: 35,
-                      child: Text(courseInfoList[index]),
-                    );
+                    return SizedBox(height: 35, child: Text(courseInfoList[index]));
                   },
                 ),
               ),
@@ -475,69 +429,54 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   }
 
   Widget _buildOneLineCourse(String name, String openClass) => Padding(
-        padding: const EdgeInsets.all(5),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(name),
-            ),
-            Text(openClass)
-          ],
-        ),
-      );
+    padding: const EdgeInsets.all(5),
+    child: Row(
+      children: [
+        Expanded(child: Text(name)),
+        Text(openClass),
+      ],
+    ),
+  );
 
   Widget _buildSemesterScores(SemesterCourseScoreJson courseScore) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: AnimationLimiter(
-          child: Column(
-            children: AnimationConfiguration.toStaggeredList(
-              childAnimationBuilder: (widget) => SlideAnimation(
-                verticalOffset: 50.0,
-                child: FadeInAnimation(
-                  child: widget,
-                ),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: CourseScoreSection(scoreInfoList: courseScore.courseScoreList),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: SemesterScoreGradeMetrics(
-                    totalAverageScoreValue: courseScore.getAverageScoreString(),
-                    performanceScoreValue: courseScore.getPerformanceScoreString(),
-                    totalCreditValue: courseScore.getTotalCreditString(),
-                    creditsEarnedValue: courseScore.getTakeCreditString(),
-                  ),
-                ),
-                _buildRankMetrics(courseScore),
-              ],
+    padding: const EdgeInsets.all(24.0),
+    child: AnimationLimiter(
+      child: Column(
+        children: AnimationConfiguration.toStaggeredList(
+          childAnimationBuilder: (widget) =>
+              SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: CourseScoreSection(scoreInfoList: courseScore.courseScoreList),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: SemesterScoreGradeMetrics(
+                totalAverageScoreValue: courseScore.getAverageScoreString(),
+                performanceScoreValue: courseScore.getPerformanceScoreString(),
+                totalCreditValue: courseScore.getTotalCreditString(),
+                creditsEarnedValue: courseScore.getTakeCreditString(),
+              ),
+            ),
+            _buildRankMetrics(courseScore),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _buildRankMetrics(SemesterCourseScoreJson courseScore) => (courseScore.isRankEmpty)
-      ? Text(
-          R.current.noRankInfo,
-          style: const TextStyle(fontSize: 24),
-        )
+      ? Text(R.current.noRankInfo, style: const TextStyle(fontSize: 24))
       : Column(
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: RankGradeMetrics(
-                title: R.current.semesterRanking,
-                rankInfo: courseScore.now,
-              ),
+              child: RankGradeMetrics(title: R.current.semesterRanking, rankInfo: courseScore.now),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: RankGradeMetrics(
-                title: R.current.previousRankings,
-                rankInfo: courseScore.history,
-              ),
+              child: RankGradeMetrics(title: R.current.previousRankings, rankInfo: courseScore.history),
             ),
           ],
         );

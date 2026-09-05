@@ -10,9 +10,7 @@ class APTreeJson {
   @JsonKey(name: 'parentDn')
   String parentDn;
 
-  APTreeJson(List<APListJson>? apList, String? parentDn)
-      : apList = apList ?? <APListJson>[],
-        parentDn = parentDn ?? '';
+  APTreeJson(List<APListJson>? apList, String? parentDn) : apList = apList ?? <APListJson>[], parentDn = parentDn ?? '';
 
   factory APTreeJson.fromJson(Map<String, dynamic> srcJson) => _$APTreeJsonFromJson(srcJson);
 }
@@ -33,12 +31,12 @@ class APListJson {
   String urlLink;
 
   APListJson(String? apDn, String? description, String? icon, String? type, String? urlLink, String? urlSource)
-      : apDn = apDn ?? '',
-        description = description ?? '',
-        icon = icon ?? '',
-        type = type ?? '',
-        urlLink = urlLink ?? '',
-        urlSource = urlSource ?? '';
+    : apDn = apDn ?? '',
+      description = description ?? '',
+      icon = icon ?? '',
+      type = type ?? '',
+      urlLink = urlLink ?? '',
+      urlSource = urlSource ?? '';
 
   factory APListJson.fromJson(Map<String, dynamic> srcJson) => _$APListJsonFromJson(srcJson);
 }

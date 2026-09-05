@@ -18,15 +18,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
 
-enum OnListViewPress {
-  setting,
-  fileViewer,
-  logout,
-  report,
-  about,
-  login,
-  subSystem,
-}
+enum OnListViewPress { setting, fileViewer, logout, report, about, login, subSystem }
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -43,46 +35,41 @@ class _OtherPageState extends State<OtherPage> {
       "icon": EvaIcons.settings2Outline,
       "color": Colors.orange,
       "title": R.current.setting,
-      "onPress": OnListViewPress.setting
+      "onPress": OnListViewPress.setting,
     },
     {
       "icon": Icons.computer,
       "color": Colors.lightBlue,
       "title": R.current.informationSystem,
-      "onPress": OnListViewPress.subSystem
+      "onPress": OnListViewPress.subSystem,
     },
     {
       "icon": EvaIcons.downloadOutline,
       "color": Colors.yellow[700],
       "title": R.current.fileViewer,
-      "onPress": OnListViewPress.fileViewer
+      "onPress": OnListViewPress.fileViewer,
     },
     if (LocalStorage.instance.getPassword().isNotEmpty)
       {
         "icon": EvaIcons.undoOutline,
         "color": Colors.teal[400],
         "title": R.current.logout,
-        "onPress": OnListViewPress.logout
+        "onPress": OnListViewPress.logout,
       },
     if (LocalStorage.instance.getPassword().isEmpty)
-      {
-        "icon": EvaIcons.logIn,
-        "color": Colors.teal[400],
-        "title": R.current.login,
-        "onPress": OnListViewPress.login,
-      },
+      {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
     {
       "icon": EvaIcons.messageSquareOutline,
       "color": Colors.cyan,
       "title": R.current.feedback,
-      "onPress": OnListViewPress.report
+      "onPress": OnListViewPress.report,
     },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
       "title": R.current.about,
-      "onPress": OnListViewPress.about
-    }
+      "onPress": OnListViewPress.about,
+    },
   ];
 
   @override
@@ -97,15 +84,16 @@ class _OtherPageState extends State<OtherPage> {
         break;
       case OnListViewPress.logout:
         MsgDialogParameter parameter = MsgDialogParameter(
-            desc: R.current.logoutWarning,
-            dialogType: DialogType.warning,
-            title: R.current.warning,
-            okButtonText: R.current.sure,
-            onOkButtonClicked: () {
-              Get.back();
-              TaskFlow.resetLoginStatus();
-              LocalStorage.instance.logout().then((_) => RouteUtils.toLoginScreen());
-            });
+          desc: R.current.logoutWarning,
+          dialogType: DialogType.warning,
+          title: R.current.warning,
+          okButtonText: R.current.sure,
+          onOkButtonClicked: () {
+            Get.back();
+            TaskFlow.resetLoginStatus();
+            LocalStorage.instance.logout().then((_) => RouteUtils.toLoginScreen());
+          },
+        );
         MsgDialog(parameter).show();
         break;
       case OnListViewPress.login:
@@ -128,10 +116,7 @@ class _OtherPageState extends State<OtherPage> {
         final mainVersion = await AppUpdate.getAppVersion();
         final link = AppLink.feedbackUrl(mainVersion, LogConsole.getLog());
 
-        RouteUtils.toWebViewPage(
-          initialUrl: link,
-          title: R.current.feedback,
-        );
+        RouteUtils.toWebViewPage(initialUrl: link, title: R.current.feedback);
         break;
     }
   }
@@ -139,38 +124,34 @@ class _OtherPageState extends State<OtherPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(R.current.titleOther),
-      ),
-      body: Column(children: <Widget>[
-        if (LocalStorage.instance.getAccount().isNotEmpty)
-          SizedBox(
-            child: FutureBuilder<Map<String, Map<String, String>>>(
-              future: NTUTConnector.getUserImageRequestInfo(),
-              builder: (_, snapshot) {
-                final data = snapshot.data;
-                return data != null ? _buildHeader(data) : const SizedBox.shrink();
-              },
+      appBar: AppBar(title: Text(R.current.titleOther)),
+      body: Column(
+        children: <Widget>[
+          if (LocalStorage.instance.getAccount().isNotEmpty)
+            SizedBox(
+              child: FutureBuilder<Map<String, Map<String, String>>>(
+                future: NTUTConnector.getUserImageRequestInfo(),
+                builder: (_, snapshot) {
+                  final data = snapshot.data;
+                  return data != null ? _buildHeader(data) : const SizedBox.shrink();
+                },
+              ),
             ),
-          ),
-        const SizedBox(
-          height: 16,
-        ),
-        Expanded(
-          child: AnimationLimiter(
-            child: ListView.builder(
-              itemCount: optionList.length,
-              itemBuilder: (context, index) => AnimationConfiguration.staggeredList(
-                position: index,
-                duration: const Duration(milliseconds: 375),
-                child: ScaleAnimation(
-                  child: _buildSetting(optionList[index]),
+          const SizedBox(height: 16),
+          Expanded(
+            child: AnimationLimiter(
+              child: ListView.builder(
+                itemCount: optionList.length,
+                itemBuilder: (context, index) => AnimationConfiguration.staggeredList(
+                  position: index,
+                  duration: const Duration(milliseconds: 375),
+                  child: ScaleAnimation(child: _buildSetting(optionList[index])),
                 ),
               ),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -182,10 +163,7 @@ class _OtherPageState extends State<OtherPage> {
       cacheManager: LocalStorage.instance.cacheManager,
       imageUrl: userImageInfo["url"]?["value"] ?? "",
       httpHeaders: userImageInfo["header"] ?? const <String, String>{},
-      imageBuilder: (context, imageProvider) => CircleAvatar(
-        radius: 40.0,
-        backgroundImage: imageProvider,
-      ),
+      imageBuilder: (context, imageProvider) => CircleAvatar(radius: 40.0, backgroundImage: imageProvider),
       useOldImageOnUrlChange: true,
       placeholder: (context, url) => const SpinKitRotatingCircle(color: Colors.white),
       errorWidget: (context, url, error) {
@@ -197,25 +175,14 @@ class _OtherPageState extends State<OtherPage> {
     final data = MediaQuery.of(context);
     if (givenName.isNotEmpty) {
       columnItem
-        ..add(Text(
-          givenName,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        ..add(Text(givenName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))
+        ..add(const SizedBox(height: 5.0))
+        ..add(
+          MediaQuery(
+            data: data.copyWith(textScaler: TextScaler.noScaling),
+            child: Text(userMail, style: const TextStyle(fontSize: 16)),
           ),
-        ))
-        ..add(const SizedBox(
-          height: 5.0,
-        ))
-        ..add(MediaQuery(
-          data: data.copyWith(textScaler: TextScaler.noScaling),
-          child: Text(
-            userMail,
-            style: const TextStyle(
-              fontSize: 16,
-            ),
-          ),
-        ));
+        );
     } else {
       givenName = (givenName.isEmpty) ? R.current.pleaseLogin : givenName;
       userMail = (userMail.isEmpty) ? "" : userMail;
@@ -247,9 +214,7 @@ class _OtherPageState extends State<OtherPage> {
               },
             ),
           ),
-          const SizedBox(
-            width: 16.0,
-          ),
+          const SizedBox(width: 16.0),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,17 +236,9 @@ class _OtherPageState extends State<OtherPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(
-              data['icon'] as IconData,
-              color: data['color'] as Color?,
-            ),
-            const SizedBox(
-              width: 20.0,
-            ),
-            Text(
-              data['title']?.toString() ?? '',
-              style: const TextStyle(fontSize: 18),
-            ),
+            Icon(data['icon'] as IconData, color: data['color'] as Color?),
+            const SizedBox(width: 20.0),
+            Text(data['title']?.toString() ?? '', style: const TextStyle(fontSize: 18)),
           ],
         ),
       ),

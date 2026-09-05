@@ -6,5 +6,5 @@ final List<RegExp> blockedCookieNamePatterns = [
   // Please refer to this article
   // https://juejin.cn/post/6844903934042046472
   // for more details.
-  RegExp('BIGipServer')
+  RegExp('BIGipServer'),
 ];

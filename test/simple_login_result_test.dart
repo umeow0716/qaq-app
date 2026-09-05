@@ -8,18 +8,17 @@ void main() {
     String errorMsg = '',
     bool resetPwd = false,
     String? passwordExpiredRemind,
-  }) =>
-      SimpleLoginResult.fromJson({
-        'success': success,
-        'errorMsg': errorMsg,
-        'resetPwd': resetPwd,
-        'passwordExpiredRemind': passwordExpiredRemind,
-        'givenName': 'Test User',
-        'userMail': 'test@ntut.edu.tw',
-        'userPhoto': '',
-        'userDn': 'cn=test',
-        'sessionId': 'session',
-      });
+  }) => SimpleLoginResult.fromJson({
+    'success': success,
+    'errorMsg': errorMsg,
+    'resetPwd': resetPwd,
+    'passwordExpiredRemind': passwordExpiredRemind,
+    'givenName': 'Test User',
+    'userMail': 'test@ntut.edu.tw',
+    'userPhoto': '',
+    'userDn': 'cn=test',
+    'sessionId': 'session',
+  });
 
   test('successful login is normal', () {
     final result = parse(success: true);
@@ -38,10 +37,7 @@ void main() {
   });
 
   test('expired password requires reset flag and message', () {
-    expect(
-      parse(errorMsg: '密碼已過期', resetPwd: true).accountStatus,
-      AccountStatus.passwordExpired,
-    );
+    expect(parse(errorMsg: '密碼已過期', resetPwd: true).accountStatus, AccountStatus.passwordExpired);
   });
 
   test('mobile verification is a failed login', () {

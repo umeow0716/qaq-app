@@ -1,4 +1,3 @@
-
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';

@@ -12,26 +12,15 @@ class ScorePageAppBarActionButtons extends StatelessWidget {
   final VoidCallback onCalculateCreditPressed;
 
   Widget get _refreshButton => Tooltip(
-        message: R.current.refresh,
-        child: IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: onRefreshPressed,
-        ),
-      );
+    message: R.current.refresh,
+    child: IconButton(icon: const Icon(Icons.refresh), onPressed: onRefreshPressed),
+  );
 
   Widget get _calculateCreditButton => Tooltip(
-        message: R.current.calculationCredit,
-        child: IconButton(
-          icon: const Icon(Icons.calculate),
-          onPressed: onCalculateCreditPressed,
-        ),
-      );
+    message: R.current.calculationCredit,
+    child: IconButton(icon: const Icon(Icons.calculate), onPressed: onCalculateCreditPressed),
+  );
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          _refreshButton,
-          _calculateCreditButton,
-        ],
-      );
+  Widget build(BuildContext context) => Row(children: [_refreshButton, _calculateCreditButton]);
 }

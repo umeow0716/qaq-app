@@ -167,14 +167,10 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
               onPressed: _isUpdatingSubscription ? null : _toggleSubscription,
               tooltip: R.current.subscribe,
               child: _isUpdatingSubscription
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                   : openNotifications
-                      ? const Icon(Icons.notifications_active)
-                      : const Icon(Icons.notifications_off),
+                  ? const Icon(Icons.notifications_active)
+                  : const Icon(Icons.notifications_off),
             )
           : null,
     );
@@ -194,10 +190,7 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            loadError,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(loadError, textAlign: TextAlign.center),
         ),
       );
     }
@@ -214,10 +207,7 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
       padding: EdgeInsets.zero,
       itemCount: items.length,
       itemBuilder: (context, index) {
-        return InkWell(
-          onTap: () => _getAnnouncementDetail(items[index]),
-          child: _listItem(items[index]),
-        );
+        return InkWell(onTap: () => _getAnnouncementDetail(items[index]), child: _listItem(items[index]));
       },
     );
   }
@@ -231,11 +221,7 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              const Icon(
-                Icons.account_circle,
-                size: 55,
-                color: Colors.red,
-              ),
+              const Icon(Icons.account_circle, size: 55, color: Colors.red),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 10),
@@ -256,14 +242,8 @@ class _IPlusAnnouncementPage extends State<IPlusAnnouncementPage> with Automatic
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          Text(
-                            data.realname,
-                            style: TextStyle(fontWeight: fontWeight, fontSize: 15.5),
-                          ),
-                          Text(
-                            data.postdate,
-                            style: TextStyle(fontWeight: fontWeight, fontSize: 13.5),
-                          ),
+                          Text(data.realname, style: TextStyle(fontWeight: fontWeight, fontSize: 15.5)),
+                          Text(data.postdate, style: TextStyle(fontWeight: fontWeight, fontSize: 13.5)),
                         ],
                       ),
                     ],

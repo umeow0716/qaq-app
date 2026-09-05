@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
@@ -47,7 +46,8 @@ class CourseSemesterTask extends CourseSystemTask<List<SemesterJson>> {
       year--;
     }
     final before = SemesterJson(semester: semester.toString(), year: year.toString());
-    final select = await Get.dialog<SemesterJson>(
+    final select =
+        await Get.dialog<SemesterJson>(
           StatefulBuilder(
             builder: (context, setState) => AlertDialog(
               title: Text(R.current.selectSemester),
@@ -73,7 +73,7 @@ class CourseSemesterTask extends CourseSystemTask<List<SemesterJson>> {
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
               actions: [
@@ -81,13 +81,10 @@ class CourseSemesterTask extends CourseSystemTask<List<SemesterJson>> {
                   child: Text(R.current.sure),
                   onPressed: () {
                     Get.back<SemesterJson>(
-                      result: SemesterJson(
-                        semester: semester.toString(),
-                        year: year.toString(),
-                      ),
+                      result: SemesterJson(semester: semester.toString(), year: year.toString()),
                     );
                   },
-                )
+                ),
               ],
             ),
           ),

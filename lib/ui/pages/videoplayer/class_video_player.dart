@@ -1,4 +1,3 @@
-
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,12 +18,7 @@ import 'package:path/path.dart' as path;
 import 'package:video_player/video_player.dart';
 
 class ClassVideoPlayer extends StatefulWidget {
-  const ClassVideoPlayer(
-    this.videoUrl,
-    this.courseInfo,
-    this.name, {
-    super.key,
-  });
+  const ClassVideoPlayer(this.videoUrl, this.courseInfo, this.name, {super.key});
 
   final String videoUrl;
   final CourseInfoJson courseInfo;
@@ -57,16 +51,13 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
 
   @override
   void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
     _playerController?.dispose();
     _chewieController?.dispose();
 
     super.dispose();
   }
-
 
   void parseVideo() async {
     _isLoading = true;
@@ -173,11 +164,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
 
     await playerController.initialize();
 
-    _chewieController = ChewieController(
-      videoPlayerController: playerController,
-      autoPlay: true,
-      autoInitialize: true,
-    );
+    _chewieController = ChewieController(videoPlayerController: playerController, autoPlay: true, autoInitialize: true);
   }
 
   @override
@@ -185,54 +172,52 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
     final chewieController = _chewieController;
 
     return Scaffold(
-        appBar: AppBar(
-          leading: BackButton(
-            onPressed: () => Get.back(),
-          ),
-          title: Text(R.current.classVideo),
-          actions: [
-            if (!_isLoading)
-              IconButton(
-                icon: const Icon(Icons.file_download),
-                onPressed: () {
-                  final url = _playerController?.dataSource;
-                  if (url == null) {
-                    return;
-                  }
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => Get.back()),
+        title: Text(R.current.classVideo),
+        actions: [
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.file_download),
+              onPressed: () {
+                final url = _playerController?.dataSource;
+                if (url == null) {
+                  return;
+                }
 
-                  final selectedVideoInfo = _selectedVideoInfo;
-                  if (selectedVideoInfo == null) {
-                    return;
-                  }
+                final selectedVideoInfo = _selectedVideoInfo;
+                if (selectedVideoInfo == null) {
+                  return;
+                }
 
-                  final courseName = widget.courseInfo.main.course.name;
-                  final saveName = "${widget.name}_${selectedVideoInfo.name}.mp4";
-                  final subDir = (LanguageUtil.getLangIndex() == LangEnum.zh) ? "上課錄影" : "video";
-                  final dirName = path.join(courseName, subDir);
+                final courseName = widget.courseInfo.main.course.name;
+                final saveName = "${widget.name}_${selectedVideoInfo.name}.mp4";
+                final subDir = (LanguageUtil.getLangIndex() == LangEnum.zh) ? "上課錄影" : "video";
+                final dirName = path.join(courseName, subDir);
 
-                  FileDownload.download(url, dirName, saveName);
-                },
-              ),
-            if (!_isLoading)
-              IconButton(
-                icon: const Icon(Icons.open_in_new),
-                onPressed: () async {
-                  final dataSource = _playerController?.dataSource;
+                FileDownload.download(url, dirName, saveName);
+              },
+            ),
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () async {
+                final dataSource = _playerController?.dataSource;
 
-                  if (dataSource == null) {
-                    return;
-                  }
+                if (dataSource == null) {
+                  return;
+                }
 
-                  await RouteUtils.toWebViewPage(initialUrl: Uri.parse(dataSource));
-                },
-              ),
-          ],
-        ),
-        body: SafeArea(
-          child: (!_isLoading && chewieController != null)
-              ? Chewie(controller: chewieController)
-              : const Center(child: CircularProgressIndicator()),
-        ),
-      );
+                await RouteUtils.toWebViewPage(initialUrl: Uri.parse(dataSource));
+              },
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: (!_isLoading && chewieController != null)
+            ? Chewie(controller: chewieController)
+            : const Center(child: CircularProgressIndicator()),
+      ),
+    );
   }
 }

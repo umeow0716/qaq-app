@@ -304,10 +304,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 shrinkWrap: true, //使清單最小化
                 itemBuilder: (BuildContext context, int index) {
                   return Slidable(
-                    startActionPane: const ActionPane(
-                      motion: ScrollMotion(),
-                      children: [],
-                    ),
+                    startActionPane: const ActionPane(motion: ScrollMotion(), children: []),
                     endActionPane: ActionPane(
                       motion: const ScrollMotion(),
                       children: [
@@ -326,12 +323,14 @@ class _CourseTablePageState extends State<CourseTablePage> {
                     child: SizedBox(
                       height: 50,
                       child: TextButton(
-                        child: Text(sprintf("%s %s %s-%s", [
-                          value[index].studentId,
-                          value[index].studentName,
-                          value[index].courseSemester.year,
-                          value[index].courseSemester.semester
-                        ])),
+                        child: Text(
+                          sprintf("%s %s %s-%s", [
+                            value[index].studentId,
+                            value[index].studentName,
+                            value[index].courseSemester.year,
+                            value[index].courseSemester.semester,
+                          ]),
+                        ),
                         onPressed: () {
                           LocalStorage.instance.getCourseSetting().info = value[index]; //儲存課表
                           LocalStorage.instance.saveCourseSetting();
@@ -377,9 +376,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
               : const SizedBox.shrink(),
           (!isLoading && LocalStorage.instance.getAccount() != courseTableData?.studentId)
               ? Padding(
-                  padding: const EdgeInsets.only(
-                    right: 20,
-                  ),
+                  padding: const EdgeInsets.only(right: 20),
                   child: InkWell(
                     onTap: () {
                       setState(() => favorite = !favorite);
@@ -390,9 +387,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 )
               : const SizedBox.shrink(),
           Padding(
-            padding: const EdgeInsets.only(
-              right: 20,
-            ),
+            padding: const EdgeInsets.only(right: 20),
             child: InkWell(
               onTap: () => _getCourseTable(
                 semesterSetting: courseTableData?.courseSemester,
@@ -405,21 +400,11 @@ class _CourseTablePageState extends State<CourseTablePage> {
           PopupMenuButton<int>(
             onSelected: (result) => setState(() => _onPopupMenuSelect(result)),
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 0,
-                child: Text(R.current.searchCredit),
-              ),
-              PopupMenuItem(
-                value: 1,
-                child: Text(R.current.loadFavorite),
-              ),
-              if (Platform.isAndroid)
-                PopupMenuItem(
-                  value: 2,
-                  child: Text(R.current.setAsAndroidWeight),
-                ),
+              PopupMenuItem(value: 0, child: Text(R.current.searchCredit)),
+              PopupMenuItem(value: 1, child: Text(R.current.loadFavorite)),
+              if (Platform.isAndroid) PopupMenuItem(value: 2, child: Text(R.current.setAsAndroidWeight)),
             ],
-          )
+          ),
         ],
       ),
       body: Column(
@@ -456,13 +441,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 TextButton(
                   child: Row(
                     children: [
-                      Text(
-                        semesterString,
-                        textAlign: TextAlign.center,
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.all(5),
-                      ),
+                      Text(semesterString, textAlign: TextAlign.center),
+                      const Padding(padding: EdgeInsets.all(5)),
                       const Icon(Icons.arrow_drop_down),
                     ],
                   ),
@@ -471,9 +451,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
               ],
             ),
           ),
-          Expanded(
-            child: _buildListViewWithScreenshot(),
-          ),
+          Expanded(child: _buildListViewWithScreenshot()),
         ],
       ),
     );
@@ -482,71 +460,51 @@ class _CourseTablePageState extends State<CourseTablePage> {
   final GlobalKey<OverRepaintBoundaryState> overRepaintKey = GlobalKey();
 
   Widget _buildListViewWithScreenshot() => SingleChildScrollView(
-        child: OverRepaintBoundary(
-          key: overRepaintKey,
-          child: RepaintBoundary(
-            child: (isLoading)
-                ? Column(
+    child: OverRepaintBoundary(
+      key: overRepaintKey,
+      child: RepaintBoundary(
+        child: (isLoading)
+            ? Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            //makes the red row full width
-                            child: SizedBox(
-                              height: courseHeight * showCourseTableNum,
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                          ),
-                        ],
+                      Expanded(
+                        //makes the red row full width
+                        child: SizedBox(
+                          height: courseHeight * showCourseTableNum,
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
                       ),
                     ],
-                  )
-                : Column(
-                    children: List.generate(
-                      1 + courseTableControl.getSectionIntList.length,
-                      (index) {
-                        final widget = (index == 0) ? _buildDay() : _buildCourseTable(index - 1);
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          duration: const Duration(milliseconds: 375),
-                          child: ScaleAnimation(
-                            child: FadeInAnimation(
-                              child: widget,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
-          ),
-        ),
-      );
+                ],
+              )
+            : Column(
+                children: List.generate(1 + courseTableControl.getSectionIntList.length, (index) {
+                  final widget = (index == 0) ? _buildDay() : _buildCourseTable(index - 1);
+                  return AnimationConfiguration.staggeredList(
+                    position: index,
+                    duration: const Duration(milliseconds: 375),
+                    child: ScaleAnimation(child: FadeInAnimation(child: widget)),
+                  );
+                }),
+              ),
+      ),
+    ),
+  );
 
   Widget _buildDay() {
     final List<Widget> widgetList = [];
-    widgetList.add(Container(
-      width: sectionWidth,
-    ));
+    widgetList.add(Container(width: sectionWidth));
     for (final i in courseTableControl.getDayIntList) {
-      widgetList.add(
-        Expanded(
-          child: Text(
-            courseTableControl.getDayString(i),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+      widgetList.add(Expanded(child: Text(courseTableControl.getDayString(i), textAlign: TextAlign.center)));
     }
     return Container(
       color: Theme.of(context).colorScheme.surface.withAlpha(courseTableWithAlpha),
       height: dayHeight,
-      child: Row(
-        children: widgetList,
-      ),
+      child: Row(children: widgetList),
     );
   }
 
@@ -560,10 +518,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
       Container(
         width: sectionWidth,
         alignment: Alignment.center,
-        child: Text(
-          courseTableControl.getSectionString(section),
-          textAlign: TextAlign.center,
-        ),
+        child: Text(courseTableControl.getSectionString(section), textAlign: TextAlign.center),
       ),
     );
 
@@ -580,10 +535,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                   elevation: 0,
                   margin: const EdgeInsets.all(2),
                   child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.all(Radius.circular(5)),
-                      color: color,
-                    ),
+                    decoration: BoxDecoration(borderRadius: const BorderRadius.all(Radius.circular(5)), color: color),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -621,10 +573,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     return Container(
       color: color,
       height: courseHeight,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: widgetList,
-      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: widgetList),
     );
   }
 
@@ -688,20 +637,22 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 autofocus: true,
                 decoration: InputDecoration(hintText: value),
               ),
-            )
+            ),
           ],
         ),
         actions: [
           TextButton(
-              child: Text(R.current.cancel),
-              onPressed: () {
-                Get.back(result: null);
-              }),
+            child: Text(R.current.cancel),
+            onPressed: () {
+              Get.back(result: null);
+            },
+          ),
           TextButton(
-              child: Text(R.current.sure),
-              onPressed: () {
-                Get.back<String>(result: controller.text);
-              })
+            child: Text(R.current.sure),
+            onPressed: () {
+              Get.back<String>(result: controller.text);
+            },
+          ),
         ],
       ),
       barrierDismissible: true,

@@ -7,10 +7,7 @@ class MyProgressDialog {
     BotToast.showCustomLoading(
       toastBuilder: (cancel) => CustomProgressDialog(
         child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(5),
-          ),
+          decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(5)),
           padding: const EdgeInsets.all(20),
           child: FittedBox(
             child: Column(

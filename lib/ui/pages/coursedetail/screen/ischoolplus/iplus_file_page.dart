@@ -19,11 +19,7 @@ class IPlusFilePage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const IPlusFilePage(
-    this.studentId,
-    this.courseInfo, {
-    super.key,
-  });
+  const IPlusFilePage(this.studentId, this.courseInfo, {super.key});
 
   @override
   State<IPlusFilePage> createState() => _IPlusFilePage();
@@ -113,10 +109,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            loadError,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(loadError, textAlign: TextAlign.center),
         ),
       );
     }
@@ -142,76 +135,51 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   }
 
   Widget _buildFileList() => Column(
-        children: [
-          Expanded(
-            child: ListView.separated(
-              itemCount: courseFileList.length,
-              itemBuilder: (context, index) => GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                child: _buildCourseFile(index, courseFileList[index]),
-                onTap: () {
-                  if (selectList.inSelectMode) {
-                    setState(() {
-                      selectList.setItemReverse(index);
-                    });
-                  } else {
-                    _downloadOneFile(index);
-                  }
-                },
-                onLongPress: () {
-                  if (!selectList.inSelectMode) {
-                    setState(() {
-                      selectList.setItemReverse(index);
-                    });
-                  }
-                },
-              ),
-              separatorBuilder: (context, index) => Container(
-                color: Colors.black12,
-                height: 1,
-              ),
-            ),
+    children: [
+      Expanded(
+        child: ListView.separated(
+          itemCount: courseFileList.length,
+          itemBuilder: (context, index) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            child: _buildCourseFile(index, courseFileList[index]),
+            onTap: () {
+              if (selectList.inSelectMode) {
+                setState(() {
+                  selectList.setItemReverse(index);
+                });
+              } else {
+                _downloadOneFile(index);
+              }
+            },
+            onLongPress: () {
+              if (!selectList.inSelectMode) {
+                setState(() {
+                  selectList.setItemReverse(index);
+                });
+              }
+            },
           ),
-        ],
-      );
+          separatorBuilder: (context, index) => Container(color: Colors.black12, height: 1),
+        ),
+      ),
+    ],
+  );
 
   List<Widget> iconList = [
-    const Icon(
-      MyIcon.filePdf,
-      color: Colors.red,
-    ),
-    const Icon(
-      MyIcon.fileWord,
-      color: Colors.blue,
-    ),
-    const Icon(
-      MyIcon.filePowerPoint,
-      color: Colors.redAccent,
-    ),
-    const Icon(
-      MyIcon.fileExcel,
-      color: Colors.green,
-    ),
-    const Icon(
-      MyIcon.fileArchive,
-      color: Colors.blue,
-    ),
-    const Icon(
-      MyIcon.link,
-      color: Colors.grey,
-    ),
-    const Icon(
-      MyIcon.docInv,
-      color: Colors.blueGrey,
-    )
+    const Icon(MyIcon.filePdf, color: Colors.red),
+    const Icon(MyIcon.fileWord, color: Colors.blue),
+    const Icon(MyIcon.filePowerPoint, color: Colors.redAccent),
+    const Icon(MyIcon.fileExcel, color: Colors.green),
+    const Icon(MyIcon.fileArchive, color: Colors.blue),
+    const Icon(MyIcon.link, color: Colors.grey),
+    const Icon(MyIcon.docInv, color: Colors.blueGrey),
   ];
 
   Widget _buildCourseFile(int index, CourseFileJson courseFile) => Container(
-      color: selectList.getItemSelect(index) ? Colors.grey : Theme.of(context).colorScheme.surface,
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        children: _buildFileItem(courseFile),
-      ));
+    color: selectList.getItemSelect(index) ? Colors.grey : Theme.of(context).colorScheme.surface,
+    padding: const EdgeInsets.all(10),
+    child: Column(children: _buildFileItem(courseFile)),
+  );
 
   List<Widget> _buildFileItem(CourseFileJson courseFile) {
     final List<Widget> widgetList = [];
@@ -228,12 +196,8 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
               Icon(Icons.file_copy),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 10),
-          ),
-          Expanded(
-            child: Text(courseFile.name),
-          ),
+          const Padding(padding: EdgeInsets.only(left: 10)),
+          Expanded(child: Text(courseFile.name)),
         ],
       ),
     );
@@ -276,8 +240,8 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
       errorDialogParameter.title = R.current.AreYouSureToOpen;
       errorDialogParameter.dialogType = DialogType.info;
       errorDialogParameter.okButtonText = R.current.sure;
-      errorDialogParameter.onOkButtonClicked =
-          () => RouteUtils.toVideoPlayer(urlParse.toString(), widget.courseInfo, courseFile.name);
+      errorDialogParameter.onOkButtonClicked = () =>
+          RouteUtils.toVideoPlayer(urlParse.toString(), widget.courseInfo, courseFile.name);
       MsgDialog(errorDialogParameter).show();
     } else {
       await FileDownload.download(url, dirName, courseFile.name, referer);

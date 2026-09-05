@@ -3,35 +3,29 @@
 part of 'course_table_json.dart';
 
 CourseTableJson _$CourseTableJsonFromJson(Map<String, dynamic> json) => CourseTableJson(
-      courseSemester: json['courseSemester'] == null
-          ? null
-          : SemesterJson.fromJson(json['courseSemester'] as Map<String, dynamic>),
-      courseInfoMap: (json['courseInfoMap'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(
-          $enumDecode(_$DayEnumMap, k),
-          (e as Map<String, dynamic>).map(
-            (k, e) => MapEntry(
-              $enumDecode(_$SectionNumberEnumMap, k),
-              CourseInfoJson.fromJson(e as Map<String, dynamic>),
-            ),
-          ),
-        ),
+  courseSemester: json['courseSemester'] == null
+      ? null
+      : SemesterJson.fromJson(json['courseSemester'] as Map<String, dynamic>),
+  courseInfoMap: (json['courseInfoMap'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(
+      $enumDecode(_$DayEnumMap, k),
+      (e as Map<String, dynamic>).map(
+        (k, e) => MapEntry($enumDecode(_$SectionNumberEnumMap, k), CourseInfoJson.fromJson(e as Map<String, dynamic>)),
       ),
-      studentId: json['studentId'] as String?,
-      studentName: json['studentName'] as String?,
-    );
+    ),
+  ),
+  studentId: json['studentId'] as String?,
+  studentName: json['studentName'] as String?,
+);
 
 Map<String, dynamic> _$CourseTableJsonToJson(CourseTableJson instance) => <String, dynamic>{
-      'courseSemester': instance.courseSemester,
-      'studentId': instance.studentId,
-      'studentName': instance.studentName,
-      'courseInfoMap': instance.courseInfoMap.map(
-        (k, e) => MapEntry(
-          _$DayEnumMap[k]!,
-          e.map((k, e) => MapEntry(_$SectionNumberEnumMap[k]!, e)),
-        ),
-      ),
-    };
+  'courseSemester': instance.courseSemester,
+  'studentId': instance.studentId,
+  'studentName': instance.studentName,
+  'courseInfoMap': instance.courseInfoMap.map(
+    (k, e) => MapEntry(_$DayEnumMap[k]!, e.map((k, e) => MapEntry(_$SectionNumberEnumMap[k]!, e))),
+  ),
+};
 
 const _$SectionNumberEnumMap = {
   SectionNumber.T_1: 'T_1',
@@ -63,9 +57,11 @@ const _$DayEnumMap = {
 };
 
 CourseInfoJson _$CourseInfoJsonFromJson(Map<String, dynamic> json) => CourseInfoJson(
-      main: json['main'] == null ? null : CourseMainInfoJson.fromJson(json['main'] as Map<String, dynamic>),
-      extra: json['extra'] == null ? null : CourseExtraInfoJson.fromJson(json['extra'] as Map<String, dynamic>),
-    );
+  main: json['main'] == null ? null : CourseMainInfoJson.fromJson(json['main'] as Map<String, dynamic>),
+  extra: json['extra'] == null ? null : CourseExtraInfoJson.fromJson(json['extra'] as Map<String, dynamic>),
+);
 
-Map<String, dynamic> _$CourseInfoJsonToJson(CourseInfoJson instance) =>
-    <String, dynamic>{'main': instance.main, 'extra': instance.extra};
+Map<String, dynamic> _$CourseInfoJsonToJson(CourseInfoJson instance) => <String, dynamic>{
+  'main': instance.main,
+  'extra': instance.extra,
+};

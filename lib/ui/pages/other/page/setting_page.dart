@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -49,28 +48,19 @@ class _SettingPageState extends State<SettingPage> {
 
     if (Platform.isAndroid) {
       listViewData.add(_buildOpenExternalVideoSetting());
-
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(R.current.setting),
-      ),
+      appBar: AppBar(title: Text(R.current.setting)),
       body: ListView.separated(
         itemCount: listViewData.length,
         itemBuilder: (context, index) {
           final widget = listViewData[index];
-          return Container(
-            padding: const EdgeInsets.only(top: 5, left: 20, right: 20),
-            child: WidgetAnimator(widget),
-          );
+          return Container(padding: const EdgeInsets.only(top: 5, left: 20, right: 20), child: WidgetAnimator(widget));
         },
         separatorBuilder: (context, index) {
           // 顯示格線
-          return Container(
-            color: Colors.black12,
-            height: 1,
-          );
+          return Container(color: Colors.black12, height: 1);
         },
       ),
     );
@@ -85,14 +75,8 @@ class _SettingPageState extends State<SettingPage> {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            R.current.languageSwitch,
-            style: textTitle,
-          ),
-          Text(
-            R.current.willRestart,
-            style: textBody,
-          ),
+          Text(R.current.languageSwitch, style: textTitle),
+          Text(R.current.willRestart, style: textBody),
         ],
       ),
       value: (LanguageUtil.getLangIndex() == LangEnum.en),
@@ -114,16 +98,9 @@ class _SettingPageState extends State<SettingPage> {
             contentPadding: const EdgeInsets.all(0),
             title: Row(
               children: [
-                Text(
-                  R.current.darkMode,
-                  style: textTitle,
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(left: 10),
-                ),
-                const Icon(
-                  LucideIcons.moon,
-                ),
+                Text(R.current.darkMode, style: textTitle),
+                const Padding(padding: EdgeInsets.only(left: 10)),
+                const Icon(LucideIcons.moon),
               ],
             ),
             value: Provider.of<AppProvider>(context).theme == AppThemes.lightTheme ? false : true,
@@ -143,12 +120,7 @@ class _SettingPageState extends State<SettingPage> {
       contentPadding: const EdgeInsets.all(0),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            R.current.checkIPlusNew,
-            style: textTitle,
-          ),
-        ],
+        children: [Text(R.current.checkIPlusNew, style: textTitle)],
       ),
       value: LocalStorage.instance.getOtherSetting().checkIPlusNew,
       onChanged: (value) {
@@ -166,14 +138,8 @@ class _SettingPageState extends State<SettingPage> {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            R.current.openExternalVideo,
-            style: textTitle,
-          ),
-          Text(
-            R.current.openExternalVideoHint,
-            style: textBody,
-          ),
+          Text(R.current.openExternalVideo, style: textTitle),
+          Text(R.current.openExternalVideoHint, style: textBody),
         ],
       ),
       value: LocalStorage.instance.getOtherSetting().useExternalVideoPlayer,

@@ -198,7 +198,7 @@ class ISchoolPlusConnector {
         'is_download': '',
         'begin_time': '',
         'course_id': '',
-        'read_key': ''
+        'read_key': '',
       };
 
       for (html.Element node in nodes) {
@@ -331,11 +331,7 @@ class ISchoolPlusConnector {
       html.Document tagNode;
       List<html.Element> nodes;
       html.Element node;
-      Map<String, String> data = {
-        "cid": "",
-        "bid": "",
-        "nid": "",
-      };
+      Map<String, String> data = {"cid": "", "bid": "", "nid": ""};
       List<ISchoolPlusAnnouncementJson> announcementList = [];
 
       parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_list.php");
@@ -361,7 +357,7 @@ class ISchoolPlusConnector {
         "action": "getNews",
         "tpc": "1",
         "selectPage": selectPage,
-        "inputPerPage": inputPerPage
+        "inputPerPage": inputPerPage,
       };
       for (html.Element node in nodes) {
         final name = node.attributes['name'];
@@ -391,7 +387,9 @@ class ISchoolPlusConnector {
             final keyName = key.toString();
             final rawItem = jsonData[keyName];
             if (rawItem is! Map) continue;
-            ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(Map<String, dynamic>.from(rawItem));
+            ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(
+              Map<String, dynamic>.from(rawItem),
+            );
             courseInfo.subject = HtmlUtils.clean(courseInfo.subject); //處理HTM特殊字
             courseInfo.token = data['token'] ?? '';
             courseInfo.bid = keyName.split("|").first;
@@ -426,7 +424,7 @@ class ISchoolPlusConnector {
         'subject': '',
         'content': '',
         'awppathre': '',
-        'nowpage': '1'
+        'nowpage': '1',
       };
       parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_chain.php");
       parameter.data = data;
@@ -596,7 +594,8 @@ class ISchoolPlusConnector {
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/goto_course.php");
       parameter.data = xml;
       await Connector.getDataByPost(
-          parameter); //因為RequestsConnector無法傳送XML但是 DioConnector無法解析 Content-Type: text/html;;charset=UTF-8
+        parameter,
+      ); //因為RequestsConnector無法傳送XML但是 DioConnector無法解析 Content-Type: text/html;;charset=UTF-8
       return true;
     } catch (e, stack) {
       Log.eWithStack(e, stack);

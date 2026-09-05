@@ -119,10 +119,7 @@ class AnsiParser {
   TextSpan createSpan(String text) {
     return TextSpan(
       text: text,
-      style: TextStyle(
-        color: foreground,
-        backgroundColor: background,
-      ),
+      style: TextStyle(color: foreground, backgroundColor: background),
     );
   }
 }

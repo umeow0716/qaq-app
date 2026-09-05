@@ -102,7 +102,7 @@ class FileUtils {
         }
       }
     }
-//    print(files);
+    //    print(files);
     return files;
   }
 
@@ -111,11 +111,14 @@ class FileUtils {
     DateTime now = DateTime.now();
     DateTime yDay = DateTime.now().subtract(const Duration(days: 1));
     DateTime dateFormat = DateTime.parse(
-        "${date.year}-${date.month.toString().padLeft(2, "0")}-${date.day.toString().padLeft(2, "0")}T00:00:00.000Z");
+      "${date.year}-${date.month.toString().padLeft(2, "0")}-${date.day.toString().padLeft(2, "0")}T00:00:00.000Z",
+    );
     DateTime today = DateTime.parse(
-        "${now.year}-${now.month.toString().padLeft(2, "0")}-${now.day.toString().padLeft(2, "0")}T00:00:00.000Z");
+      "${now.year}-${now.month.toString().padLeft(2, "0")}-${now.day.toString().padLeft(2, "0")}T00:00:00.000Z",
+    );
     DateTime yesterday = DateTime.parse(
-        "${yDay.year}-${yDay.month.toString().padLeft(2, "0")}-${yDay.day.toString().padLeft(2, "0")}T00:00:00.000Z");
+      "${yDay.year}-${yDay.month.toString().padLeft(2, "0")}-${yDay.day.toString().padLeft(2, "0")}T00:00:00.000Z",
+    );
 
     if (dateFormat == today) {
       return "Today ${DateFormat("HH:mm").format(DateTime.parse(iso))}";
@@ -131,9 +134,9 @@ class FileUtils {
       case 0:
         if (list.toString().contains("Directory")) {
           list.sort((f1, f2) => basename(f1.path).toLowerCase().compareTo(basename(f2.path).toLowerCase()));
-          return list
-            ..sort((f1, f2) =>
-                f1.toString().split(":")[0].toLowerCase().compareTo(f2.toString().split(":")[0].toLowerCase()));
+          return list..sort(
+            (f1, f2) => f1.toString().split(":")[0].toLowerCase().compareTo(f2.toString().split(":")[0].toLowerCase()),
+          );
         } else {
           return list..sort((f1, f2) => basename(f1.path).toLowerCase().compareTo(basename(f2.path).toLowerCase()));
         }
@@ -141,34 +144,41 @@ class FileUtils {
       case 1:
         list.sort((f1, f2) => basename(f1.path).toLowerCase().compareTo(basename(f2.path).toLowerCase()));
         if (list.toString().contains("Directory")) {
-          list.sort((f1, f2) =>
-              f1.toString().split(":")[0].toLowerCase().compareTo(f2.toString().split(":")[0].toLowerCase()));
+          list.sort(
+            (f1, f2) => f1.toString().split(":")[0].toLowerCase().compareTo(f2.toString().split(":")[0].toLowerCase()),
+          );
         }
         return list.reversed.toList();
 
       case 2:
-        return list
-          ..sort((f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
+        return list..sort(
+          (f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
               ? File(f1.path).lastModifiedSync().compareTo(File(f2.path).lastModifiedSync())
-              : 1);
+              : 1,
+        );
 
       case 3:
-        list.sort((f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
-            ? File(f1.path).lastModifiedSync().compareTo(File(f2.path).lastModifiedSync())
-            : 1);
+        list.sort(
+          (f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
+              ? File(f1.path).lastModifiedSync().compareTo(File(f2.path).lastModifiedSync())
+              : 1,
+        );
         return list.reversed.toList();
 
       case 4:
-        list.sort((f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
-            ? File(f1.path).lengthSync().compareTo(File(f2.path).lengthSync())
-            : 0);
+        list.sort(
+          (f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
+              ? File(f1.path).lengthSync().compareTo(File(f2.path).lengthSync())
+              : 0,
+        );
         return list.reversed.toList();
 
       case 5:
-        return list
-          ..sort((f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
+        return list..sort(
+          (f1, f2) => FileSystemEntity.isFileSync(f1.path) && FileSystemEntity.isFileSync(f2.path)
               ? File(f1.path).lengthSync().compareTo(File(f2.path).lengthSync())
-              : 0);
+              : 0,
+        );
 
       default:
         return list..sort();

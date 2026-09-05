@@ -57,11 +57,13 @@ class GraduationPicker {
         const dialog = GraduationPickerWidget();
         Get.dialog<GraduationInformationJson>(
           PopScope<void>(
-              canPop: _barrierDismissible,
-              child: const Dialog(
-                  insetAnimationDuration: Duration(milliseconds: 100),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-                  child: dialog)),
+            canPop: _barrierDismissible,
+            child: const Dialog(
+              insetAnimationDuration: Duration(milliseconds: 100),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+              child: dialog,
+            ),
+          ),
           barrierDismissible: false,
         ).then((value) {
           if (value != null) finishCallBack(value);
@@ -223,44 +225,23 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   Widget buildText(String title) {
     return Row(
       mainAxisSize: MainAxisSize.max,
-      children: <Widget>[
-        Expanded(
-          child: Text(title, overflow: TextOverflow.ellipsis),
-        ),
-      ],
+      children: <Widget>[Expanded(child: Text(title, overflow: TextOverflow.ellipsis))],
     );
   }
 
   List<DropdownMenuItem<String>> buildYearList() {
-    return yearList
-        .map(
-          (val) => DropdownMenuItem(
-            value: val,
-            child: buildText(val),
-          ),
-        )
-        .toList();
+    return yearList.map((val) => DropdownMenuItem(value: val, child: buildText(val))).toList();
   }
 
   List<DropdownMenuItem<Map>> buildDivisionList() {
     return divisionList
-        .map(
-          (val) => DropdownMenuItem(
-            value: val,
-            child: buildText(val["name"]?.toString() ?? ""),
-          ),
-        )
+        .map((val) => DropdownMenuItem(value: val, child: buildText(val["name"]?.toString() ?? "")))
         .toList();
   }
 
   List<DropdownMenuItem<Map>> buildDepartmentList() {
     return departmentList
-        .map(
-          (val) => DropdownMenuItem(
-            value: val,
-            child: buildText(val["name"]?.toString() ?? ""),
-          ),
-        )
+        .map((val) => DropdownMenuItem(value: val, child: buildText(val["name"]?.toString() ?? "")))
         .toList();
   }
 
@@ -401,13 +382,13 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                     },
                   ),
                   TextButton(
-                    child: Text(R.current.save),
                     onPressed: _isLoadingSelection || !_hasCurrentCreditInfo ? null : _save,
-                  )
+                    child: Text(R.current.save),
+                  ),
                 ],
-              )
+              ),
             ],
-          )
+          ),
         ],
       ),
     );

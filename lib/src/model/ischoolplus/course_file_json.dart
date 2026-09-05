@@ -9,9 +9,9 @@ class CourseFileJson {
   List<FileType> fileType;
 
   CourseFileJson({String? name, List<FileType>? fileType, DateTime? time})
-      : name = JsonInit.stringInit(name),
-        fileType = fileType ?? <FileType>[],
-        time = time ?? DateTime.now();
+    : name = JsonInit.stringInit(name),
+      fileType = fileType ?? <FileType>[],
+      time = time ?? DateTime.now();
 
   String get timeString {
     final formatter = DateFormat.yMd();
@@ -25,8 +25,8 @@ class FileType {
   dynamic postData;
 
   FileType({CourseFileType? type, String? href})
-      : type = type ?? CourseFileType.unknown,
-        href = JsonInit.stringInit(href);
+    : type = type ?? CourseFileType.unknown,
+      href = JsonInit.stringInit(href);
 
   String get fileUrl => href;
 }

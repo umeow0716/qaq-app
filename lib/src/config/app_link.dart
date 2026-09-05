@@ -13,18 +13,15 @@ class AppLink {
       'https://raw.githubusercontent.com/$githubOwnerName/$tatRepoName/dev/privacy-policy.md';
 
   // TODO: set this to be a remote-config.
-  static final feedbackBaseUrl =
-      Uri.parse('https://docs.google.com/forms/d/e/1FAIpQLSc3JFQECAA6HuzqybasZEXuVf8_ClM0UZYFjpPvMwtHbZpzDA/viewform');
+  static final feedbackBaseUrl = Uri.parse(
+    'https://docs.google.com/forms/d/e/1FAIpQLSc3JFQECAA6HuzqybasZEXuVf8_ClM0UZYFjpPvMwtHbZpzDA/viewform',
+  );
 
-  static Uri feedbackUrl(String mainVersion, String log) => Uri.https(
-        feedbackBaseUrl.host,
-        feedbackBaseUrl.path,
-        {
-          "entry.978972557": (Platform.isAndroid) ? "Android" : "IOS",
-          "entry.823909330": mainVersion,
-          "entry.517392071": log,
-        },
-      );
+  static Uri feedbackUrl(String mainVersion, String log) => Uri.https(feedbackBaseUrl.host, feedbackBaseUrl.path, {
+    "entry.978972557": (Platform.isAndroid) ? "Android" : "IOS",
+    "entry.823909330": mainVersion,
+    "entry.517392071": log,
+  });
 
   static String get storeUrlString => (Platform.isAndroid) ? _playStoreUrl : _appleStoreUrl;
 }

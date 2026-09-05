@@ -1,4 +1,3 @@
-
 import 'package:flutter_app/src/connector/score_connector.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/task/ntut/ntut_task.dart';

@@ -23,10 +23,7 @@ Future<void> main() async {
     CookieManager(cookieJar),
     RequestInterceptors(),
   ];
-  await DioConnector.instance.init(
-    interceptors: apiInterceptors,
-    cookieJar: cookieJar,
-  );
+  await DioConnector.instance.init(interceptors: apiInterceptors, cookieJar: cookieJar);
 
   const credentialFilePath = 'test/ischool_plus_connector_test/credential.json';
   final file = File(credentialFilePath);

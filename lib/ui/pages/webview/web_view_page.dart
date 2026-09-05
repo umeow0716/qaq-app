@@ -18,53 +18,35 @@ class WebViewPage {
 
   Future<void> _launchNativeWebView({required Uri initialUrl}) async {
     try {
-      final launched = await launchUrl(
-        initialUrl,
-        mode: LaunchMode.inAppWebView,
-      );
+      final launched = await launchUrl(initialUrl, mode: LaunchMode.inAppWebView);
       if (!launched) {
         throw StateError('Unable to launch $initialUrl');
       }
     } catch (error, stackTrace) {
       stackTrace.printError();
-      MsgDialog(MsgDialogParameter(
-        desc: R.current.alertError,
-        title: R.current.error,
-        dialogType: DialogType.error,
-        removeCancelButton: true,
-        okButtonText: R.current.sure,
-      )).show();
+      MsgDialog(
+        MsgDialogParameter(
+          desc: R.current.alertError,
+          title: R.current.error,
+          dialogType: DialogType.error,
+          removeCancelButton: true,
+          okButtonText: R.current.sure,
+        ),
+      ).show();
     }
   }
 
-  Future<void> _launchTATWebView({
-    required Uri initialUrl,
-    String? title,
-  }) =>
-      Future.microtask(
-        () => Get.to(
-          () => TATWebView(
-            initialUrl: initialUrl,
-            title: title,
-          ),
-        ),
-      );
+  Future<void> _launchTATWebView({required Uri initialUrl, String? title}) =>
+      Future.microtask(() => Get.to(() => TATWebView(initialUrl: initialUrl, title: title)));
 
   /// Launch a web view with configs.
   ///
   /// Set [shouldUseAppCookies] to true if the [initialUrl] requires cookies stored in app.
   /// When [shouldUseAppCookies] is true, the internal web view will be launched,
   /// otherwise we use the native web view.
-  Future<void> call({
-    required Uri initialUrl,
-    String? title,
-    bool shouldUseAppCookies = false,
-  }) async {
+  Future<void> call({required Uri initialUrl, String? title, bool shouldUseAppCookies = false}) async {
     if (shouldUseAppCookies) {
-      return _launchTATWebView(
-        initialUrl: ISchoolPlusConfig.rewriteToProxy(initialUrl),
-        title: title,
-      );
+      return _launchTATWebView(initialUrl: ISchoolPlusConfig.rewriteToProxy(initialUrl), title: title);
     }
 
     return _launchNativeWebView(initialUrl: initialUrl);

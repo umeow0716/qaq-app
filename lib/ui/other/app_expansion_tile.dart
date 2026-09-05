@@ -101,10 +101,7 @@ class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerPro
             ),
           ),
           ClipRect(
-            child: Align(
-              heightFactor: _easeInAnimation.value,
-              child: child ?? const SizedBox.shrink(),
-            ),
+            child: Align(heightFactor: _easeInAnimation.value, child: child ?? const SizedBox.shrink()),
           ),
         ],
       ),
