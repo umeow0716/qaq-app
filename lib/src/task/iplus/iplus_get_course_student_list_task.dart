@@ -1,5 +1,3 @@
-
-import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
 import 'package:flutter_app/src/model/course/course_student.dart';
 import 'package:flutter_app/src/r.dart';

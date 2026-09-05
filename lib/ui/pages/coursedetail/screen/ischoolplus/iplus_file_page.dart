@@ -1,5 +1,3 @@
-
-import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
 import 'package:flutter_app/src/file/file_download.dart';

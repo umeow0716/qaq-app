@@ -1,6 +1,5 @@
 plugins {
     id "com.android.application"
-    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -12,43 +11,42 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "dev.umeow.tat_umeow"
-    compileSdk 37
+    compileSdk = 37
     ndkVersion = "29.0.14206865"
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-
 
     lint {
         disable 'InvalidPackage'
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     defaultConfig {
-        applicationId "dev.umeow.tat_umeow"
-        minSdk 24
-        targetSdk 37
-        versionCode flutter.versionCode
-        versionName flutter.versionName
+        applicationId = "dev.umeow.tat_umeow"
+        minSdk = 24
+        targetSdk = 37
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     signingConfigs {
         release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
+            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword = keystoreProperties['storePassword']
         }
     }
 
     buildTypes {
         release {
-            shrinkResources true
-            minifyEnabled true
+            shrinkResources = true
+            minifyEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -62,24 +60,19 @@ android {
     flavorDimensions = ["default"]
     productFlavors {
         beta {
-            dimension "default"
-            signingConfig signingConfigs.debug
+            dimension = "default"
+            signingConfig = signingConfigs.debug
         }
         real {
-            dimension "default"
-            signingConfig signingConfigs.release
+            dimension = "default"
+            signingConfig = signingConfigs.release
         }
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget("17")
-    }
-}
-
+// Built-in Kotlin uses android.compileOptions.targetCompatibility as its JVM target.
 flutter {
-    source '../..'
+    source = '../..'
 }
 
 dependencies {

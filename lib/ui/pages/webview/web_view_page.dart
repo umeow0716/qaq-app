@@ -1,5 +1,3 @@
-
-import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
