@@ -58,9 +58,9 @@ class GraduationPicker {
         Get.dialog<GraduationInformationJson>(
           WillPopScope(
               onWillPop: () async => _barrierDismissible,
-              child: Dialog(
-                  insetAnimationDuration: const Duration(milliseconds: 100),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+              child: const Dialog(
+                  insetAnimationDuration: Duration(milliseconds: 100),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
                   child: dialog)),
           barrierDismissible: false,
         ).then((value) {

@@ -13,7 +13,6 @@
         android:icon="@mipmap/ic_launcher"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
         android:label="TAT">
 
         <activity
@@ -41,7 +40,6 @@
             android:exported="true"
             tools:replace="android:exported">
             <intent-filter>
-                <action android:name="dev.umeow.tat_umeow.weight.onclick" />
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data

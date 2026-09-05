@@ -2,7 +2,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/config/app_config.dart';
 import 'package:flutter_app/src/config/app_themes.dart';
 import 'package:flutter_app/src/file/file_store.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
@@ -10,7 +9,6 @@ import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/util/language_util.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
-import 'package:flutter_app/ui/other/route_utils.dart';
 import "package:flutter_feather_icons/flutter_feather_icons.dart";
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -52,8 +50,6 @@ class _SettingPageState extends State<SettingPage> {
     if (Platform.isAndroid) {
       listViewData.add(_buildOpenExternalVideoSetting());
 
-      // TODO: ensure remote config fetched successfully then enable this line.
-      // listViewData.add(_buildAndroidAllowPrivateBrowserGuide());
     }
 
     return Scaffold(
@@ -189,35 +185,4 @@ class _SettingPageState extends State<SettingPage> {
       },
     );
   }
-
-  // TODO: ensure remote config fetched successfully then enable this line.
-  // ignore: unused_element
-  Widget _buildAndroidAllowPrivateBrowserGuide() => ListTile(
-        contentPadding: const EdgeInsets.all(0),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              R.current.androidPrivateBrowseGuideTitle,
-              style: textTitle,
-            ),
-            Text(
-              R.current.androidPrivateBrowseGuideSubTitle,
-              style: textBody,
-            ),
-          ],
-        ),
-        onTap: () async {
-          final guidePageUrl = await AppConfig.androidChromeIncognitoFlagSetupPageUrl;
-          if (guidePageUrl.isEmpty) {
-            return;
-          }
-
-          final parsedGuidePageUrl = Uri.tryParse(guidePageUrl);
-
-          if (parsedGuidePageUrl != null) {
-            RouteUtils.toWebViewPage(initialUrl: parsedGuidePageUrl);
-          }
-        },
-      );
 }

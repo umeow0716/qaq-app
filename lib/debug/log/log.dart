@@ -2,8 +2,6 @@
 import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
 import 'package:logger/logger.dart';
 
-enum LogMode { logError, logDebug }
-
 class MyLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {

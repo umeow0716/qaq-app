@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
-import 'package:flutter_app/ui/pages/webview/in_app_webview_callbacks.dart';
 import 'package:flutter_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -109,18 +108,24 @@ class _TATWebViewState extends State<TATWebView> {
 class _TATWebViewCore extends StatelessWidget {
   const _TATWebViewCore({
     required Uri initialUrl,
-    InAppWebViewCreatedCallback? onWebViewCreated,
-    InAppWebViewProgressChangedCallback? onProgressChanged,
-    InAppWebViewReceivedServerTrustAuthRequestCallBack? onReceivedTrustAuthReqCallBack,
+    void Function(InAppWebViewController controller)? onWebViewCreated,
+    void Function(InAppWebViewController controller, int progress)? onProgressChanged,
+    Future<ServerTrustAuthResponse?> Function(
+      InAppWebViewController controller,
+      URLAuthenticationChallenge challenge,
+    )? onReceivedTrustAuthReqCallBack,
   })  : _initialUrl = initialUrl,
         _onWebViewCreated = onWebViewCreated,
         _onProgressChanged = onProgressChanged,
         _onReceivedTrustAuthReqCallBack = onReceivedTrustAuthReqCallBack;
 
   final Uri _initialUrl;
-  final InAppWebViewCreatedCallback? _onWebViewCreated;
-  final InAppWebViewProgressChangedCallback? _onProgressChanged;
-  final InAppWebViewReceivedServerTrustAuthRequestCallBack? _onReceivedTrustAuthReqCallBack;
+  final void Function(InAppWebViewController controller)? _onWebViewCreated;
+  final void Function(InAppWebViewController controller, int progress)? _onProgressChanged;
+  final Future<ServerTrustAuthResponse?> Function(
+    InAppWebViewController controller,
+    URLAuthenticationChallenge challenge,
+  )? _onReceivedTrustAuthReqCallBack;
 
   @override
   Widget build(BuildContext context) => InAppWebView(

@@ -44,9 +44,6 @@ class MessageLookup extends MessageLookupByLibrary {
         "aduit": MessageLookupByLibrary.simpleMessage("Aduit"),
         "aestheticDimension": MessageLookupByLibrary.simpleMessage("Aesthetic dimension"),
         "alertError": MessageLookupByLibrary.simpleMessage("An error occurred"),
-        "androidPrivateBrowseGuideSubTitle":
-            MessageLookupByLibrary.simpleMessage("Open Incognito browsing to enhanced security"),
-        "androidPrivateBrowseGuideTitle": MessageLookupByLibrary.simpleMessage("About Incognito Browse"),
         "announcement": MessageLookupByLibrary.simpleMessage("Announcement"),
         "appWillClose": MessageLookupByLibrary.simpleMessage("APP will close"),
         "app_name": MessageLookupByLibrary.simpleMessage("NTUT Course Assistant"),

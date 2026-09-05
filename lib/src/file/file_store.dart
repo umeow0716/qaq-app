@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/util/permissions_util.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,12 +8,6 @@ class FileStore {
   static const storeKey = "downloadPath";
 
   static Future<String> findLocalPath() async {
-    final hasStoragePermission = await PermissionsUtil.checkHasAosStoragePermission();
-    if (!hasStoragePermission) {
-      MyToast.show(R.current.noPermission);
-      return '';
-    }
-
     final filePath = await _getFilePath();
     final directory = filePath != null || Platform.isAndroid
         ? await getExternalStorageDirectory()
