@@ -1,11 +1,8 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/task/course/course_system_task.dart';
 import 'package:flutter_app/src/task/iplus/iplus_system_task.dart';
 import 'package:flutter_app/src/task/ntut/ntut_task.dart';
 import 'package:flutter_app/src/task/score/score_system_task.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
 
 import 'task.dart';
 
@@ -39,11 +36,6 @@ class TaskFlow {
   }
 
   Future<bool> start() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      MyToast.show(R.current.pleaseConnectToNetwork);
-      return false;
-    }
     bool success = true;
     while (_queue.isNotEmpty) {
       final task = _queue.first;

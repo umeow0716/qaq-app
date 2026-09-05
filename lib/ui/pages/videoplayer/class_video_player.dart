@@ -1,6 +1,5 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
-import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,7 +53,6 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    BackButtonInterceptor.add(myInterceptor);
     parseVideo();
   }
 
@@ -64,18 +62,12 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
       DeviceOrientation.portraitUp,
     ]);
 
-    BackButtonInterceptor.remove(myInterceptor);
-
     _playerController?.dispose();
     _chewieController?.dispose();
 
     super.dispose();
   }
 
-  bool myInterceptor(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
-    Get.back();
-    return true;
-  }
 
   void parseVideo() async {
     _isLoading = true;

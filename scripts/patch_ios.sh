@@ -89,6 +89,5 @@ patch_flutter_inappwebview() {
 
 # Main
 patch_flutter_inappwebview
-add_privacy_manifest "connectivity_plus" "5.0.2"
 add_privacy_manifest "package_info_plus" "3.1.2"
 echo_step "All patches applied!"

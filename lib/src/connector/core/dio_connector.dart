@@ -1,13 +1,10 @@
 import 'dart:io';
 
-import 'package:alice_lightweight/alice.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dart_big5/big5.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/adapters/early_interceptor_adapter.dart';
-import 'package:flutter_app/src/navigation/app_navigator.dart';
 
 import 'connector_parameter.dart';
 
@@ -19,10 +16,6 @@ class DioConnector {
     "Upgrade-Insecure-Requests": "1",
   };
 
-  static final _alice = Alice();
-
-  Alice getAlice({GlobalKey<NavigatorState>? navigatorKey}) =>
-      _alice..setNavigatorKey(navigatorKey ?? AppNavigator.key);
 
   static final dioOptions = BaseOptions(
     connectTimeout: 5000,
@@ -76,10 +69,9 @@ class DioConnector {
     _requireCookieJar();
 
     // LocalStorage can reinitialize after logout. Rebuild the interceptor list
-    // instead of stacking duplicate CookieManager/Alice interceptors.
+    // instead of stacking duplicate interceptors.
     dio.interceptors.clear();
     dio.interceptors.addAll(interceptors);
-    dio.interceptors.add(getAlice().getDioInterceptor());
   }
 
   Future<void> deleteCookies() async {

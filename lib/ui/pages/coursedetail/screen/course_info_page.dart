@@ -2,7 +2,6 @@
 // @dart=2.10
 import 'dart:async';
 
-import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_student.dart';
@@ -35,30 +34,16 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   bool isLoading = true;
   final List<Widget> courseData = [];
   final List<Widget> listItem = [];
-  bool canPop = true;
 
   @override
   void initState() {
     super.initState();
     isLoading = true;
-    BackButtonInterceptor.add(myInterceptor);
     Future.delayed(Duration.zero, () {
       _addTask();
     });
   }
 
-  @override
-  void dispose() {
-    BackButtonInterceptor.remove(myInterceptor);
-    super.dispose();
-  }
-
-  bool myInterceptor(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
-    if (!canPop) {
-      Get.back();
-    }
-    return !canPop;
-  }
 
   void _addTask() async {
     courseMainInfo = widget.courseInfo.main;
@@ -190,13 +175,10 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   }
 
   void _launchWebView(String title, String urlString) {
-    canPop = false;
-
     final url = Uri.tryParse(urlString);
 
     if (url != null) {
       RouteUtils.toWebViewPage(initialUrl: url, title: title);
-      canPop = true;
     } else {
       // TODO: handle exceptions when the url is null. (null means it may caused by the parse process error.)
     }

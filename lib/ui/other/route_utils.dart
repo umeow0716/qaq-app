@@ -2,7 +2,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/ui/pages/coursedetail/course_detail_page.dart';
 import 'package:flutter_app/ui/pages/coursedetail/screen/ischoolplus/iplus_announcement_detail_page.dart';
@@ -114,9 +113,6 @@ class RouteUtils {
     );
   }
 
-  static Future toAliceInspectorPage() async {
-    DioConnector.instance.getAlice().showInspector();
-  }
 
   static Future? toIPlusAnnouncementDetailPage(CourseInfoJson courseInfo, Map detail) {
     return Get.to(

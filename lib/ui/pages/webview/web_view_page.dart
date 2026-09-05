@@ -4,7 +4,7 @@ import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
-import 'package:flutter_web_browser/flutter_web_browser.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:get/get.dart';
 import 'package:meta/meta.dart';
 
@@ -16,37 +16,28 @@ class WebViewPage {
 
   static const WebViewPage instance = WebViewPage();
 
-  Future<void> close() => FlutterWebBrowser.close();
+  Future<void> close() => closeInAppWebView();
 
-  Future<void> _launchNativeWebView({required Uri initialUrl}) => Future.microtask(
-        () => FlutterWebBrowser.openWebPage(
-          url: initialUrl.toString(),
-          customTabsOptions: CustomTabsOptions(
-            colorScheme: Get.isDarkMode ? CustomTabsColorScheme.dark : CustomTabsColorScheme.light,
-            instantAppsEnabled: true,
-            showTitle: true,
-            urlBarHidingEnabled: true,
-            // Enable the Incognito mode on Android web view.
-            // But should self-enable the `ALLOW_INCOGNITO_CUSTOM_TABS_FROM_THIRD_PARTY` flag on device's chrome.
-            // chrome://flags/#cct-incognito-available-to-third-party
-            privateMode: true,
-          ),
-          safariVCOptions: const SafariViewControllerOptions(
-            barCollapsingEnabled: true,
-            dismissButtonStyle: SafariViewControllerDismissButtonStyle.close,
-          ),
-        ).onError((error, stackTrace) {
-          stackTrace.printError();
-
-          MsgDialog(MsgDialogParameter(
-            desc: R.current.alertError,
-            title: R.current.error,
-            dialogType: DialogType.error,
-            removeCancelButton: true,
-            okButtonText: R.current.sure,
-          )).show();
-        }),
+  Future<void> _launchNativeWebView({required Uri initialUrl}) async {
+    try {
+      final launched = await launchUrl(
+        initialUrl,
+        mode: LaunchMode.inAppWebView,
       );
+      if (!launched) {
+        throw StateError('Unable to launch $initialUrl');
+      }
+    } catch (error, stackTrace) {
+      stackTrace.printError();
+      MsgDialog(MsgDialogParameter(
+        desc: R.current.alertError,
+        title: R.current.error,
+        dialogType: DialogType.error,
+        removeCancelButton: true,
+        okButtonText: R.current.sure,
+      )).show();
+    }
+  }
 
   Future<void> _launchTATWebView({
     required Uri initialUrl,

@@ -1,6 +1,4 @@
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/other/my_progress_dialog.dart';
 import 'package:get/get.dart';
@@ -37,12 +35,6 @@ class DialogTask<T> extends Task<T> {
   }
 
   Future<TaskStatus> onErrorParameter(MsgDialogParameter parameter) async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      parameter = MsgDialogParameter(
-        desc: R.current.networkError,
-      );
-    }
     MsgDialog(parameter).show();
 
     // Return GiveUp here instead of Restart to prevent the Un-terminated error stack.

@@ -1,6 +1,5 @@
 // TODO: remove sdk version selector after migrating to null-safety.
 // @dart=2.10
-import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/file/file_download.dart';
@@ -24,22 +23,6 @@ class IPlusAnnouncementDetailPage extends StatefulWidget {
 }
 
 class _IPlusAnnouncementDetailPage extends State<IPlusAnnouncementDetailPage> {
-  @override
-  void initState() {
-    super.initState();
-    BackButtonInterceptor.add(myInterceptor);
-  }
-
-  @override
-  void dispose() {
-    BackButtonInterceptor.remove(myInterceptor);
-    super.dispose();
-  }
-
-  bool myInterceptor(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
-    Get.back();
-    return true;
-  }
 
   bool addLink = false;
 

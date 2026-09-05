@@ -3,11 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 
 enum OnListViewPress {
-  dioLog,
   appLog,
 }
 
@@ -15,20 +13,13 @@ class DevPage extends StatelessWidget {
   const DevPage({super.key});
 
   final List<Map> listViewData = const [
-    {"icon": Icons.info_outline, "title": "Dio Log", "color": Colors.blue, "onPress": OnListViewPress.dioLog},
     {"icon": Icons.info_outline, "title": "App Log", "color": Colors.yellow, "onPress": OnListViewPress.appLog},
   ];
 
   void _onListViewPress(OnListViewPress value) async {
     switch (value) {
-      case OnListViewPress.dioLog:
-        RouteUtils.toAliceInspectorPage();
-        break;
       case OnListViewPress.appLog:
         RouteUtils.toLogConsolePage();
-        break;
-      default:
-        MyToast.show(R.current.noFunction);
         break;
     }
   }

@@ -1,7 +1,6 @@
 // ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
 import 'package:flutter_app/src/file/file_download.dart';
@@ -41,7 +40,6 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   @override
   void initState() {
     super.initState();
-    BackButtonInterceptor.add(myInterceptor);
     isSupport = LocalStorage.instance.getAccount() == widget.studentId;
     Future.delayed(Duration.zero, () {
       if (isSupport) {
@@ -51,21 +49,12 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     });
   }
 
-  @override
-  void dispose() {
-    BackButtonInterceptor.remove(myInterceptor);
-    super.dispose();
-  }
-
-  bool myInterceptor(bool stopDefaultButtonEvent, RouteInfo routeInfo) {
+  Future<bool> _onWillPop() async {
     if (selectList.inSelectMode) {
-      setState(() {
-        selectList.leaveSelectMode();
-      });
-      return true;
+      setState(selectList.leaveSelectMode);
+      return false;
     }
-
-    return false;
+    return true;
   }
 
   void _addTask() async {
@@ -91,8 +80,10 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      body: (courseFileList.isNotEmpty)
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        body: (courseFileList.isNotEmpty)
           ? _buildFileList()
           : (isSupport)
               ? Center(
@@ -101,8 +92,8 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
               : Center(
                   child: Text(R.current.notSupport),
                 ),
-      floatingActionButton: (selectList.inSelectMode)
-          ? FloatingActionButton(
+        floatingActionButton: (selectList.inSelectMode)
+            ? FloatingActionButton(
               // FloatingActionButton: 浮動按鈕
               onPressed: _floatingDownloadPress,
               // 按下觸發的方式名稱: void _incrementCounter()
@@ -110,7 +101,8 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
               // 按住按鈕時出現的提示字
               child: const Icon(Icons.file_download),
             )
-          : null,
+            : null,
+      ),
     );
   }
 
