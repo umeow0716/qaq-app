@@ -158,13 +158,6 @@ class ISchoolPlusConnector {
   }
 
   static Future<ReturnWithStatus<List<CourseFileJson>>> getCourseFile(String courseId) async {
-    ConnectorParameter parameter;
-    String result = '';
-    late html.Document tagNode;
-    late html.Element node, itemNode;
-    RegExp exp;
-    RegExpMatch? matches;
-    List<html.Element> nodes, itemNodes, resourceNodes;
     var value = ReturnWithStatus<List<CourseFileJson>>();
     try {
       List<CourseFileJson> courseFileList = [];
@@ -173,10 +166,10 @@ class ISchoolPlusConnector {
         return value;
       }
 
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/launch.php");
-      result = await Connector.getDataByGet(parameter);
-      exp = RegExp(r"cid=(?<cid>[\w|-]+,)");
-      matches = exp.firstMatch(result);
+      var parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/launch.php");
+      var result = await Connector.getDataByGet(parameter);
+      var exp = RegExp(r"cid=(?<cid>[\w|-]+,)");
+      var matches = exp.firstMatch(result);
       final cid = matches?.group(1);
       if (cid == null || cid.isEmpty) {
         value.status = IPlusReturnStatus.fail;
@@ -186,14 +179,13 @@ class ISchoolPlusConnector {
       parameter.data = {'cid': cid};
 
       result = await Connector.getDataByGet(parameter);
-      tagNode = html.parse(result);
+      var tagNode = html.parse(result);
       final fetchResourceForm = tagNode.getElementById("fetchResourceForm");
       if (fetchResourceForm == null) {
         value.status = IPlusReturnStatus.fail;
         return value;
       }
-      node = fetchResourceForm;
-      nodes = node.getElementsByTagName("input");
+      final nodes = fetchResourceForm.getElementsByTagName("input");
 
       Map<String, String> downloadPost = {
         'is_player': '',
@@ -217,10 +209,10 @@ class ISchoolPlusConnector {
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_loadCA.php"); //取得下載檔案XML
       result = await Connector.getDataByGet(parameter);
       tagNode = html.parse(result);
-      itemNodes = tagNode.getElementsByTagName("item");
-      resourceNodes = tagNode.getElementsByTagName("resource");
+      final itemNodes = tagNode.getElementsByTagName("item");
+      final resourceNodes = tagNode.getElementsByTagName("resource");
       for (int i = 0; i < itemNodes.length; i++) {
-        itemNode = itemNodes[i];
+        final itemNode = itemNodes[i];
         if (!itemNode.attributes.containsKey("identifierref")) {
           //代表是目錄不是一個檔案
           continue;
@@ -275,13 +267,10 @@ class ISchoolPlusConnector {
         exp = RegExp("[\"'](?<url>https?://.+)[\"']");
         //檢測網址 "http://....." or 'https://.....' or "http://..." or 'http://...'
         matches = exp.firstMatch(result);
-        bool pass = (matches?.groupCount == null)
-            ? false
-            : (matches?.group(1) ?? "").toLowerCase().contains("http")
-                ? true
-                : false;
-        if (pass) {
-          url = matches!.group(1)!;
+        final absoluteUrl = matches?.group(1);
+        final pass = absoluteUrl?.toLowerCase().contains("http") ?? false;
+        if (pass && absoluteUrl != null) {
+          url = absoluteUrl;
           //已經是完整連結
           return [url, url];
         } else {

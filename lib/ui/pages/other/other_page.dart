@@ -152,7 +152,10 @@ class _OtherPageState extends State<OtherPage> {
           SizedBox(
             child: FutureBuilder<Map<String, Map<String, String>>>(
               future: NTUTConnector.getUserImageRequestInfo(),
-              builder: (_, snapshot) => snapshot.data != null ? _buildHeader(snapshot.data!) : const SizedBox.shrink(),
+              builder: (_, snapshot) {
+                final data = snapshot.data;
+                return data != null ? _buildHeader(data) : const SizedBox.shrink();
+              },
             ),
           ),
         const SizedBox(

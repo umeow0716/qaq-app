@@ -19,7 +19,7 @@ class ExpandableText extends StatefulWidget {
 }
 
 class _ExpandableTextState extends State<ExpandableText> {
-  late bool _expand;
+  bool _expand = false;
 
   @override
   void initState() {

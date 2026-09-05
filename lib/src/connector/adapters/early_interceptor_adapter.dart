@@ -62,7 +62,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
           type: DioErrorType.connectTimeout,
         );
 
-    late final HttpClientRequest request;
+    final HttpClientRequest request;
     try {
       request = options.connectTimeout > 0
           ? await reqFuture.timeout(Duration(milliseconds: options.connectTimeout))
@@ -111,7 +111,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
       future = future.timeout(Duration(milliseconds: options.receiveTimeout));
     }
 
-    late HttpClientResponse responseStream;
+    final HttpClientResponse responseStream;
     try {
       responseStream = await future;
     } on TimeoutException {
@@ -144,8 +144,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
 
     final headers = <String, List<String>>{};
     responseStream.headers.forEach((key, values) {
-      final hasDecorator = _headerDecorators?.containsKey(key) ?? false;
-      final decorator = hasDecorator ? _headerDecorators![key] : null;
+      final decorator = _headerDecorators?[key];
       headers[key] = decorator != null ? decorator(values) : values;
     });
 

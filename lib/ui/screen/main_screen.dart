@@ -37,8 +37,6 @@ class _MainScreenState extends State<MainScreen> {
 
 
   void appInit() async {
-    R.set(context);
-
     try {
       await initLanguage();
       APPVersion.initAndCheck();

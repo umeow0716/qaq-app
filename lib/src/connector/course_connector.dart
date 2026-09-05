@@ -31,21 +31,18 @@ class CourseConnector {
 
   static Future<CourseConnectorStatus> login() async {
     try {
-      late ConnectorParameter parameter;
-      late Document tagNode;
-      late List<Element> nodes;
       Map<String, String> data = {
         "apUrl": "https://aps.ntut.edu.tw/course/tw/courseSID.jsp",
         "apOu": "aa_0010-oauth",
         "sso": "true",
         "datetime1": DateTime.now().millisecondsSinceEpoch.toString()
       };
-      parameter = ConnectorParameter(_ssoLoginUrl);
+      var parameter = ConnectorParameter(_ssoLoginUrl);
       parameter.data = data;
       final result = await Connector.getDataByGet(parameter);
 
-      tagNode = parse(result);
-      nodes = tagNode.getElementsByTagName("input");
+      var tagNode = parse(result);
+      final nodes = tagNode.getElementsByTagName("input");
       data = {};
       for (Element node in nodes) {
         final name = node.attributes['name'];
@@ -149,16 +146,12 @@ class CourseConnector {
 
   static Future<String?> getCourseENName(String url) async {
     try {
-      late ConnectorParameter parameter;
-      late Document tagNode;
-      late Element node;
-      parameter = ConnectorParameter(url);
-      parameter.charsetName = 'big5';
-      String result = await Connector.getDataByGet(parameter);
-      tagNode = parse(result);
-      node = tagNode.getElementsByTagName("table").first;
-      node = node.getElementsByTagName("tr")[1];
-      return node.getElementsByTagName("td")[2].text.replaceAll(RegExp(r"\n"), "");
+      final parameter = ConnectorParameter(url)..charsetName = 'big5';
+      final result = await Connector.getDataByGet(parameter);
+      final tagNode = parse(result);
+      final table = tagNode.getElementsByTagName("table").first;
+      final row = table.getElementsByTagName("tr")[1];
+      return row.getElementsByTagName("td")[2].text.replaceAll(RegExp(r"\n"), "");
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
       return null;
@@ -167,24 +160,20 @@ class CourseConnector {
 
   static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId) async {
     try {
-      late ConnectorParameter parameter;
-      late Document tagNode;
-      late Element node;
-      late List<Element> courseNodes, nodes, classExtraInfoNodes;
       Map<String, String> data = {
         "code": courseId,
         "format": "-1",
       };
-      parameter = ConnectorParameter(_postCourseCNUrl);
+      var parameter = ConnectorParameter(_postCourseCNUrl);
       parameter.data = data;
-      String result = await Connector.getDataByPost(parameter);
-      tagNode = parse(result);
-      courseNodes = tagNode.getElementsByTagName("table");
+      var result = await Connector.getDataByPost(parameter);
+      var tagNode = parse(result);
+      final courseNodes = tagNode.getElementsByTagName("table");
 
       CourseExtraInfoJson courseExtraInfo = CourseExtraInfoJson();
 
       //取得學期資料
-      nodes = courseNodes[0].getElementsByTagName("td");
+      var nodes = courseNodes[0].getElementsByTagName("td");
       SemesterJson semester = SemesterJson();
 
       // Previously, the title string of the first course table was stored separately in its `<td>` element,
@@ -196,7 +185,7 @@ class CourseConnector {
       final Iterable<RegExpMatch> studentSemesterDetailMatches = studentSemesterDetailFilter.allMatches(titleString);
       // "studentSemesterDetails" should consist of three numerical values
       // ex: [110310144, 112, 1]
-      final List<String> studentSemesterDetails = studentSemesterDetailMatches.map((match) => match.group(0)!).toList();
+      final List<String> studentSemesterDetails = studentSemesterDetailMatches.map((match) => match.group(0)).whereType<String>().toList();
       if (studentSemesterDetails.isEmpty) {
         throw RangeError("[TAT] course_connector.dart: studentSemesterDetails list is empty");
       }
@@ -215,10 +204,9 @@ class CourseConnector {
       final courseIdPosition = courseIds.indexWhere((element) => element.contains(courseId));
       if (courseIdPosition == -1) {
         throw StateError('[TAT] course_connector.dart: CourseId not found: $courseId');
-      } else {
-        node = nodes[courseIdPosition + 2];
       }
-      classExtraInfoNodes = node.getElementsByTagName("td");
+      final node = nodes[courseIdPosition + 2];
+      final classExtraInfoNodes = node.getElementsByTagName("td");
       courseExtra.id = strQ2B(classExtraInfoNodes[0].text).replaceAll(RegExp(r"\s"), "");
       courseExtra.name = classExtraInfoNodes[1].getElementsByTagName("a")[0].text;
       courseExtra.openClass = classExtraInfoNodes[7].getElementsByTagName("a")[0].text;
@@ -624,21 +612,15 @@ class CourseConnector {
   }
 
   static Future<Map?> getGraduation(String year, String department) async {
-    ConnectorParameter parameter;
-    String result;
-    Document tagNode;
-    late Element node;
-    late List<Element> nodes;
-    late RegExp exp;
     RegExpMatch? matches;
     Map graduationMap = {};
     try {
-      parameter = ConnectorParameter("https://aps.ntut.edu.tw/course/tw/Cprog.jsp");
+      var parameter = ConnectorParameter("https://aps.ntut.edu.tw/course/tw/Cprog.jsp");
       parameter.data = {"format": "-3", "year": year, "matric": "7"};
-      result = await Connector.getDataByGet(parameter);
-      tagNode = parse(result);
-      node = tagNode.getElementsByTagName("tbody").first;
-      nodes = node.getElementsByTagName("tr");
+      var result = await Connector.getDataByGet(parameter);
+      final tagNode = parse(result);
+      var node = tagNode.getElementsByTagName("tbody").first;
+      final nodes = node.getElementsByTagName("tr");
       String? href;
       for (int i = 1; i < nodes.length; i++) {
         node = nodes[i];
@@ -653,7 +635,7 @@ class CourseConnector {
       parameter = ConnectorParameter(graduationUrl);
       result = await Connector.getDataByGet(parameter);
 
-      exp = RegExp(r"最低畢業學分：?(\d+)學分");
+      var exp = RegExp(r"最低畢業學分：?(\d+)學分");
       matches = exp.firstMatch(result);
       graduationMap["lowCredit"] = int.parse(matches?.group(1) ?? "0");
 

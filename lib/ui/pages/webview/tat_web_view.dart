@@ -23,7 +23,7 @@ class TATWebView extends StatefulWidget {
 class _TATWebViewState extends State<TATWebView> {
   final cookieManager = CookieManager.instance();
   final cookieJar = DioConnector.instance.cookiesManager;
-  late final InAppWebViewController _controller;
+  InAppWebViewController? _controller;
 
   // A value shows the progress of page loading. Range from 0.0 to 1.0.
   final progress = ValueNotifier(0.0);
@@ -67,9 +67,9 @@ class _TATWebViewState extends State<TATWebView> {
       );
 
   Widget _buildButtonBar() => WebViewButtonBar(
-        onBackPressed: () => _controller.goBack(),
-        onForwardPressed: () => _controller.goForward(),
-        onRefreshPressed: () => _controller.reload(),
+        onBackPressed: () => _controller?.goBack(),
+        onForwardPressed: () => _controller?.goForward(),
+        onRefreshPressed: () => _controller?.reload(),
       );
 
   Widget _buildProgressBar() => ValueListenableBuilder<double>(

@@ -10,7 +10,6 @@ import 'package:flutter_app/src/task/task_flow.dart';
 import 'package:get/get.dart';
 
 class GraduationPicker {
-  late GraduationPickerWidget _dialog;
   BuildContext? _dismissingContext;
   bool _barrierDismissible = true;
   bool _isShowing = false;
@@ -55,14 +54,14 @@ class GraduationPicker {
   Future<bool> show(void Function(GraduationInformationJson) finishCallBack) async {
     if (!_isShowing) {
       try {
-        _dialog = const GraduationPickerWidget();
+        const dialog = GraduationPickerWidget();
         Get.dialog<GraduationInformationJson>(
           WillPopScope(
               onWillPop: () async => _barrierDismissible,
               child: Dialog(
                   insetAnimationDuration: const Duration(milliseconds: 100),
                   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-                  child: _dialog)),
+                  child: dialog)),
           barrierDismissible: false,
         ).then((value) {
           if (value != null) finishCallBack(value);

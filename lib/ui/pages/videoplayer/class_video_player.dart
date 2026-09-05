@@ -47,7 +47,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
   final _videoNames = <_VideoInfo>[];
   VideoPlayerController? _playerController;
   ChewieController? _chewieController;
-  late final _VideoInfo _selectedVideoInfo;
+  _VideoInfo? _selectedVideoInfo;
 
   @override
   void initState() {
@@ -76,13 +76,13 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
     final tagNode = parse(result);
     final node = tagNode.getElementById("videoplayer");
 
-    if (node?.children == null) {
+    if (node == null) {
       MyToast.show(R.current.unknownError);
       Get.back();
       return;
     }
 
-    for (final child in node!.children) {
+    for (final child in node.children) {
       if (child.children.first.localName == 'source') {
         try {
           final url = child.children.first.attributes['src'];
@@ -139,8 +139,14 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
 
     bool externalPlayerHasLaunched = false;
 
+    final selectedVideoInfo = _selectedVideoInfo;
+    if (selectedVideoInfo == null) {
+      Get.back();
+      return;
+    }
+
     if (LocalStorage.instance.getOtherSetting().useExternalVideoPlayer) {
-      final name = "${widget.name}_${_selectedVideoInfo.name}.mp4";
+      final name = "${widget.name}_${selectedVideoInfo.name}.mp4";
       externalPlayerHasLaunched = await MXPlayerUtil.launch(url: urlStr, name: name);
     }
 
@@ -155,26 +161,30 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
 
   Future<void> initController(Uri url) async {
     final headers = await Connector.getLoginHeaders(url.toString()) ?? {};
-    _playerController = VideoPlayerController.networkUrl(
+    final playerController = VideoPlayerController.networkUrl(
       url,
       httpHeaders: headers,
       videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
     );
+    _playerController = playerController;
 
-    _playerController?.addListener(() => setState(() {}));
-    _playerController?.setLooping(true);
+    playerController.addListener(() => setState(() {}));
+    playerController.setLooping(true);
 
-    await _playerController?.initialize();
+    await playerController.initialize();
 
     _chewieController = ChewieController(
-      videoPlayerController: _playerController!,
+      videoPlayerController: playerController,
       autoPlay: true,
       autoInitialize: true,
     );
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final chewieController = _chewieController;
+
+    return Scaffold(
         appBar: AppBar(
           leading: BackButton(
             onPressed: () => Get.back(),
@@ -190,8 +200,13 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
                     return;
                   }
 
+                  final selectedVideoInfo = _selectedVideoInfo;
+                  if (selectedVideoInfo == null) {
+                    return;
+                  }
+
                   final courseName = widget.courseInfo.main.course.name;
-                  final saveName = "${widget.name}_${_selectedVideoInfo.name}.mp4";
+                  final saveName = "${widget.name}_${selectedVideoInfo.name}.mp4";
                   final subDir = (LanguageUtil.getLangIndex() == LangEnum.zh) ? "上課錄影" : "video";
                   final dirName = path.join(courseName, subDir);
 
@@ -214,9 +229,10 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
           ],
         ),
         body: SafeArea(
-          child: (!_isLoading && _chewieController != null)
-              ? Chewie(controller: _chewieController!)
+          child: (!_isLoading && chewieController != null)
+              ? Chewie(controller: chewieController)
               : const Center(child: CircularProgressIndicator()),
         ),
       );
+  }
 }

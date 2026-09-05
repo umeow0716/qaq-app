@@ -2,12 +2,13 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 
 class TabPage {
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  late final Widget tab;
-  late final Widget tabPage;
+  final GlobalKey<NavigatorState> navigatorKey;
+  final Widget tab;
+  final Widget tabPage;
 
-  TabPage(String title, IconData icons, Widget initPage, {bool useNavigatorKey = false}) {
-    tab = Column(
+  factory TabPage(String title, IconData icons, Widget initPage, {bool useNavigatorKey = false}) {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final tab = Column(
       children: <Widget>[
         Icon(icons),
         FittedBox(
@@ -15,13 +16,16 @@ class TabPage {
         ),
       ],
     );
-    tabPage = useNavigatorKey
+    final tabPage = useNavigatorKey
         ? Navigator(
             key: navigatorKey,
             onGenerateRoute: (routeSettings) => MaterialPageRoute<void>(builder: (context) => initPage),
           )
         : initPage;
+    return TabPage._(navigatorKey, tab, tabPage);
   }
+
+  const TabPage._(this.navigatorKey, this.tab, this.tabPage);
 }
 
 class TabPageList {

@@ -90,14 +90,14 @@ class ContributorsPage extends StatelessWidget {
                 FutureBuilder<List<Contributor>>(
                   future: github.repositories.listContributors(repositorySlug).toList(),
                   builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      final contributorList = snapshot.data;
+                    final contributorList = snapshot.data;
+                    if (contributorList != null) {
                       return Expanded(
                         child: ListView.builder(
-                          itemCount: contributorList?.length,
+                          itemCount: contributorList.length,
                           shrinkWrap: true,
                           itemBuilder: (context, index) {
-                            final contributor = contributorList![index];
+                            final contributor = contributorList[index];
 
                             return InkWell(
                               onTap: () {

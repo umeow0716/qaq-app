@@ -22,7 +22,7 @@ class ISchoolPage extends StatefulWidget {
 }
 
 class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStateMixin {
-  late final TabPageList tabPageList;
+  final TabPageList tabPageList = TabPageList();
   late final TabController _tabController;
   final PageController _pageController = PageController();
   int _currentIndex = 0;
@@ -30,7 +30,6 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    tabPageList = TabPageList();
     tabPageList.add(TabPage(R.current.course, Icons.info, CourseInfoPage(widget.studentId, widget.courseInfo)));
     if (widget.studentId == LocalStorage.instance.getAccount()) {
       tabPageList.add(TabPage(

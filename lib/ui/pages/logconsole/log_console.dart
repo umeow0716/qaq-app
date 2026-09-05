@@ -333,7 +333,7 @@ class LogBar extends StatelessWidget {
             boxShadow: [
               if (!dark)
                 BoxShadow(
-                  color: Colors.grey[400]!,
+                  color: Colors.grey.shade400,
                   blurRadius: 3,
                 ),
             ],

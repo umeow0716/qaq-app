@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_student.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/r.dart';
@@ -26,8 +25,6 @@ class CourseInfoPage extends StatefulWidget {
 }
 
 class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAliveClientMixin {
-  late CourseMainInfoJson courseMainInfo;
-  late CourseExtraInfoJson courseExtraInfo;
   bool isLoading = true;
   final List<Widget> courseData = [];
   final List<Widget> listItem = [];
@@ -43,8 +40,8 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
 
   void _addTask() async {
-    courseMainInfo = widget.courseInfo.main;
-    courseExtraInfo = widget.courseInfo.extra;
+    final courseMainInfo = widget.courseInfo.main;
+    var courseExtraInfo = widget.courseInfo.extra;
     final courseId = courseMainInfo.course.id;
     final taskFlow = TaskFlow();
     final task = CourseExtraInfoTask(courseId);

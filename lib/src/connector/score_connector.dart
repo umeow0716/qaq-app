@@ -151,7 +151,7 @@ class ScoreConnector {
           RegExp creditDoubleFilter = RegExp(r'\d+(\.\d+)?');
           final Iterable<RegExpMatch> creditDoubleMatches =
               creditDoubleFilter.allMatches(scoreNode.getElementsByTagName("th")[6].text);
-          final List<String> creditDoubles = creditDoubleMatches.map((match) => match.group(0)!).toList();
+          final List<String> creditDoubles = creditDoubleMatches.map((match) => match.group(0)).whereType<String>().toList();
 
           score.credit = double.parse(creditDoubles[0]);
           score.score = scoreNode.getElementsByTagName("th")[7].text.replaceAll(RegExp(r"[\s| ]"), "");

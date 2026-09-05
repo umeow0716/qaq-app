@@ -35,7 +35,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   static bool appExpansionInitiallyExpanded = false;
 
   TabController? _tabController;
-  late CourseScoreCreditJson courseScoreCredit;
+  final CourseScoreCreditJson courseScoreCredit = LocalStorage.instance.getCourseScoreCredit();
 
   final List<SemesterCourseScoreJson> courseScoreList = [];
   final ScrollController _scrollController = ScrollController();
@@ -136,7 +136,6 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   void initState() {
     super.initState();
 
-    courseScoreCredit = LocalStorage.instance.getCourseScoreCredit();
     courseScoreList.addAll(LocalStorage.instance.getSemesterCourseScore());
 
     if (courseScoreList.isEmpty) {

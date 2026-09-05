@@ -67,21 +67,22 @@ class Connector {
     try {
       ConnectorParameter parameter = ConnectorParameter(url);
       Map<String, List<String>> headers = await DioConnector.instance.getHeadersByGet(parameter);
-      if (headers.containsKey("content-disposition")) {
+      final contentDisposition = headers["content-disposition"];
+      if (contentDisposition != null && contentDisposition.isNotEmpty) {
         //代表有名字
-        final name = headers["content-disposition"]!;
         RegExp exp = RegExp("['|\"](?<name>.+)['|\"]");
-        final matches = exp.firstMatch(name[0]);
+        final matches = exp.firstMatch(contentDisposition.first);
         fileName = matches?.group(1);
-      } else if (headers.containsKey("content-type")) {
-        final name = headers["content-type"]!;
-        if (name[0].toLowerCase().contains("pdf")) {
+      } else {
+        final contentType = headers["content-type"];
+        if (contentType != null && contentType.isNotEmpty && contentType.first.toLowerCase().contains("pdf")) {
           //是application/pdf
           fileName = '.pdf';
         }
       }
-      if (headers.containsKey("content-length")) {
-        final size = headers["content-length"]![0];
+      final contentLength = headers["content-length"];
+      if (contentLength != null && contentLength.isNotEmpty) {
+        final size = contentLength.first;
         Log.d("file size = $size");
       }
       Log.d("getFileName $fileName");

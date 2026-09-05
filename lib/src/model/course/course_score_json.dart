@@ -86,9 +86,9 @@ class CourseScoreCreditJson {
 
     final result = getCourseByType(type);
 
-    for (final key in result.keys.toList()) {
-      for (final j in result[key]!) {
-        credit += j.credit.toInt();
+    for (final courses in result.values) {
+      for (final course in courses) {
+        credit += course.credit.toInt();
       }
     }
 
@@ -107,7 +107,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.category.contains(type) && j.isPass) {
-          result[semester]!.add(j);
+          result.putIfAbsent(semester, () => <CourseScoreInfoJson>[]).add(j);
         }
       }
     }
@@ -128,7 +128,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.isGeneralLesson && j.isPass) {
-          result[semester]!.add(j);
+          result.putIfAbsent(semester, () => <CourseScoreInfoJson>[]).add(j);
         }
       }
     }
@@ -146,7 +146,7 @@ class CourseScoreCreditJson {
       result[semester] = [];
       for (final j in i.courseScoreList) {
         if (j.isOtherDepartment(department) && j.isPass) {
-          result[semester]!.add(j);
+          result.putIfAbsent(semester, () => <CourseScoreInfoJson>[]).add(j);
         }
       }
     }

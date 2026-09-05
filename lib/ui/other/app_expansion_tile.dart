@@ -27,13 +27,13 @@ class AppExpansionTile extends StatefulWidget {
 }
 
 class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late CurvedAnimation _easeOutAnimation;
-  late CurvedAnimation _easeInAnimation;
-  late ColorTween _borderColor;
-  late ColorTween _headerColor;
-  late ColorTween _iconColor;
-  late ColorTween _backgroundColor;
+  late final AnimationController _controller;
+  late final CurvedAnimation _easeOutAnimation;
+  late final CurvedAnimation _easeInAnimation;
+  final ColorTween _borderColor = ColorTween();
+  final ColorTween _headerColor = ColorTween();
+  final ColorTween _iconColor = ColorTween();
+  final ColorTween _backgroundColor = ColorTween();
 
   bool _isExpanded = false;
 
@@ -43,11 +43,6 @@ class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerPro
     _controller = AnimationController(duration: _kExpand, vsync: this);
     _easeOutAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _easeInAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _borderColor = ColorTween();
-    _headerColor = ColorTween();
-    _iconColor = ColorTween();
-    _backgroundColor = ColorTween();
-
     _isExpanded = PageStorage.of(context).readState(context) as bool? ?? widget.initiallyExpanded;
     if (_isExpanded) _controller.value = 1.0;
   }

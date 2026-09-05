@@ -12,36 +12,29 @@ class Animator extends StatefulWidget {
   State<Animator> createState() => _AnimatorState();
 }
 
-class _AnimatorState extends State<Animator> with SingleTickerProviderStateMixin {
-  late Timer timer;
-  late AnimationController animationController;
-  late Animation<double> animation;
+class _AnimatorState extends State<Animator> {
+  bool _started = false;
 
   @override
   void initState() {
     super.initState();
-    animationController = AnimationController(duration: const Duration(milliseconds: 290), vsync: this);
-    animation = CurvedAnimation(parent: animationController, curve: Curves.easeInOut);
-    timer = Timer(widget.time, animationController.forward);
-  }
-
-  @override
-  void dispose() {
-    timer.cancel();
-    animationController.dispose();
-    super.dispose();
+    Future<void>.delayed(widget.time).then((_) {
+      if (mounted) setState(() => _started = true);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: _started ? 1 : 0),
+      duration: const Duration(milliseconds: 290),
+      curve: Curves.easeInOut,
       child: widget.child,
-      builder: (BuildContext context, Widget? child) {
+      builder: (BuildContext context, double value, Widget? child) {
         return Opacity(
-          opacity: animation.value,
+          opacity: value,
           child: Transform.translate(
-            offset: Offset(0.0, (1 - animation.value) * 20),
+            offset: Offset(0.0, (1 - value) * 20),
             child: child,
           ),
         );
@@ -54,7 +47,8 @@ Timer? timer;
 Duration duration = const Duration();
 
 Duration wait() {
-  if (timer == null || !timer!.isActive) {
+  final activeTimer = timer;
+  if (activeTimer == null || !activeTimer.isActive) {
     timer = Timer(const Duration(microseconds: 120), () {
       duration = const Duration();
     });

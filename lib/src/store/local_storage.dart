@@ -38,11 +38,19 @@ class LocalStorage {
   final _httpClientInterceptors = <Interceptor>[];
   CookieJar? _cookieJar;
 
-  late SharedPreferences _pref;
-  late UserDataJson _userData;
+  SharedPreferences? _pref;
+  UserDataJson _userData = UserDataJson();
   List<SemesterJson> _courseSemesterList = <SemesterJson>[];
-  late CourseScoreCreditJson _courseScoreList;
-  late SettingJson _setting;
+  CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
+  SettingJson _setting = SettingJson();
+
+  SharedPreferences get _preferences {
+    final preferences = _pref;
+    if (preferences == null) {
+      throw StateError('LocalStorage.init() must complete before storage access');
+    }
+    return preferences;
+  }
 
   bool get autoCheckAppUpdate => _setting.other.autoCheckAppUpdate;
 
@@ -60,11 +68,7 @@ class LocalStorage {
       _writeInt(wKey, now + millsTimeOut);
     }
 
-    if (!_firstRun.containsKey(key)) {
-      _firstRun[key] = true;
-    }
-
-    return _firstRun[key]!;
+    return _firstRun.putIfAbsent(key, () => true);
   }
 
   void setAlreadyUse(String key) => _firstRun[key] = false;
@@ -300,15 +304,15 @@ class LocalStorage {
     await _writeStringList(key, jsonList);
   }
 
-  Future<void> _writeString(String key, String value) => _pref.setString(key, value);
+  Future<void> _writeString(String key, String value) => _preferences.setString(key, value);
 
-  Future<void> _writeInt(String key, int value) => _pref.setInt(key, value);
+  Future<void> _writeInt(String key, int value) => _preferences.setInt(key, value);
 
-  int? _readInt(String key) => _pref.getInt(key);
+  int? _readInt(String key) => _preferences.getInt(key);
 
-  Future<void> _writeStringList(String key, List<String> value) => _pref.setStringList(key, value);
+  Future<void> _writeStringList(String key, List<String> value) => _preferences.setStringList(key, value);
 
-  String? _readString(String key) => _pref.getString(key);
+  String? _readString(String key) => _preferences.getString(key);
 
-  List<String>? _readStringList(String key) => _pref.getStringList(key);
+  List<String>? _readStringList(String key) => _preferences.getStringList(key);
 }

@@ -45,17 +45,22 @@ class MsgDialog {
 
   final MsgDialogParameter parameter;
 
-  Future<void> show({BuildContext? context}) => AwesomeDialog(
-        context: context ?? AppNavigator.key.currentContext!,
-        dialogType: parameter.dialogType,
-        animType: parameter.animType,
-        title: parameter.title,
-        desc: parameter.desc,
-        btnOkText: parameter.okButtonText,
-        btnCancelText: parameter.cancelButtonText,
-        useRootNavigator: true,
-        dismissOnTouchOutside: false,
-        btnCancelOnPress: parameter.onCancelButtonClicked,
-        btnOkOnPress: parameter.onOkButtonClicked,
-      ).show();
+  Future<void> show({BuildContext? context}) {
+    final dialogContext = context ?? AppNavigator.key.currentContext;
+    if (dialogContext == null) return Future<void>.value();
+
+    return AwesomeDialog(
+      context: dialogContext,
+      dialogType: parameter.dialogType,
+      animType: parameter.animType,
+      title: parameter.title,
+      desc: parameter.desc,
+      btnOkText: parameter.okButtonText,
+      btnCancelText: parameter.cancelButtonText,
+      useRootNavigator: true,
+      dismissOnTouchOutside: false,
+      btnCancelOnPress: parameter.onCancelButtonClicked,
+      btnOkOnPress: parameter.onOkButtonClicked,
+    ).show();
+  }
 }

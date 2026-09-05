@@ -45,9 +45,9 @@ class CourseTableJson {
     for (final day in Day.values) {
       for (final number in SectionNumber.values) {
         final courseDetail = courseInfoMap[day]?[number];
-        if (courseDetail?.main.course.id == courseId) {
+        if (courseDetail != null && courseDetail.main.course.id == courseId) {
           try {
-            return double.parse(courseDetail!.main.course.credits).toInt();
+            return double.parse(courseDetail.main.course.credits).toInt();
           } catch (_) {
             return 0;
           }
@@ -137,7 +137,7 @@ class CourseTableJson {
     for (final day in Day.values) {
       for (final number in SectionNumber.values) {
         final courseDetail = courseInfoMap[day]?[number];
-        if (courseDetail?.main.course.id == courseId) return courseDetail!.main.course.name;
+        if (courseDetail != null && courseDetail.main.course.id == courseId) return courseDetail.main.course.name;
       }
     }
     return null;

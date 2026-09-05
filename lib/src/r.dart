@@ -1,16 +1,9 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 
 import '../generated/l10n.dart';
 
 class R {
-  static late BuildContext _context;
-  static S current = S.of(_context);
+  static S get current => S.current;
 
-  static set(BuildContext setContext) {
-    _context = setContext;
-  }
-
-  static load(Locale locale) {
-    S.delegate.load(locale);
-  }
+  static Future<S> load(Locale locale) => S.load(locale);
 }
