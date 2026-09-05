@@ -132,6 +132,11 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
       barrierDismissible: true,
     );
 
+    if (urlStr == null) {
+      Get.back();
+      return;
+    }
+
     bool externalPlayerHasLaunched = false;
 
     if (LocalStorage.instance.getOtherSetting().useExternalVideoPlayer) {
@@ -139,7 +144,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
       externalPlayerHasLaunched = await MXPlayerUtil.launch(url: urlStr, name: name);
     }
 
-    final url = Uri.tryParse(urlStr ?? "");
+    final url = Uri.tryParse(urlStr);
 
     if (!externalPlayerHasLaunched && url != null) {
       await initController(url);

@@ -27,7 +27,7 @@ class CourseTableTask extends CourseSystemTask<CourseTableJson> {
         if (LanguageUtil.getLangIndex() == LangEnum.zh) {
           value = await CourseConnector.getTWCourseMainInfoList(studentId, semester);
         } else {
-          value = await CourseConnector.getENCourseMainInfoList(studentId, semester) as CourseMainInfo?;
+          value = await CourseConnector.getENCourseMainInfoList(studentId, semester);
         }
       }
       super.onEnd();

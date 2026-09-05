@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'ischool_plus_announcement_json.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class ISchoolPlusAnnouncementInfoJson {
   @JsonKey(name: 'total')
   int total;
@@ -39,7 +39,7 @@ class ISchoolPlusAnnouncementInfoJson {
       _$ISchoolPlusAnnouncementInfoJsonFromJson(srcJson);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class ISchoolPlusAnnouncementJson {
   String token = '';
   String bid = '';

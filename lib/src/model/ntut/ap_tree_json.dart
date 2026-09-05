@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'ap_tree_json.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class APTreeJson {
   @JsonKey(name: 'apList')
   List<APListJson> apList;
@@ -17,7 +17,7 @@ class APTreeJson {
   factory APTreeJson.fromJson(Map<String, dynamic> srcJson) => _$APTreeJsonFromJson(srcJson);
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class APListJson {
   @JsonKey(name: 'apDn')
   String apDn;

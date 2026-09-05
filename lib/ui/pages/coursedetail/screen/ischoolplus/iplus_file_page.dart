@@ -226,7 +226,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     if (showToast) {
       MyToast.show(R.current.downloadWillStart);
     }
-    final urlList = await ISchoolPlusConnector.getRealFileUrl(fileType.postData) as List<String>?;
+    final urlList = await ISchoolPlusConnector.getRealFileUrl(fileType.postData);
     if (urlList == null) {
       MyToast.show(sprintf("%s%s", [courseFile.name, R.current.downloadError]));
       return;

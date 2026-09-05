@@ -10,7 +10,6 @@ import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/config/app_config.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
-import 'package:flutter_app/src/model/userdata/user_data_json.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/task/course/course_semester_task.dart';

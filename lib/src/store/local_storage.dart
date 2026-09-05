@@ -64,7 +64,7 @@ class LocalStorage {
       _firstRun[key] = true;
     }
 
-    return _firstRun[key];
+    return _firstRun[key]!;
   }
 
   void setAlreadyUse(String key) => _firstRun[key] = false;

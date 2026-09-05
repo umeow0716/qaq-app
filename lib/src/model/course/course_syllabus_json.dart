@@ -1,11 +1,9 @@
 import 'package:flutter_app/src/model/json_init.dart';
-import 'package:json_annotation/json_annotation.dart';
 
-@JsonSerializable()
 class CourseSyllabusJson {
   int year = 0;
   int semester = 0;
-  int courseId = 0;
+  String courseId = '';
   String courseName = '';
   int phase = 0;
   double credit = 0;
@@ -34,7 +32,7 @@ class CourseSyllabusJson {
     final yearSemesterParts = (yearSemester ?? '0-0').split('-');
     year = int.tryParse(yearSemesterParts.isNotEmpty ? yearSemesterParts[0] : '') ?? 0;
     semester = int.tryParse(yearSemesterParts.length > 1 ? yearSemesterParts[1] : '') ?? 0;
-    this.courseId = int.tryParse(courseId ?? '') ?? 0;
+    this.courseId = courseId ?? '';
     this.courseName = JsonInit.stringInit(courseName);
     this.phase = int.tryParse(phase ?? '') ?? 0;
     this.credit = double.tryParse(credit ?? '') ?? 0;

@@ -11,7 +11,6 @@ import 'package:flutter_app/src/config/app_themes.dart';
 import 'package:flutter_app/src/connector/blocked_cookies.dart';
 import 'package:flutter_app/src/connector/interceptors/request_interceptor.dart';
 import 'package:flutter_app/src/connector/interceptors/response_cookie_filter.dart';
-import 'package:flutter_app/src/controllers/calendar_controller.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
 import 'package:flutter_app/src/providers/category_provider.dart';
 import 'package:flutter_app/src/store/local_storage.dart';

@@ -11,7 +11,7 @@ class IPlusSubscribeNoticeTask extends IPlusSystemTask<List<String>> {
   Future<TaskStatus> execute() async {
     final status = await super.execute();
     if (status == TaskStatus.success) {
-      final value = await ISchoolPlusConnector.getSubscribeNotice() as List<String>?;
+      final value = await ISchoolPlusConnector.getSubscribeNotice();
       if (value != null) {
         result = value;
         return TaskStatus.success;

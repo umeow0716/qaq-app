@@ -16,7 +16,7 @@ List<NTUTCalendarJson> getNTUTCalendarJsonList(List<dynamic> list) {
   return result;
 }
 
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class NTUTCalendarJson {
   @JsonKey(name: 'id')
   int id;

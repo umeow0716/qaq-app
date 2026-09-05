@@ -48,7 +48,7 @@ class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerPro
     _iconColor = ColorTween();
     _backgroundColor = ColorTween();
 
-    _isExpanded = PageStorage.of(context)?.readState(context) as bool? ?? widget.initiallyExpanded;
+    _isExpanded = PageStorage.of(context).readState(context) as bool? ?? widget.initiallyExpanded;
     if (_isExpanded) _controller.value = 1.0;
   }
 
@@ -73,7 +73,7 @@ class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerPro
           if (mounted) setState(() {});
         });
       }
-      PageStorage.of(context)?.writeState(context, _isExpanded);
+      PageStorage.of(context).writeState(context, _isExpanded);
     });
     widget.onExpansionChanged?.call(_isExpanded);
   }

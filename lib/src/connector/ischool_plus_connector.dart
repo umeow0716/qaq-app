@@ -309,7 +309,7 @@ class ISchoolPlusConnector {
             return [realUrl, url]; //PDF需要有referer不然會無法下載
           }
         }
-      } else if (response.isRedirect || result.isEmpty) {
+      } else if (response.isRedirect == true || result.isEmpty) {
         //發生跳轉 出現檔案下載預覽頁面
         final locations = response.headers[HttpHeaders.locationHeader];
         if (locations == null || locations.isEmpty) return null;

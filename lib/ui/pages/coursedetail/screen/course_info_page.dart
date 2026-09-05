@@ -10,7 +10,6 @@ import 'package:flutter_app/src/task/course/course_extra_info_task.dart';
 import 'package:flutter_app/src/task/task_flow.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:get/get.dart';
 import 'package:sprintf/sprintf.dart';
 import 'package:flutter_app/src/task/iplus/iplus_get_course_student_list_task.dart';
 

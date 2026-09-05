@@ -131,7 +131,7 @@ class _OtherPageState extends State<OtherPage> {
         final link = AppLink.feedbackUrl(mainVersion, LogConsole.getLog());
 
         RouteUtils.toWebViewPage(
-          initialUrl: link ?? AppLink.feedbackBaseUrl,
+          initialUrl: link,
           title: R.current.feedback,
         );
         break;
