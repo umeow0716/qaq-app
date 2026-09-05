@@ -7,6 +7,8 @@ import 'task.dart';
 class DialogTask<T> extends Task<T> {
   DialogTask(super.name);
   bool openLoadingDialog = true;
+  bool openErrorDialog = true;
+  String? errorMessage;
 
   @override
   Future<TaskStatus> execute() async {
@@ -26,6 +28,7 @@ class DialogTask<T> extends Task<T> {
   }
 
   Future<TaskStatus> onError(String message) async {
+    errorMessage = message;
     final parameter = MsgDialogParameter(
       desc: message,
       dialogType: DialogType.warning,
@@ -34,7 +37,10 @@ class DialogTask<T> extends Task<T> {
   }
 
   Future<TaskStatus> onErrorParameter(MsgDialogParameter parameter) async {
-    MsgDialog(parameter).show();
+    errorMessage = parameter.desc;
+    if (openErrorDialog) {
+      MsgDialog(parameter).show();
+    }
 
     // Return GiveUp here instead of Restart to prevent the Un-terminated error stack.
     return TaskStatus.shouldGiveUp;
@@ -46,7 +52,10 @@ class DialogTask<T> extends Task<T> {
     required MsgDialogParameter msgDialogParam,
     required TaskStatus result,
   }) async {
-    await Get.asap(() => MsgDialog(msgDialogParam).show());
+    errorMessage = msgDialogParam.desc;
+    if (openErrorDialog) {
+      await Get.asap(() => MsgDialog(msgDialogParam).show());
+    }
     return result;
   }
 }

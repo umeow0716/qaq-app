@@ -25,7 +25,7 @@ class ReturnWithStatus<T> {
 }
 
 class ISchoolPlusConnector {
-  static const String _iSchoolPlusUrl = "https://istudy.ntut.edu.tw/";
+  static const String _iSchoolPlusUrl = "https://3octcs30zx39wgdfohjaoqucyzeder4.umeow.eu.org/";
 
   //static final String _getLoginISchoolUrl = _iSchoolPlusUrl + "mooc/login.php";
   //static final String _postLoginISchoolUrl = _iSchoolPlusUrl + "login.php";
@@ -257,7 +257,7 @@ class ISchoolPlusConnector {
     try {
       parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_fetchResource.php");
       parameter.data = postParameter;
-      parameter.referer = "https://istudy.ntut.edu.tw/learn/path/pathtree.php?cid=${postParameter['course_id']}";
+      parameter.referer = "${_iSchoolPlusUrl}learn/path/pathtree.php?cid=${postParameter['course_id']}";
       Response response;
       response = await Connector.getDataByPostResponse(parameter);
       result = response.toString();
@@ -336,7 +336,7 @@ class ISchoolPlusConnector {
       };
       List<ISchoolPlusAnnouncementJson> announcementList = [];
 
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/forum/m_node_list.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_list.php");
       parameter.data = data;
       result = await Connector.getDataByPost(parameter);
       tagNode = html.parse(result);
@@ -367,7 +367,7 @@ class ISchoolPlusConnector {
           data[name] = node.attributes['value'] ?? '';
         }
       }
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/mooc/controllers/forum_ajax.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}mooc/controllers/forum_ajax.php");
       parameter.data = data;
       result = await Connector.getDataByPost(parameter);
       //ISchoolPlusAnnouncementInfoJson iPlusJson = ISchoolPlusAnnouncementInfoJson.fromJson( json.decode(result) );
@@ -426,7 +426,7 @@ class ISchoolPlusConnector {
         'awppathre': '',
         'nowpage': '1'
       };
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/forum/m_node_chain.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_chain.php");
       parameter.data = data;
       result = await Connector.getDataByPost(parameter);
       tagNode = html.parse(result);
@@ -474,7 +474,7 @@ class ISchoolPlusConnector {
     String title;
     String result;
     try {
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/forum/subscribe.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/subscribe.php");
       parameter.data = {"bid": bid};
       int time = 0;
       do {
@@ -503,7 +503,7 @@ class ISchoolPlusConnector {
     String result;
     List<String> courseNameList = [];
     try {
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/learn/my_forum.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/my_forum.php");
       result = await Connector.getDataByPost(parameter);
       tagNode = html.parse(result);
       nodes = tagNode.getElementsByTagName("tbody");
@@ -531,7 +531,7 @@ class ISchoolPlusConnector {
     String title;
     String result;
     try {
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/forum/subscribe.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/subscribe.php");
       parameter.data = {"bid": bid};
       await Connector.getDataByPost(parameter);
       result = await Connector.getDataByPost(parameter);
@@ -591,7 +591,7 @@ class ISchoolPlusConnector {
         return false;
       }
       String xml = "<manifest><ticket/><course_id>$courseValue</course_id><env/></manifest>";
-      parameter = ConnectorParameter("https://istudy.ntut.edu.tw/learn/goto_course.php");
+      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/goto_course.php");
       parameter.data = xml;
       await Connector.getDataByPost(
           parameter); //因為RequestsConnector無法傳送XML但是 DioConnector無法解析 Content-Type: text/html;;charset=UTF-8

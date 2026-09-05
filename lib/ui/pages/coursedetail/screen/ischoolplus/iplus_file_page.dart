@@ -33,11 +33,14 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   final List<CourseFileJson> courseFileList = [];
   final selectList = SelectList();
   bool isSupport = false;
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
     isSupport = LocalStorage.instance.getAccount() == widget.studentId;
+    _isLoading = isSupport;
     Future.delayed(Duration.zero, () {
       if (isSupport) {
         _addTask();
@@ -46,23 +49,30 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     });
   }
 
-  void _addTask() async {
-    await Future.delayed(const Duration(microseconds: 500));
+  Future<void> _addTask() async {
     final courseId = widget.courseInfo.main.course.id;
+    final task = IPlusCourseFileTask(courseId)
+      ..openLoadingDialog = false
+      ..openErrorDialog = false;
+    final taskFlow = TaskFlow()..addTask(task);
+    final success = await taskFlow.start();
+    final result = task.result;
 
-    final taskFlow = TaskFlow();
-    final task = IPlusCourseFileTask(courseId);
-    taskFlow.addTask(task);
-
-    if (await taskFlow.start()) {
-      final result = task.result;
-      if (result != null) {
-        courseFileList.addAll(result);
-      }
-    }
+    if (!mounted) return;
 
     setState(() {
-      selectList.addItems(courseFileList.length);
+      _isLoading = false;
+      if (success && result != null) {
+        courseFileList
+          ..clear()
+          ..addAll(result);
+        selectList.reset(courseFileList.length);
+        _loadError = null;
+      } else {
+        courseFileList.clear();
+        selectList.reset(0);
+        _loadError = task.errorMessage ?? R.current.getISchoolPlusCourseFileError;
+      }
     });
   }
 
@@ -77,27 +87,45 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
         }
       },
       child: Scaffold(
-        body: (courseFileList.isNotEmpty)
-          ? _buildFileList()
-          : (isSupport)
-              ? Center(
-                  child: Text(R.current.noAnyFile),
-                )
-              : Center(
-                  child: Text(R.current.notSupport),
-                ),
+        body: _buildBody(),
         floatingActionButton: (selectList.inSelectMode)
             ? FloatingActionButton(
-              // FloatingActionButton: 浮動按鈕
-              onPressed: _floatingDownloadPress,
-              // 按下觸發的方式名稱: void _incrementCounter()
-              tooltip: R.current.download,
-              // 按住按鈕時出現的提示字
-              child: const Icon(Icons.file_download),
-            )
+                onPressed: _floatingDownloadPress,
+                tooltip: R.current.download,
+                child: const Icon(Icons.file_download),
+              )
             : null,
       ),
     );
+  }
+
+  Widget _buildBody() {
+    if (!isSupport) {
+      return Center(child: Text(R.current.notSupport));
+    }
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final loadError = _loadError;
+    if (loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            loadError,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (courseFileList.isEmpty) {
+      return Center(child: Text(R.current.noAnyFile));
+    }
+
+    return _buildFileList();
   }
 
   Future<void> _floatingDownloadPress() async {
@@ -272,14 +300,10 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
 class SelectList {
   final List<bool> _selectList = [];
 
-  void addItem() {
-    _selectList.add(false);
-  }
-
-  void addItems(int number) {
-    for (int i = 0; i < number; i++) {
-      addItem();
-    }
+  void reset(int number) {
+    _selectList
+      ..clear()
+      ..addAll(List<bool>.filled(number, false));
   }
 
   void setItemSelect(int index, bool value) {
