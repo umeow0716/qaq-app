@@ -78,7 +78,10 @@ class ISchoolPlusConnector {
         if (redirectLocations == null || redirectLocations.isEmpty) {
           continue;
         }
-        final login2Parameter = ConnectorParameter(redirectLocations.first);
+        final redirectLocationUrl = redirectLocations.first
+          .replaceAll("https://istudy.ntut.edu.tw/", _iSchoolPlusUrl)
+          .replaceAll("http://istudy.ntut.edu.tw/", _iSchoolPlusUrl);
+        final login2Parameter = ConnectorParameter(redirectLocationUrl);
         final login2Result = await Connector.getDataByGet(login2Parameter);
         if (login2Result.contains("lost")) {
           log("[TAT] ischool_plus_connector.dart: connection lost during redirection, retrying...");
