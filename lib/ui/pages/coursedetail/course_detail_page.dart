@@ -78,9 +78,10 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
           bottom: TabBar(
             indicatorPadding: const EdgeInsets.all(0),
             labelPadding: const EdgeInsets.all(0),
-            isScrollable: true,
+            isScrollable: false,
+            tabAlignment: TabAlignment.fill,
             controller: _tabController,
-            tabs: tabPageList.getTabList(context),
+            tabs: tabPageList.getTabList(),
             onTap: (index) {
               _pageController.jumpToPage(index);
               _currentIndex = index;

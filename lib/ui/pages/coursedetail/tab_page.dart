@@ -35,19 +35,15 @@ class TabPageList {
 
   List<Widget> get getTabPageList => tabPageList.map((tabPage) => tabPage.tabPage).toList();
 
-  List<Widget> getTabList(BuildContext context) {
-    final pages = <Widget>[];
-    final width = MediaQuery.of(context).size.width / length;
-    for (final tabPage in tabPageList) {
-      pages.add(SizedBox(
-        width: width,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 4),
-          child: tabPage.tab,
-        ),
-      ));
-    }
-    return pages;
+  List<Widget> getTabList() {
+    return tabPageList
+        .map(
+          (tabPage) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: tabPage.tab,
+          ),
+        )
+        .toList();
   }
 
   Widget getPage(int index) => tabPageList[index].tabPage;
