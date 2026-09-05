@@ -2,7 +2,7 @@ name: flutter_app
 description: NTUT Life TAT, convenient, concise, fast, powerful, enrich your NTUT life!
 publish_to: 'none'
 
-version: 1.6.9+5273
+version: 1.7.0+5274
 
 environment:
   flutter: ">=3.47.2 <4.0.0"
