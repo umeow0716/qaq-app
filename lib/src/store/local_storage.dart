@@ -31,6 +31,7 @@ class LocalStorage {
   final _courseTableJsonKey = "CourseTableJsonListKey";
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
+  final _courseCategoryCacheKey = "CourseCategoryCacheKey";
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
@@ -42,6 +43,7 @@ class LocalStorage {
   UserDataJson _userData = UserDataJson();
   List<SemesterJson> _courseSemesterList = <SemesterJson>[];
   CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
+  final Map<String, Map<String, String>> _courseCategoryCache = {};
   SettingJson _setting = SettingJson();
 
   SharedPreferences get _preferences {
@@ -199,6 +201,90 @@ class LocalStorage {
         (readJson != null) ? CourseScoreCreditJson.fromJson(json.decode(readJson)) : CourseScoreCreditJson();
   }
 
+  bool _loadCourseCategoryCache() {
+    _courseCategoryCache.clear();
+    bool changed = false;
+
+    final readJson = _readString(_courseCategoryCacheKey);
+    if (readJson != null) {
+      final decoded = json.decode(readJson);
+      if (decoded is Map<String, dynamic>) {
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          if (value is! Map) continue;
+
+          final category = value['category'];
+          final openClass = value['openClass'];
+          if (category is! String || category.isEmpty) continue;
+
+          _courseCategoryCache[entry.key] = {
+            'category': category,
+            'openClass': openClass is String ? openClass : '',
+          };
+        }
+      }
+    }
+
+    // Seed the new cache from score data saved by older app versions, then
+    // hydrate score rows from the cache when their metadata is missing.
+    for (final courseInfo in _courseScoreList.getCourseInfoList()) {
+      final courseId = courseInfo.courseId;
+      if (courseId.isEmpty) continue;
+
+      if (courseInfo.category.isNotEmpty && !_courseCategoryCache.containsKey(courseId)) {
+        _courseCategoryCache[courseId] = {
+          'category': courseInfo.category,
+          'openClass': courseInfo.openClass,
+        };
+        changed = true;
+      }
+
+      final cached = _courseCategoryCache[courseId];
+      if (cached == null) continue;
+
+      if (courseInfo.category.isEmpty) {
+        courseInfo.category = cached['category'] ?? '';
+      }
+      if (courseInfo.openClass.isEmpty) {
+        courseInfo.openClass = cached['openClass'] ?? '';
+      }
+    }
+
+    return changed;
+  }
+
+  ({String category, String openClass})? getCourseCategoryCache(String courseId) {
+    final cached = _courseCategoryCache[courseId];
+    if (cached == null) return null;
+
+    final category = cached['category'] ?? '';
+    if (category.isEmpty) return null;
+
+    return (
+      category: category,
+      openClass: cached['openClass'] ?? '',
+    );
+  }
+
+  void setCourseCategoryCache(
+    String courseId, {
+    required String category,
+    required String openClass,
+  }) {
+    if (courseId.isEmpty || category.isEmpty) return;
+
+    final cachedOpenClass = _courseCategoryCache[courseId]?['openClass'] ?? '';
+    _courseCategoryCache[courseId] = {
+      'category': category,
+      'openClass': openClass.isNotEmpty ? openClass : cachedOpenClass,
+    };
+  }
+
+  Future<void> saveCourseCategoryCache() => _writeString(
+        _courseCategoryCacheKey,
+        json.encode(_courseCategoryCache),
+      );
+
   Future<void> saveCourseSetting() => _saveSetting();
 
   Future<void> clearCourseSetting() {
@@ -268,6 +354,10 @@ class LocalStorage {
     _loadCourseTableList();
     _loadSetting();
     _loadCourseScoreCredit();
+    final courseCategoryCacheChanged = _loadCourseCategoryCache();
+    if (courseCategoryCacheChanged) {
+      await saveCourseCategoryCache();
+    }
     _loadSemesterJsonList();
   }
 

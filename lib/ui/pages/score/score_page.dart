@@ -146,66 +146,127 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     }
   }
 
+  void _applyCourseCategory(
+    String courseId, {
+    required String category,
+    required String openClass,
+  }) {
+    for (final semesterScore in courseScoreList) {
+      for (final courseInfo in semesterScore.courseScoreList) {
+        if (courseInfo.courseId != courseId) continue;
+        courseInfo.category = category;
+        courseInfo.openClass = openClass;
+      }
+    }
+  }
+
+  Future<void> _populateCourseCategories() async {
+    final storage = LocalStorage.instance;
+    final missingCourseIds = <String>{};
+
+    for (final semesterScore in courseScoreList) {
+      for (final courseInfo in semesterScore.courseScoreList) {
+        final courseId = courseInfo.courseId;
+        if (courseId.isEmpty) continue;
+
+        if (courseInfo.category.isNotEmpty) {
+          storage.setCourseCategoryCache(
+            courseId,
+            category: courseInfo.category,
+            openClass: courseInfo.openClass,
+          );
+          continue;
+        }
+
+        final cached = storage.getCourseCategoryCache(courseId);
+        if (cached != null) {
+          courseInfo.category = cached.category;
+          courseInfo.openClass = cached.openClass;
+          continue;
+        }
+
+        missingCourseIds.add(courseId);
+      }
+    }
+
+    if (missingCourseIds.isEmpty) {
+      await storage.saveCourseCategoryCache();
+      return;
+    }
+
+    if (!mounted) return;
+
+    final taskFlow = TaskFlow();
+    for (final courseId in missingCourseIds) {
+      final task = CourseCategoryTask(courseId)..openLoadingDialog = false;
+      taskFlow.addTask(task);
+    }
+
+    final total = taskFlow.length;
+    int rate = 0;
+    final progressRateDialog = ProgressRateDialog(context);
+
+    progressRateDialog.update(
+      message: R.current.searchingCredit,
+      nowProgress: 0,
+      progressString: sprintf("%d/%d", [0, total]),
+    );
+    await progressRateDialog.show();
+
+    taskFlow.callback = (task) {
+      rate++;
+      progressRateDialog.update(
+        nowProgress: rate / total,
+        progressString: sprintf("%d/%d", [rate, total]),
+      );
+
+      if (task is! CourseCategoryTask) return;
+      final result = task.result;
+      if (result is! CourseSyllabusJson || result.category.isEmpty) return;
+
+      _applyCourseCategory(
+        task.code,
+        category: result.category,
+        openClass: result.className,
+      );
+      storage.setCourseCategoryCache(
+        task.code,
+        category: result.category,
+        openClass: result.className,
+      );
+    };
+
+    await taskFlow.start();
+    await storage.saveCourseCategoryCache();
+    await progressRateDialog.hide();
+  }
+
   void _addScoreRankTask() async {
     courseScoreList.clear();
 
     setState(() => _isLoading = true);
 
-    final taskFlow = TaskFlow();
+    final scoreTaskFlow = TaskFlow();
     final scoreTask = ScoreRankTask();
-    taskFlow.addTask(scoreTask);
+    scoreTaskFlow.addTask(scoreTask);
 
-    if (await taskFlow.start()) {
+    if (await scoreTaskFlow.start()) {
       courseScoreList
         ..clear()
         ..addAll(scoreTask.result ?? const []);
     }
 
     if (courseScoreList.isNotEmpty) {
+      await _populateCourseCategories();
       await LocalStorage.instance.setSemesterCourseScore(courseScoreList);
-      int total = courseScoreCredit.getCourseInfoList().length;
-      final courseInfoList = courseScoreCredit.getCourseInfoList();
-      // ignore: use_build_context_synchronously
-      final progressRateDialog = ProgressRateDialog(context);
-
-      progressRateDialog.update(message: R.current.searchingCredit, nowProgress: 0, progressString: "0/0");
-      progressRateDialog.show();
-
-      for (int i = 0; i < total; i++) {
-        final courseInfo = courseInfoList[i];
-        final courseId = courseInfo.courseId;
-        if (courseInfo.category.isEmpty) {
-          final task = CourseCategoryTask(courseId);
-          task.openLoadingDialog = false;
-          if (courseId.isNotEmpty) {
-            taskFlow.addTask(task);
-          }
-        }
-      }
-
-      total = taskFlow.length;
-      int rate = 0;
-
-      taskFlow.callback = (task) {
-        rate++;
-        progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
-        final result = task.result;
-        if (result is! CourseSyllabusJson) return;
-        final courseScoreInfo = courseScoreCredit.getCourseByCourseId(result.courseId);
-        if (courseScoreInfo == null) return;
-        courseScoreInfo.category = result.category;
-        courseScoreInfo.openClass = result.className;
-      };
-
-      await taskFlow.start();
-      await LocalStorage.instance.setSemesterCourseScore(courseScoreList);
-      progressRateDialog.hide();
     } else {
       MyToast.show(R.current.searchCreditIsNullWarning);
     }
 
     _buildTabBar();
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _onSelectFinish(GraduationInformationJson? value) {
