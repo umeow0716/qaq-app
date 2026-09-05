@@ -97,6 +97,8 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   Map? _selectedDivision;
   Map? _selectedDepartment;
   final Map<String, String> _presetDepartment = <String, String>{};
+  bool _isLoadingSelection = false;
+  bool _hasCurrentCreditInfo = false;
 
   @override
   void initState() {
@@ -107,40 +109,115 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   }
 
   Future<void> _addSelectTask() async {
-    await _getYearList();
-    //利用學號預設學年度
-    if (graduationInformation.selectYear.isEmpty) {
-      graduationInformation.selectYear = LocalStorage.instance.getAccount().substring(0, 3);
+    if (mounted) {
+      setState(() => _isLoadingSelection = true);
     }
-    for (String v in yearList) {
-      if (v.contains(graduationInformation.selectYear)) {
-        _selectedYear = v;
-        break;
+
+    try {
+      await _getYearList();
+      //利用學號預設學年度
+      if (graduationInformation.selectYear.isEmpty) {
+        graduationInformation.selectYear = LocalStorage.instance.getAccount().substring(0, 3);
+      }
+      for (String v in yearList) {
+        if (v.contains(graduationInformation.selectYear)) {
+          _selectedYear = v;
+          break;
+        }
+      }
+
+      await _getDivisionList();
+      //利用北科行動助理預設學制與系所
+      if (graduationInformation.selectDivision.isEmpty) {
+        graduationInformation.selectDivision = _presetDepartment["division"] ?? "";
+      }
+      for (Map v in divisionList) {
+        if (v["name"]?.contains(graduationInformation.selectDivision) ?? false) {
+          _selectedDivision = v;
+          break;
+        }
+      }
+
+      await _getDepartmentList();
+      if (graduationInformation.selectDepartment.isEmpty) {
+        graduationInformation.selectDepartment = _presetDepartment["department"] ?? "";
+      }
+      for (Map v in departmentList) {
+        if (v["name"]?.contains(graduationInformation.selectDepartment) ?? false) {
+          _selectedDepartment = v;
+          break;
+        }
+      }
+
+      await _getCreditInfo();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSelection = false);
       }
     }
-    await _getDivisionList();
-    //利用北科行動助理預設學制與系所
-    if (graduationInformation.selectDivision.isEmpty) {
-      graduationInformation.selectDivision = _presetDepartment["division"] ?? "";
-    }
-    for (Map v in divisionList) {
-      if (v["name"]?.contains(graduationInformation.selectDivision) ?? false) {
-        _selectedDivision = v;
-        break;
+  }
+
+  Future<void> _onYearChanged(String? value) async {
+    if (value == null || _isLoadingSelection) return;
+
+    setState(() {
+      _isLoadingSelection = true;
+      _hasCurrentCreditInfo = false;
+      _selectedYear = value;
+      _selectedDivision = null;
+      _selectedDepartment = null;
+      divisionList = [];
+      departmentList = [];
+    });
+
+    try {
+      await _getDivisionList();
+      await _getDepartmentList();
+      await _getCreditInfo();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSelection = false);
       }
     }
-    await _getDepartmentList();
-    if (graduationInformation.selectDepartment.isEmpty) {
-      graduationInformation.selectDepartment = _presetDepartment["department"] ?? "";
-    }
-    for (Map v in departmentList) {
-      if (v["name"]?.contains(graduationInformation.selectDepartment) ?? false) {
-        _selectedDepartment = v;
-        break;
+  }
+
+  Future<void> _onDivisionChanged(Map? value) async {
+    if (value == null || _isLoadingSelection) return;
+
+    setState(() {
+      _isLoadingSelection = true;
+      _hasCurrentCreditInfo = false;
+      _selectedDivision = value;
+      _selectedDepartment = null;
+      departmentList = [];
+    });
+
+    try {
+      await _getDepartmentList();
+      await _getCreditInfo();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSelection = false);
       }
     }
-    await _getCreditInfo();
-    if (mounted) setState(() {});
+  }
+
+  Future<void> _onDepartmentChanged(Map? value) async {
+    if (value == null || _isLoadingSelection) return;
+
+    setState(() {
+      _isLoadingSelection = true;
+      _hasCurrentCreditInfo = false;
+      _selectedDepartment = value;
+    });
+
+    try {
+      await _getCreditInfo();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingSelection = false);
+      }
+    }
   }
 
   Widget buildText(String title) {
@@ -195,7 +272,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
       yearList = task.result ?? <String>[];
       if (yearList.isNotEmpty) _selectedYear = yearList.first;
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _getDivisionList() async {
@@ -230,6 +307,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
   }
 
   Future<void> _getCreditInfo() async {
+    _hasCurrentCreditInfo = false;
     final selectedDivision = _selectedDivision;
     final selectedDepartment = _selectedDepartment;
     final selectedYear = _selectedYear;
@@ -249,6 +327,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
         graduationInformation.selectYear = selectedYear;
         graduationInformation.selectDivision = selectedDivision["name"]?.toString() ?? "";
         graduationInformation.selectDepartment = selectedDepartment["name"]?.toString() ?? "";
+        _hasCurrentCreditInfo = true;
       }
     }
     if (mounted) setState(() {});
@@ -286,12 +365,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                       isExpanded: true, //裡面元素是否要Expanded
                       value: _selectedYear,
                       items: buildYearList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedYear = value;
-                          _getDivisionList();
-                        });
-                      },
+                      onChanged: _isLoadingSelection ? null : _onYearChanged,
                     ),
                   ),
                   Expanded(
@@ -299,12 +373,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                       isExpanded: true,
                       value: _selectedDivision,
                       items: buildDivisionList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDivision = value;
-                          _getDepartmentList();
-                        });
-                      },
+                      onChanged: _isLoadingSelection ? null : _onDivisionChanged,
                     ),
                   ),
                 ],
@@ -317,12 +386,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                       isExpanded: true,
                       value: _selectedDepartment,
                       items: buildDepartmentList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDepartment = value;
-                        });
-                        _getCreditInfo();
-                      },
+                      onChanged: _isLoadingSelection ? null : _onDepartmentChanged,
                     ),
                   ),
                 ],
@@ -338,9 +402,7 @@ class _GraduationPickerWidget extends State<GraduationPickerWidget> {
                   ),
                   TextButton(
                     child: Text(R.current.save),
-                    onPressed: () {
-                      _save();
-                    },
+                    onPressed: _isLoadingSelection || !_hasCurrentCreditInfo ? null : _save,
                   )
                 ],
               )
