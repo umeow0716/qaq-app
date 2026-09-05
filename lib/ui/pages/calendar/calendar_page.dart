@@ -11,7 +11,7 @@ class CalendarPage extends StatelessWidget {
   const CalendarPage({super.key});
 
   Widget _buildEventList(BuildContext context, List<NTUTCalendarJson> selectedEvents) {
-    final eventBorderColor = Theme.of(context).colorScheme.onBackground;
+    final eventBorderColor = Theme.of(context).colorScheme.onSurface;
     return ListView.builder(
       itemCount: selectedEvents.length,
       itemBuilder: (context, index) {
@@ -84,7 +84,7 @@ class CalendarPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FutureBuilder(
         future: CalendarController.instance.findFirstEventsFromToday(),
-        builder: (context, __) => Scaffold(
+        builder: (context, _) => Scaffold(
           appBar: AppBar(
             title: Text(R.current.calendar),
           ),

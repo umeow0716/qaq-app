@@ -8,7 +8,7 @@ import 'package:flutter_app/src/task/task.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

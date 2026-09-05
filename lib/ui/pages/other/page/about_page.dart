@@ -11,7 +11,7 @@ import 'package:flutter_app/ui/other/route_utils.dart';
 enum OnListViewPress { appUpdate, contribution, privacyPolicy, version, dev }
 
 class AboutPage extends StatefulWidget {
-  const AboutPage({Key? key}) : super(key: key);
+  const AboutPage({super.key});
 
   @override
   State<AboutPage> createState() => _AboutPageState();
@@ -107,9 +107,6 @@ class _AboutPageState extends State<AboutPage> {
         break;
       case OnListViewPress.dev:
         RouteUtils.toDevPage();
-        break;
-      default:
-        MyToast.show(R.current.noFunction);
         break;
     }
   }

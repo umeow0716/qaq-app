@@ -1,16 +1,3 @@
-buildscript {
-    ext.kotlin_version = '1.9.10'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.4'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
 allprojects {
     repositories {
         google()
@@ -26,11 +13,10 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-// AGP 8.x workarounds for plugins
 subprojects { subproject ->
     subproject.plugins.withId('com.android.library') {
         subproject.android {
-            compileSdk 35
+            compileSdk 37
 
             if (namespace == null || namespace.isEmpty()) {
                 def manifest = subproject.file("src/main/AndroidManifest.xml")
@@ -41,7 +27,6 @@ subprojects { subproject ->
             }
         }
 
-        // Force Java 11 after plugin evaluation
         subproject.afterEvaluate {
             subproject.android {
                 compileOptions {
@@ -51,9 +36,9 @@ subprojects { subproject ->
             }
         }
     }
-    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-        kotlinOptions {
-            jvmTarget = "17"
+    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile).configureEach {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget("17")
         }
     }
 }

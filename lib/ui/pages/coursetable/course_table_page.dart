@@ -27,7 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sprintf/sprintf.dart';
 
 class CourseTablePage extends StatefulWidget {
-  const CourseTablePage({Key? key}) : super(key: key);
+  const CourseTablePage({super.key});
 
   @override
   State<CourseTablePage> createState() => _CourseTablePageState();
@@ -257,7 +257,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     );
   }
 
-  _onPopupMenuSelect(int value) {
+  void _onPopupMenuSelect(int value) {
     switch (value) {
       case 0:
         final credit = courseTableData?.getTotalCredit().toString();
@@ -369,7 +369,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
               ? Padding(
                   padding: const EdgeInsets.all(10),
                   child: CircularProgressIndicator(
-                    backgroundColor: Theme.of(context).colorScheme.background,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     color: Theme.of(context).colorScheme.tertiary,
                     strokeWidth: 4,
                   ),
@@ -427,7 +427,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
         children: [
           Container(
             height: studentIdHeight,
-            color: Theme.of(context).colorScheme.background,
+            color: Theme.of(context).colorScheme.surface,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
@@ -542,7 +542,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
       );
     }
     return Container(
-      color: Theme.of(context).colorScheme.background.withAlpha(courseTableWithAlpha),
+      color: Theme.of(context).colorScheme.surface.withAlpha(courseTableWithAlpha),
       height: dayHeight,
       child: Row(
         children: widgetList,
@@ -554,7 +554,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     final section = courseTableControl.getSectionIntList[index];
     final color = index % 2 == 1
         ? Theme.of(context).colorScheme.surface
-        : Theme.of(context).colorScheme.surfaceVariant.withAlpha(courseTableWithAlpha);
+        : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(courseTableWithAlpha);
     final List<Widget> widgetList = [];
     widgetList.add(
       Container(

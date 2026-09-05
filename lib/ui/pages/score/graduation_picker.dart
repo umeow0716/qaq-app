@@ -56,8 +56,8 @@ class GraduationPicker {
       try {
         const dialog = GraduationPickerWidget();
         Get.dialog<GraduationInformationJson>(
-          WillPopScope(
-              onWillPop: () async => _barrierDismissible,
+          PopScope<void>(
+              canPop: _barrierDismissible,
               child: const Dialog(
                   insetAnimationDuration: Duration(milliseconds: 100),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
@@ -81,7 +81,7 @@ class GraduationPicker {
 }
 
 class GraduationPickerWidget extends StatefulWidget {
-  const GraduationPickerWidget({Key? key}) : super(key: key);
+  const GraduationPickerWidget({super.key});
 
   @override
   State<GraduationPickerWidget> createState() => _GraduationPickerWidget();

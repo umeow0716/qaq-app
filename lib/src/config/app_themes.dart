@@ -7,19 +7,19 @@ class AppThemes {
     useMaterial3: true,
     fontFamily: 'TATFont',
     colorScheme: lightColorScheme,
-    appBarTheme: AppBarTheme(
+    appBarTheme: AppBarThemeData(
       backgroundColor: lightColorScheme.primary,
       foregroundColor: lightColorScheme.onPrimary,
       centerTitle: false,
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: lightColorScheme.background,
+      backgroundColor: lightColorScheme.surface,
       selectedItemColor: lightColorScheme.tertiary,
       selectedIconTheme: IconThemeData(color: lightColorScheme.tertiary),
-      unselectedItemColor: lightColorScheme.onBackground,
-      unselectedIconTheme: IconThemeData(color: lightColorScheme.onBackground),
+      unselectedItemColor: lightColorScheme.onSurface,
+      unselectedIconTheme: IconThemeData(color: lightColorScheme.onSurface),
     ),
-    tabBarTheme: TabBarTheme(
+    tabBarTheme: TabBarThemeData(
       labelColor: lightColorScheme.tertiaryContainer,
       unselectedLabelColor: lightColorScheme.onPrimary,
     ),
@@ -29,19 +29,19 @@ class AppThemes {
     useMaterial3: true,
     fontFamily: 'TATFont',
     colorScheme: darkColorScheme,
-    appBarTheme: AppBarTheme(
+    appBarTheme: AppBarThemeData(
       backgroundColor: darkColorScheme.primaryContainer,
       foregroundColor: darkColorScheme.onPrimaryContainer,
       centerTitle: false,
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: darkColorScheme.background,
+      backgroundColor: darkColorScheme.surface,
       selectedItemColor: darkColorScheme.tertiary,
       selectedIconTheme: IconThemeData(color: darkColorScheme.tertiary),
-      unselectedItemColor: darkColorScheme.onBackground,
-      unselectedIconTheme: IconThemeData(color: darkColorScheme.onBackground),
+      unselectedItemColor: darkColorScheme.onSurface,
+      unselectedIconTheme: IconThemeData(color: darkColorScheme.onSurface),
     ),
-    tabBarTheme: TabBarTheme(
+    tabBarTheme: TabBarThemeData(
       labelColor: darkColorScheme.tertiary,
       unselectedLabelColor: darkColorScheme.onPrimaryContainer,
     ),

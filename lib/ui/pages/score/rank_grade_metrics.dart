@@ -8,13 +8,12 @@ import 'package:flutter_app/ui/pages/score/widgets/metrics_title_widget.dart';
 class RankGradeMetrics extends StatelessWidget {
   const RankGradeMetrics({
     super.key,
-    required String title,
-    required RankJson rankInfo,
-  })  : _title = title,
-        _rankInfo = rankInfo;
+    required this.title,
+    required this.rankInfo,
+  });
 
-  final String _title;
-  final RankJson _rankInfo;
+  final String title;
+  final RankJson rankInfo;
 
   Widget _buildSingleRankMetric(String categoryName, RankItemJson rankInfo) => Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -49,12 +48,12 @@ class RankGradeMetrics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final classRankInfo = _rankInfo.course;
-    final departmentRankInfo = _rankInfo.department;
+    final classRankInfo = rankInfo.course;
+    final departmentRankInfo = rankInfo.department;
 
     return Column(
       children: [
-        MetricsTitle(title: _title),
+        MetricsTitle(title: title),
         _buildSingleRankMetric(R.current.kClass, classRankInfo),
         _buildSingleRankMetric(R.current.kDepartment, departmentRankInfo),
       ],

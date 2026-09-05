@@ -31,24 +31,17 @@ class Notifications {
     const initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
     // Note: permissions aren't requested here just to demonstrate that can be done later using the `requestPermissions()` method
     // of the `IOSFlutterLocalNotificationsPlugin` class
-    final initializationSettingsIOS = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-        onDidReceiveLocalNotification: (id, title, body, payload) async {
-          didReceiveLocalNotificationSubject.add(ReceivedNotification(
-            id: id,
-            title: title,
-            body: body,
-            payload: payload,
-          ));
-        });
+    const initializationSettingsIOS = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     final initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
     await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (response) async {
         final payload = response.payload;
         if (payload != null) {
@@ -57,6 +50,9 @@ class Notifications {
       },
     );
 
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
     _requestIOSPermissions();
     _configureDidReceiveLocalNotificationSubject();
     _configureSelectNotificationSubject();
@@ -126,8 +122,13 @@ class Notifications {
       android: androidPlatformChannelSpecifics,
       iOS: iOSPlatformChannelSpecifics,
     );
-    await flutterLocalNotificationsPlugin.show(value.id, value.title, value.body, platformChannelSpecifics,
-        payload: value.payload);
+    await flutterLocalNotificationsPlugin.show(
+      id: value.id,
+      title: value.title,
+      body: value.body,
+      notificationDetails: platformChannelSpecifics,
+      payload: value.payload,
+    );
   }
 
   Future<void> showIndeterminateProgressNotification(ReceivedNotification value) async {
@@ -150,10 +151,10 @@ class Notifications {
       iOS: iOSPlatformChannelSpecifics,
     );
     await flutterLocalNotificationsPlugin.show(
-      value.id,
-      value.title,
-      value.body,
-      platformChannelSpecifics,
+      id: value.id,
+      title: value.title,
+      body: value.body,
+      notificationDetails: platformChannelSpecifics,
       payload: value.payload,
     );
   }
@@ -175,16 +176,16 @@ class Notifications {
       iOS: iOSPlatformChannelSpecifics,
     );
     await flutterLocalNotificationsPlugin.show(
-      value.id,
-      value.title,
-      value.body,
-      platformChannelSpecifics,
+      id: value.id,
+      title: value.title,
+      body: value.body,
+      notificationDetails: platformChannelSpecifics,
       payload: value.payload,
     );
   }
 
   Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
+    await flutterLocalNotificationsPlugin.cancel(id: id);
   }
 
   int get notificationId {

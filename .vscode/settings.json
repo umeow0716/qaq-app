@@ -12,5 +12,6 @@
     "editor.rulers": [
       120
     ]
-  }
+  },
+  "java.autobuild.enabled": false,
 }

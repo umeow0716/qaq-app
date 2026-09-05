@@ -5,7 +5,7 @@ import 'package:flutter_app/src/providers/category_provider.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/util/file_utils.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
-import "package:flutter_feather_icons/flutter_feather_icons.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:provider/provider.dart';
@@ -44,7 +44,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
     }
   }
 
-  getFiles() async {
+  Future<void> getFiles() async {
     final Directory dir = Directory(path);
     final List<FileSystemEntity> l = dir.listSync();
     files.clear();
@@ -87,18 +87,15 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final labelAndIconColor = isDarkModeEnabled ? colorScheme.onPrimaryContainer : colorScheme.onPrimary;
-    return WillPopScope(
-      onWillPop: () async {
-        if (paths.length == 1) {
-          return true;
-        } else {
-          paths.removeLast();
-          setState(() {
-            path = paths.last;
-          });
-          getFiles();
-          return false;
-        }
+    return PopScope<void>(
+      canPop: paths.length == 1,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || paths.length == 1) return;
+        paths.removeLast();
+        setState(() {
+          path = paths.last;
+        });
+        getFiles();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -141,7 +138,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                     return index == 0
                         ? IconButton(
                             icon: Icon(
-                              widget.path.toString().contains("emulated") ? FeatherIcons.smartphone : Icons.sd_card,
+                              widget.path.toString().contains("emulated") ? LucideIcons.smartphone : Icons.sd_card,
                               color: labelAndIconColor,
                             ),
                             onPressed: () {
@@ -178,7 +175,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                             ),
                           );
                   },
-                  separatorBuilder: (_, __) => Icon(
+                  separatorBuilder: (_, _) => Icon(
                     Icons.arrow_forward_ios,
                     color: labelAndIconColor,
                   ),
@@ -262,13 +259,13 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
         floatingActionButton: FloatingActionButton(
           onPressed: () => addDialog(context, path),
           tooltip: "Add Folder",
-          child: const Icon(FeatherIcons.plus),
+          child: const Icon(LucideIcons.plus),
         ),
       ),
     );
   }
 
-  addDialog(BuildContext context, String path) {
+  void addDialog(BuildContext context, String path) {
     final name = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
     Get.dialog(
@@ -362,7 +359,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
     );
   }
 
-  renameDialog(BuildContext context, String path, String type) {
+  void renameDialog(BuildContext context, String path, String type) {
     final name = TextEditingController();
     final colorScheme = Theme.of(context).colorScheme;
     setState(() {

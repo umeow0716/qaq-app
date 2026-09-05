@@ -13,7 +13,6 @@ import 'package:flutter_app/src/task/ntut/ntut_task.dart';
 import 'package:flutter_app/src/task/task_flow.dart';
 import 'package:flutter_app/src/version/update/app_update.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -33,7 +32,7 @@ enum OnListViewPress {
 class OtherPage extends StatefulWidget {
   final PageController pageController;
 
-  const OtherPage(this.pageController, {Key? key}) : super(key: key);
+  const OtherPage(this.pageController, {super.key});
 
   @override
   State<OtherPage> createState() => _OtherPageState();
@@ -135,9 +134,6 @@ class _OtherPageState extends State<OtherPage> {
           title: R.current.feedback,
         );
         break;
-      default:
-        MyToast.show(R.current.noFunction);
-        break;
     }
   }
 
@@ -213,7 +209,7 @@ class _OtherPageState extends State<OtherPage> {
           height: 5.0,
         ))
         ..add(MediaQuery(
-          data: data.copyWith(textScaleFactor: 1.0),
+          data: data.copyWith(textScaler: TextScaler.noScaling),
           child: Text(
             userMail,
             style: const TextStyle(

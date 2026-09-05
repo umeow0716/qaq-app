@@ -16,7 +16,7 @@ import '../dialog_task.dart';
 class NTUTTask<T> extends DialogTask<T> {
   static bool _isLogin = false;
 
-  NTUTTask(name) : super("NTUTTask $name");
+  NTUTTask(String name) : super("NTUTTask $name");
 
   static set isLogin(bool value) {
     _isLogin = value;
@@ -58,7 +58,7 @@ class NTUTTask<T> extends DialogTask<T> {
 
       _isLogin = loginResult.isSuccess;
 
-      return _handleConnectorStatus(loginResult.accountStatus);
+      return await _handleConnectorStatus(loginResult.accountStatus);
     } catch (e, stackTrace) {
       // When some errors happened, such as server timeout, we directly return
       // an unknown type status to the error handle function.

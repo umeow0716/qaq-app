@@ -9,7 +9,7 @@ import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/util/language_util.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
-import "package:flutter_feather_icons/flutter_feather_icons.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
@@ -122,7 +122,7 @@ class _SettingPageState extends State<SettingPage> {
                   padding: EdgeInsets.only(left: 10),
                 ),
                 const Icon(
-                  FeatherIcons.moon,
+                  LucideIcons.moon,
                 ),
               ],
             ),

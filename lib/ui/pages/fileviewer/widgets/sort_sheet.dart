@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/src/config/constants.dart';
 import 'package:flutter_app/src/providers/category_provider.dart';
 import 'package:flutter_app/src/r.dart';
-import "package:flutter_feather_icons/flutter_feather_icons.dart";
+import "package:lucide_icons_flutter/lucide_icons.dart";
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
@@ -41,7 +41,7 @@ class SortSheet extends StatelessWidget {
                       contentPadding: const EdgeInsets.all(0),
                       trailing: index == Provider.of<CategoryProvider>(context, listen: false).sort
                           ? const Icon(
-                              FeatherIcons.check,
+                              LucideIcons.check,
                               color: Colors.blue,
                               size: 16,
                             )

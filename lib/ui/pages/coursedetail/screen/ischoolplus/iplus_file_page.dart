@@ -48,14 +48,6 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     });
   }
 
-  Future<bool> _onWillPop() async {
-    if (selectList.inSelectMode) {
-      setState(selectList.leaveSelectMode);
-      return false;
-    }
-    return true;
-  }
-
   void _addTask() async {
     await Future.delayed(const Duration(microseconds: 500));
     final courseId = widget.courseInfo.main.course.id;
@@ -79,8 +71,13 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope<void>(
+      canPop: !selectList.inSelectMode,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && selectList.inSelectMode) {
+          setState(selectList.leaveSelectMode);
+        }
+      },
       child: Scaffold(
         body: (courseFileList.isNotEmpty)
           ? _buildFileList()
@@ -184,7 +181,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   ];
 
   Widget _buildCourseFile(int index, CourseFileJson courseFile) => Container(
-      color: selectList.getItemSelect(index) ? Colors.grey : Theme.of(context).colorScheme.background,
+      color: selectList.getItemSelect(index) ? Colors.grey : Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.all(10),
       child: Column(
         children: _buildFileItem(courseFile),
@@ -261,7 +258,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     }
   }
 
-  _launchURL(String url) async {
+  Future<void> _launchURL(String url) async {
     final preparedUrl = Uri.tryParse(url);
     if (preparedUrl != null && await canLaunchUrl(preparedUrl)) {
       RouteUtils.toWebViewPage(initialUrl: preparedUrl);

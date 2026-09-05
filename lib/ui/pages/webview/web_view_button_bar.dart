@@ -6,24 +6,22 @@ import 'package:flutter/material.dart';
 class WebViewButtonBar extends StatelessWidget {
   const WebViewButtonBar({
     super.key,
-    VoidCallback? onBackPressed,
-    VoidCallback? onForwardPressed,
-    VoidCallback? onRefreshPressed,
-  })  : _onBackPressed = onBackPressed,
-        _onForwardPressed = onForwardPressed,
-        _onRefreshPressed = onRefreshPressed;
+    this.onBackPressed,
+    this.onForwardPressed,
+    this.onRefreshPressed,
+  });
 
-  final VoidCallback? _onBackPressed;
-  final VoidCallback? _onForwardPressed;
-  final VoidCallback? _onRefreshPressed;
+  final VoidCallback? onBackPressed;
+  final VoidCallback? onForwardPressed;
+  final VoidCallback? onRefreshPressed;
 
   @override
-  Widget build(BuildContext context) => ButtonBar(
+  Widget build(BuildContext context) => OverflowBar(
         alignment: MainAxisAlignment.center,
         children: [
-          _ControlButton(icon: const Icon(Icons.arrow_back), onPressed: _onBackPressed),
-          _ControlButton(icon: const Icon(Icons.arrow_forward), onPressed: _onForwardPressed),
-          _ControlButton(icon: const Icon(Icons.refresh), onPressed: _onRefreshPressed),
+          _ControlButton(icon: const Icon(Icons.arrow_back), onPressed: onBackPressed),
+          _ControlButton(icon: const Icon(Icons.arrow_forward), onPressed: onForwardPressed),
+          _ControlButton(icon: const Icon(Icons.refresh), onPressed: onRefreshPressed),
         ],
       );
 }
@@ -31,24 +29,23 @@ class WebViewButtonBar extends StatelessWidget {
 /// A rounded rectangle button for the [WebViewButtonBar] used.
 class _ControlButton extends StatelessWidget {
   const _ControlButton({
-    required Icon icon,
-    VoidCallback? onPressed,
-  })  : _icon = icon,
-        _onPressed = onPressed;
+    required this.icon,
+    this.onPressed,
+  });
 
-  final Icon _icon;
-  final VoidCallback? _onPressed;
+  final Icon icon;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) => ElevatedButton(
         style: ButtonStyle(
-          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+          shape: WidgetStateProperty.all<RoundedRectangleBorder>(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30.0),
             ),
           ),
         ),
-        onPressed: _onPressed,
-        child: _icon,
+        onPressed: onPressed,
+        child: icon,
       );
 }

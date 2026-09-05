@@ -27,13 +27,12 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   /// Before outputting the final response, if a header provides a corresponding modifier,
   /// it will use the modifier to modify the header, so , the final output header value will be the modified version.
   EarlyInterceptorAdapter({
-    Map<String, HeaderDecorator>? headerDecorators,
-  })  : _headerDecorators = headerDecorators,
-        _defaultHttpClient = HttpClient();
+    this.headerDecorators,
+  }) : _defaultHttpClient = HttpClient();
 
   final HttpClient _defaultHttpClient;
-  final Completer _adapterLife = Completer();
-  final Map<String, HeaderDecorator>? _headerDecorators;
+  final Completer<void> _adapterLife = Completer<void>();
+  final Map<String, HeaderDecorator>? headerDecorators;
 
   @override
   void close({bool force = false}) {
@@ -45,7 +44,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
-    Future? cancelFuture,
+    Future<void>? cancelFuture,
   ) async {
     if (_adapterLife.isCompleted) {
       const msg = "Can't establish connection after [HttpClientAdapter] closed!";
@@ -56,17 +55,20 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     final httpClient = _configHttpClient(cancelFuture, options.connectTimeout);
     final reqFuture = httpClient.openUrl(options.method, options.uri);
 
-    Never throwConnectingTimeout() => throw DioError(
+    Never throwConnectingTimeout() => throw DioException(
           requestOptions: options,
-          error: 'Connecting timed out [${options.connectTimeout}ms]',
-          type: DioErrorType.connectTimeout,
+          error: 'Connecting timed out [${options.connectTimeout?.inMilliseconds ?? 0}ms]',
+          type: DioExceptionType.connectionTimeout,
         );
 
     final HttpClientRequest request;
     try {
-      request = options.connectTimeout > 0
-          ? await reqFuture.timeout(Duration(milliseconds: options.connectTimeout))
-          : await reqFuture;
+      final connectTimeout = options.connectTimeout;
+      if (connectTimeout == null || connectTimeout == Duration.zero) {
+        request = await reqFuture;
+      } else {
+        request = await reqFuture.timeout(connectTimeout);
+      }
 
       options.headers.forEach((k, v) {
         if (v != null) request.headers.set(k, '$v');
@@ -87,17 +89,18 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     if (requestStream != null) {
       // Transform the request data
       var future = request.addStream(requestStream);
-      if (options.sendTimeout > 0) {
-        future = future.timeout(Duration(milliseconds: options.sendTimeout));
+      final sendTimeout = options.sendTimeout;
+      if (sendTimeout != null && sendTimeout != Duration.zero) {
+        future = future.timeout(sendTimeout);
       }
       try {
         await future;
       } on TimeoutException {
         request.abort();
-        throw DioError(
+        throw DioException(
           requestOptions: options,
-          error: 'Sending timeout[${options.sendTimeout}ms]',
-          type: DioErrorType.sendTimeout,
+          error: 'Sending timeout[${sendTimeout?.inMilliseconds ?? 0}ms]',
+          type: DioExceptionType.sendTimeout,
         );
       }
     }
@@ -107,31 +110,33 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     final receiveStart = DateTime.now().millisecondsSinceEpoch;
 
     var future = request.close();
-    if (options.receiveTimeout > 0) {
-      future = future.timeout(Duration(milliseconds: options.receiveTimeout));
+    final receiveTimeout = options.receiveTimeout;
+    if (receiveTimeout != null && receiveTimeout != Duration.zero) {
+      future = future.timeout(receiveTimeout);
     }
 
     final HttpClientResponse responseStream;
     try {
       responseStream = await future;
     } on TimeoutException {
-      throw DioError(
+      throw DioException(
         requestOptions: options,
-        error: 'Receiving data timeout[${options.receiveTimeout}ms]',
-        type: DioErrorType.receiveTimeout,
+        error: 'Receiving data timeout[${receiveTimeout?.inMilliseconds ?? 0}ms]',
+        type: DioExceptionType.receiveTimeout,
       );
     }
 
     final stream = responseStream.transform<Uint8List>(
       StreamTransformer.fromHandlers(
         handleData: (data, sink) {
-          if (options.receiveTimeout > 0 &&
-              DateTime.now().millisecondsSinceEpoch - receiveStart > options.receiveTimeout) {
+          if (receiveTimeout != null &&
+              receiveTimeout != Duration.zero &&
+              DateTime.now().millisecondsSinceEpoch - receiveStart > receiveTimeout.inMilliseconds) {
             sink.addError(
-              DioError(
+              DioException(
                 requestOptions: options,
-                error: 'Receiving data timeout[${options.receiveTimeout}ms]',
-                type: DioErrorType.receiveTimeout,
+                error: 'Receiving data timeout[${receiveTimeout.inMilliseconds}ms]',
+                type: DioExceptionType.receiveTimeout,
               ),
             );
             responseStream.detachSocket().then((socket) => socket.destroy());
@@ -144,7 +149,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
 
     final headers = <String, List<String>>{};
     responseStream.headers.forEach((key, values) {
-      final decorator = _headerDecorators?[key];
+      final decorator = headerDecorators?[key];
       headers[key] = decorator != null ? decorator(values) : values;
     });
 
@@ -166,8 +171,9 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     );
   }
 
-  HttpClient _configHttpClient(Future? cancelFuture, int connectionTimeout) {
-    final configuredConnectionTimeout = connectionTimeout > 0 ? Duration(milliseconds: connectionTimeout) : null;
+  HttpClient _configHttpClient(Future<void>? cancelFuture, Duration? connectionTimeout) {
+    final configuredConnectionTimeout =
+        connectionTimeout == null || connectionTimeout == Duration.zero ? null : connectionTimeout;
 
     if (cancelFuture != null) {
       final httpClient = HttpClient()

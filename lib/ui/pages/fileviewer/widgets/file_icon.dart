@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import "package:flutter_feather_icons/flutter_feather_icons.dart";
-import 'package:mime_type/mime_type.dart';
+import "package:lucide_icons_flutter/lucide_icons.dart";
+import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 
 class FileIcon extends StatelessWidget {
@@ -17,7 +17,7 @@ class FileIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = File(file.path);
     final configuredExtension = extension(f.path).toLowerCase();
-    final mimeType = mime(basename(file.path).toLowerCase());
+    final mimeType = lookupMimeType(basename(file.path).toLowerCase());
     final type = mimeType == null ? "" : mimeType.split("/")[0];
     if (configuredExtension == ".apk") {
       return const Icon(
@@ -26,16 +26,16 @@ class FileIcon extends StatelessWidget {
       );
     } else if (configuredExtension == ".crdownload") {
       return const Icon(
-        FeatherIcons.download,
+        LucideIcons.download,
         color: Colors.lightBlue,
       );
     } else if (configuredExtension == ".zip" || configuredExtension.contains("tar")) {
       return const Icon(
-        FeatherIcons.archive,
+        LucideIcons.archive,
       );
     } else if (configuredExtension == ".epub" || configuredExtension == ".pdf" || configuredExtension == ".mobi") {
       return const Icon(
-        FeatherIcons.fileText,
+        LucideIcons.fileText,
         color: Colors.orangeAccent,
       );
     } else {
@@ -51,7 +51,7 @@ class FileIcon extends StatelessWidget {
         case "audio":
           {
             return const Icon(
-              FeatherIcons.music,
+              LucideIcons.music,
               color: Colors.blue,
             );
           }
@@ -59,7 +59,7 @@ class FileIcon extends StatelessWidget {
         case "text":
           {
             return const Icon(
-              FeatherIcons.fileText,
+              LucideIcons.fileText,
               color: Colors.orangeAccent,
             );
           }
@@ -67,7 +67,7 @@ class FileIcon extends StatelessWidget {
         default:
           {
             return const Icon(
-              FeatherIcons.file,
+              LucideIcons.file,
             );
           }
       }

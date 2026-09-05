@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:intl/intl.dart';
-import 'package:mime_type/mime_type.dart';
+import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -10,19 +10,19 @@ class FileUtils {
   static const String waPath = "/storage/emulated/0/WhatsApp/Media/.Statuses";
 
   /// Convert Byte to KB, MB, .......
-  static String formatBytes(bytes, decimals) {
+  static String formatBytes(num bytes, int decimals) {
     if (bytes == 0) return "0.0 KB";
     var k = 1024,
         dm = decimals <= 0 ? 0 : decimals,
         sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
         i = (log(bytes) / log(k)).floor();
-    return (((bytes / pow(k, i)).toStringAsFixed(dm)) + ' ' + sizes[i]);
+    return '${(bytes / pow(k, i)).toStringAsFixed(dm)} ${sizes[i]}';
   }
 
   /// Get mime information of a file
   static String? getMime(String path) {
     final File file = File(path);
-    final mimeType = mime(file.path);
+    final mimeType = lookupMimeType(file.path);
     return mimeType;
   }
 

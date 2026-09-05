@@ -8,10 +8,10 @@ import 'package:flutter_app/ui/pages/score/widgets/metrics_title_widget.dart';
 class CourseScoreSection extends StatelessWidget {
   const CourseScoreSection({
     super.key,
-    required List<CourseScoreInfoJson> scoreInfoList,
-  }) : _scoreInfoList = scoreInfoList;
+    required this.scoreInfoList,
+  });
 
-  final List<CourseScoreInfoJson> _scoreInfoList;
+  final List<CourseScoreInfoJson> scoreInfoList;
 
   void _onCategoryChanged(int? category) {
     // TODO(TU): implement this method in view model or controller.
@@ -23,10 +23,10 @@ class CourseScoreSection extends StatelessWidget {
           MetricsTitle(title: R.current.resultsOfVariousSubjects),
           ListView.builder(
             shrinkWrap: true,
-            itemCount: _scoreInfoList.length,
+            itemCount: scoreInfoList.length,
             physics: const NeverScrollableScrollPhysics(),
             itemBuilder: (_, index) {
-              final scoreInfo = _scoreInfoList[index];
+              final scoreInfo = scoreInfoList[index];
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: ScoreTile(

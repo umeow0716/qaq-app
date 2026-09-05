@@ -7,13 +7,12 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 class TATWebView extends StatefulWidget {
   const TATWebView({
     super.key,
-    required Uri initialUrl,
-    String? title,
-  })  : _initialUrl = initialUrl,
-        _title = title;
+    required this.initialUrl,
+    this.title,
+  });
 
-  final Uri _initialUrl;
-  final String? _title;
+  final Uri initialUrl;
+  final String? title;
 
   @override
   State<TATWebView> createState() => _TATWebViewState();
@@ -28,11 +27,12 @@ class _TATWebViewState extends State<TATWebView> {
   final progress = ValueNotifier(0.0);
 
   Future<void> setInitialCookies() async {
-    final cookies = await cookieJar.loadForRequest(widget._initialUrl);
+    final cookies = await cookieJar.loadForRequest(widget.initialUrl);
+    final initialUrl = WebUri(widget.initialUrl.toString());
 
     for (final cookie in cookies) {
       await cookieManager.setCookie(
-        url: widget._initialUrl,
+        url: initialUrl,
         name: cookie.name,
         value: cookie.value,
         domain: cookie.domain,
@@ -59,7 +59,7 @@ class _TATWebViewState extends State<TATWebView> {
       ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.PROCEED);
 
   Widget _buildTATWebViewCore() => _TATWebViewCore(
-        initialUrl: widget._initialUrl,
+        initialUrl: widget.initialUrl,
         onWebViewCreated: _onWebViewCreated,
         onProgressChanged: (_, progress) => _onProgressChanged(progress),
         onReceivedTrustAuthReqCallBack: _onReceivedTrustAuthReqCallBack,
@@ -73,7 +73,7 @@ class _TATWebViewState extends State<TATWebView> {
 
   Widget _buildProgressBar() => ValueListenableBuilder<double>(
         valueListenable: progress,
-        builder: (_, progress, __) => SizedBox(
+        builder: (_, progress, _) => SizedBox(
           child: progress < 1.0
               ? LinearProgressIndicator(
                   value: progress,
@@ -86,7 +86,7 @@ class _TATWebViewState extends State<TATWebView> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: Text(widget._title ?? ''),
+          title: Text(widget.title ?? ''),
         ),
         body: SafeArea(
           child: Column(
@@ -107,31 +107,25 @@ class _TATWebViewState extends State<TATWebView> {
 
 class _TATWebViewCore extends StatelessWidget {
   const _TATWebViewCore({
-    required Uri initialUrl,
-    void Function(InAppWebViewController controller)? onWebViewCreated,
-    void Function(InAppWebViewController controller, int progress)? onProgressChanged,
-    Future<ServerTrustAuthResponse?> Function(
-      InAppWebViewController controller,
-      URLAuthenticationChallenge challenge,
-    )? onReceivedTrustAuthReqCallBack,
-  })  : _initialUrl = initialUrl,
-        _onWebViewCreated = onWebViewCreated,
-        _onProgressChanged = onProgressChanged,
-        _onReceivedTrustAuthReqCallBack = onReceivedTrustAuthReqCallBack;
+    required this.initialUrl,
+    this.onWebViewCreated,
+    this.onProgressChanged,
+    this.onReceivedTrustAuthReqCallBack,
+  });
 
-  final Uri _initialUrl;
-  final void Function(InAppWebViewController controller)? _onWebViewCreated;
-  final void Function(InAppWebViewController controller, int progress)? _onProgressChanged;
+  final Uri initialUrl;
+  final void Function(InAppWebViewController controller)? onWebViewCreated;
+  final void Function(InAppWebViewController controller, int progress)? onProgressChanged;
   final Future<ServerTrustAuthResponse?> Function(
     InAppWebViewController controller,
     URLAuthenticationChallenge challenge,
-  )? _onReceivedTrustAuthReqCallBack;
+  )? onReceivedTrustAuthReqCallBack;
 
   @override
   Widget build(BuildContext context) => InAppWebView(
-        initialUrlRequest: URLRequest(url: _initialUrl),
-        onWebViewCreated: _onWebViewCreated,
-        onProgressChanged: _onProgressChanged,
-        onReceivedServerTrustAuthRequest: _onReceivedTrustAuthReqCallBack,
+        initialUrlRequest: URLRequest(url: WebUri(initialUrl.toString())),
+        onWebViewCreated: onWebViewCreated,
+        onProgressChanged: onProgressChanged,
+        onReceivedServerTrustAuthRequest: onReceivedTrustAuthReqCallBack,
       );
 }

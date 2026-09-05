@@ -23,7 +23,7 @@ class Log {
         // Colorful log messages
         printEmojis: false,
         // Print an emoji for each log message
-        printTime: false // Should each log print contain a timestamp
+        dateTimeFormat: DateTimeFormat.none // Should each log print contain a timestamp
         ),
     output: MyConsoleOutput(),
   );

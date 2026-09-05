@@ -2,4 +2,4 @@
 
 # A script that formats the project.
 
-dart fix --apply && dart format --fix -l 120 .
+dart fix --apply && dart format .

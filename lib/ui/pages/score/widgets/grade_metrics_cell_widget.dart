@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 class GradeMetricsCell extends StatelessWidget {
   const GradeMetricsCell({
     super.key,
-    required String name,
-    required String value,
-  })  : _name = name,
-        _value = value;
+    required this.name,
+    required this.value,
+  });
 
-  final String _name;
-  final String _value;
+  final String name;
+  final String value;
 
   // TODO: improve the UI of this widget.
   @override
@@ -18,7 +17,7 @@ class GradeMetricsCell extends StatelessWidget {
         padding: const EdgeInsets.all(4.0),
         child: Center(
           child: AutoSizeText(
-            '$_name: $_value',
+            '$name: $value',
             style: const TextStyle(fontSize: 16),
             maxLines: 1,
             textAlign: TextAlign.center,

@@ -13,7 +13,7 @@ import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'file_store.dart';
 
 class FileDownload {
-  static Future<void> download(String url, dirName, [String name = "", String? referer]) async {
+  static Future<void> download(String url, String dirName, [String name = "", String? referer]) async {
     final path = await FileStore.getDownloadDir(dirName);
     String? realFileName = "";
     String? fileExtension = "";

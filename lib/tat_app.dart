@@ -75,7 +75,7 @@ class _TATApp extends StatelessWidget {
               GlobalMaterialLocalizations.delegate
             ],
             builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaleFactor: 1),
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
               child: BotToastInit().call(context, child),
             ),
             navigatorObservers: [BotToastNavigatorObserver()],
@@ -89,9 +89,9 @@ class _TATApp extends StatelessWidget {
 
 class _TATLifeCycleEventHandler extends WidgetsBindingObserver {
   _TATLifeCycleEventHandler({
-    required _FutureVoidCallBack detachedCallBack,
-  }) : _detachedCallBack = detachedCallBack;
-  final _FutureVoidCallBack _detachedCallBack;
+    required this.detachedCallBack,
+  });
+  final _FutureVoidCallBack detachedCallBack;
 
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
@@ -99,13 +99,15 @@ class _TATLifeCycleEventHandler extends WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.detached:
-        await _detachedCallBack();
+        await detachedCallBack();
         break;
       case AppLifecycleState.resumed:
         break;
       case AppLifecycleState.inactive:
         break;
       case AppLifecycleState.paused:
+        break;
+      case AppLifecycleState.hidden:
         break;
     }
   }

@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import 'task.dart';
 
 class DialogTask<T> extends Task<T> {
-  DialogTask(String name) : super(name);
+  DialogTask(super.name);
   bool openLoadingDialog = true;
 
   @override

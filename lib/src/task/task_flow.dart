@@ -20,7 +20,7 @@ class TaskFlow {
   final List<Task> _failTask;
   OnSuccessCallBack? callback;
 
-  static resetLoginStatus() {
+  static void resetLoginStatus() {
     NTUTTask.isLogin = false;
     ScoreSystemTask.isLogin = false;
     IPlusSystemTask.isLogin = false;

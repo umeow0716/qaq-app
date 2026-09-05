@@ -18,9 +18,9 @@ class DioConnector {
 
 
   static final dioOptions = BaseOptions(
-    connectTimeout: 5000,
-    receiveTimeout: 10000,
-    sendTimeout: 5000,
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 10),
+    sendTimeout: const Duration(seconds: 5),
     headers: _headers,
     responseType: ResponseType.json,
     contentType: "application/x-www-form-urlencoded",
@@ -171,7 +171,7 @@ class DioConnector {
       onReceiveProgress: progressCallback,
       cancelToken: cancelToken,
       options: Options(
-        receiveTimeout: 0,
+        receiveTimeout: Duration.zero,
         headers: header,
       ),
     )

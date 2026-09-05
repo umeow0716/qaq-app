@@ -4,19 +4,18 @@ import 'package:flutter_app/src/r.dart';
 class ScorePageAppBarActionButtons extends StatelessWidget {
   const ScorePageAppBarActionButtons({
     super.key,
-    required VoidCallback onRefreshPressed,
-    required VoidCallback onCalculateCreditPressed,
-  })  : _onRefreshPressed = onRefreshPressed,
-        _onCalculateCreditPressed = onCalculateCreditPressed;
+    required this.onRefreshPressed,
+    required this.onCalculateCreditPressed,
+  });
 
-  final VoidCallback _onRefreshPressed;
-  final VoidCallback _onCalculateCreditPressed;
+  final VoidCallback onRefreshPressed;
+  final VoidCallback onCalculateCreditPressed;
 
   Widget get _refreshButton => Tooltip(
         message: R.current.refresh,
         child: IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: _onRefreshPressed,
+          onPressed: onRefreshPressed,
         ),
       );
 
@@ -24,7 +23,7 @@ class ScorePageAppBarActionButtons extends StatelessWidget {
         message: R.current.calculationCredit,
         child: IconButton(
           icon: const Icon(Icons.calculate),
-          onPressed: _onCalculateCreditPressed,
+          onPressed: onCalculateCreditPressed,
         ),
       );
 

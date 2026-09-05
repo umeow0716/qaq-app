@@ -4,7 +4,7 @@ const Duration _kExpand = Duration(milliseconds: 200);
 
 class AppExpansionTile extends StatefulWidget {
   const AppExpansionTile({
-    Key? key,
+    super.key,
     this.leading,
     required this.title,
     this.backgroundColor,
@@ -12,7 +12,7 @@ class AppExpansionTile extends StatefulWidget {
     this.children = const <Widget>[],
     this.trailing,
     this.initiallyExpanded = false,
-  }) : super(key: key);
+  });
 
   final Widget? leading;
   final Widget title;

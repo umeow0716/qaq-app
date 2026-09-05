@@ -15,7 +15,7 @@ class ISchoolPage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const ISchoolPage(this.studentId, this.courseInfo, {Key? key}) : super(key: key);
+  const ISchoolPage(this.studentId, this.courseInfo, {super.key});
 
   @override
   State<ISchoolPage> createState() => _ISchoolPageState();
@@ -52,12 +52,10 @@ class _ISchoolPageState extends State<ISchoolPage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (BuildContext context, AppProvider appProvider, Widget? child) {
-        return WillPopScope(
-          onWillPop: () async {
-            var currentState = tabPageList.getKey(_currentIndex).currentState;
-            bool pop = (currentState == null) ? true : currentState.canPop();
-            return pop;
-          },
+        final currentState = tabPageList.getKey(_currentIndex).currentState;
+        final canPop = currentState == null || currentState.canPop();
+        return PopScope<void>(
+          canPop: canPop,
           child: Container(
             child: tabPageView(),
           ),

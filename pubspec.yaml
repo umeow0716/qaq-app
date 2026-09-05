@@ -2,12 +2,11 @@ name: flutter_app
 description: NTUT Life TAT, convenient, concise, fast, powerful, enrich your NTUT life!
 publish_to: 'none'
 
-# CHECK THE BUILD CODE BEFORE DISTRIBUTION!!
 version: 1.6.9+5273
 
 environment:
-  flutter: ">=3.7.12 <4.0.0"
-  sdk: ">=2.19.6 <3.0.0"
+  flutter: ">=3.47.2 <4.0.0"
+  sdk: ">=3.13.2 <4.0.0"
 
 dependencies:
   flutter:
@@ -15,64 +14,60 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  intl: ^0.18.1
-  path: ^1.8.2 # restricted by flutter sdk.
-  path_provider: ^2.0.15
-  provider: ^6.0.5
-  url_launcher: ^6.1.11 # Dart 2.19 / Flutter 3.7 compatible.
-  logger: ^2.0.2+1
+  intl: ^0.20.3
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  provider: ^6.1.5+1
+  url_launcher: ^6.3.2
+  logger: ^2.7.0
   sprintf: ^7.0.0
-  flutter_local_notifications: ^16.1.0
-  rxdart: ^0.27.7
-  video_player: ^2.7.2
-  chewie: ^1.5.0
+  flutter_local_notifications: ^22.3.0
+  rxdart: ^0.28.0
+  video_player: ^2.14.0
+  chewie: ^1.16.2
   html_unescape: ^2.0.0
-  shared_preferences: ^2.2.2
-  flutter_cache_manager: ^3.3.1
-  dio: ^4.0.6 # restricted by feature. Upgrade pending for manually migration.
-  dio_cookie_manager: ^2.0.0 # restricted by dio 4.0.6
-  cookie_jar: ^3.0.1 # restricted by dio 4.0.6
-  html: ^0.15.4
-  github: ^9.19.0
-  flutter_inappwebview: ^5.8.0
-  eva_icons_flutter: ^3.1.0
-  flutter_feather_icons: ^2.0.0+1
-  json_annotation: ^4.8.1
+  shared_preferences: ^2.5.5
+  flutter_cache_manager: ^3.4.2
+  dio: ^5.11.1
+  dio_cookie_manager: ^3.5.0
+  cookie_jar: ^4.0.9
+  html: ^0.15.7
+  github: ^9.26.0
+  flutter_inappwebview: ^6.2.0-beta.3
+  eva_icons_flutter: ^4.0.0
+  lucide_icons_flutter: ^3.1.18
+  json_annotation: ^4.12.0
   dart_big5: ^0.0.5
-  flutter_widget_from_html_core: ^0.14.4
+  flutter_widget_from_html_core: ^0.17.3
   flutter_staggered_animations: ^1.1.1
-  mime_type: ^1.0.0
-  get: ^4.6.5 # restricted by dart language version. (<3)
+  mime: ^2.1.0
+  get: ^4.7.3
   bot_toast: ^4.1.3
-  cached_network_image: ^3.2.3 # restricted by dart language version. (<3)
+  cached_network_image: ^4.0.0
   auto_size_text: ^3.0.0
-  table_calendar: ^3.0.9
-  fluttertoast: ^8.2.2
-  awesome_dialog: ^3.1.0
-  flutter_slidable: ^3.0.0
-  flutter_spinkit: ^5.2.0
-  flutter_markdown: ^0.6.15 # restricted by dart language version. (<3)
+  table_calendar: ^3.2.1
+  fluttertoast: ^10.0.0
+  awesome_dialog: ^3.3.0
+  flutter_slidable: ^4.0.3
+  flutter_spinkit: ^5.2.2
+  flutter_markdown_plus: ^1.0.12
   numberpicker: ^2.1.2
-  open_filex: ^4.3.4
+  open_filex: ^4.7.0
 
-
-  meta: ^1.8.0 # restricted by flutter sdk.
-  android_intent_plus: ^5.2.1
-  package_info_plus: ^3.1.2
-
-dependency_overrides:
-  intl: ^0.18.1
+  meta: ^1.19.0
+  android_intent_plus: ^6.1.0
+  package_info_plus: ^10.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  dependency_validator: ^3.2.3
-  flutter_launcher_icons: ^0.13.1 # Hosted; bump to >=0.14 after Dart 3 for monochrome generation.
-  build_runner: ^2.3.3 # restricted by dart language version. (<3)
-  json_serializable: ^6.6.2 # restricted by dart language version. (<3)
-  flutter_lints: ^2.0.3 # restricted by dart language version. (<3)
-  intl_utils: ^2.8.5
-  flutter_native_splash: ^2.2.19 # restricted by path 1.8.2
+  dependency_validator: ^5.0.6
+  flutter_launcher_icons: ^0.14.4
+  build_runner: ^2.16.1
+  json_serializable: ^6.14.1
+  flutter_lints: ^6.0.0
+  intl_utils: ^2.8.16
+  flutter_native_splash: ^2.4.8
 
 flutter:
   uses-material-design: true
@@ -88,9 +83,6 @@ flutter:
           weight: 700
 
 flutter_intl:
-  # Because it will be repeatedly generated when it is turned on,
-  # it is very troublesome, so we temporarily turn it off.
-  # Run "flutter pub run intl_translation:extract_to_arb --output-dir=lib/l10n lib/l10n/intl_messages.dart" to generate it.
   enabled: false
 
 flutter_launcher_icons:
@@ -98,8 +90,8 @@ flutter_launcher_icons:
 
   android: true
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: assets/images/android.png # Android 8.0+ icons
-  adaptive_icon_monochrome: assets/images/android.png # Re-enable generation with flutter_launcher_icons >=0.14 after Dart 3.
+  adaptive_icon_foreground: assets/images/android.png
+  adaptive_icon_monochrome: assets/images/android.png
 
   ios: true
 

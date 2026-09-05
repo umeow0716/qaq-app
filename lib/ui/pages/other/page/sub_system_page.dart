@@ -9,7 +9,7 @@ class SubSystemPage extends StatefulWidget {
   final String title;
   final String? arg;
 
-  const SubSystemPage({Key? key, required this.title, this.arg}) : super(key: key);
+  const SubSystemPage({super.key, required this.title, this.arg});
 
   @override
   State<SubSystemPage> createState() => _SubSystemPageState();

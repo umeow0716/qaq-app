@@ -80,31 +80,32 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) => Consumer<AppProvider>(
         builder: (context, appProvider, child) {
-          return WillPopScope(
-            onWillPop: _onWillPop,
+          return PopScope<void>(
+            canPop: _closeAppCount > 0,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                _closeAppCount = 0;
+                return;
+              }
+              setState(() {
+                _closeAppCount = 1;
+              });
+              MyToast.show(R.current.closeOnce);
+              Future.delayed(const Duration(seconds: 2)).then((_) {
+                if (!mounted) return;
+                setState(() {
+                  _closeAppCount = 0;
+                });
+              });
+            },
             child: Scaffold(
-              backgroundColor: Theme.of(context).colorScheme.background,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               body: _buildPageView(),
               bottomNavigationBar: _buildBottomNavigationBar(),
             ),
           );
         },
       );
-
-  Future<bool> _onWillPop() async {
-    final canPop = Navigator.of(context).canPop();
-    if (canPop) {
-      Navigator.of(context).pop();
-      _closeAppCount = 0;
-    } else {
-      _closeAppCount++;
-      MyToast.show(R.current.closeOnce);
-      Future.delayed(const Duration(seconds: 2)).then((_) {
-        _closeAppCount = 0;
-      });
-    }
-    return (_closeAppCount >= 2);
-  }
 
   Widget _buildPageView() => PageView(
         controller: _pageController,

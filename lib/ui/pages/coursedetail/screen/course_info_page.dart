@@ -16,7 +16,7 @@ class CourseInfoPage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const CourseInfoPage(this.studentId, this.courseInfo, {Key? key}) : super(key: key);
+  const CourseInfoPage(this.studentId, this.courseInfo, {super.key});
 
   final int courseInfoWithAlpha = 0x44;
 
@@ -241,7 +241,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
     final color = (index % 2 == 1)
         ? Theme.of(context).colorScheme.surface
-        : Theme.of(context).colorScheme.surfaceVariant.withAlpha(widget.courseInfoWithAlpha);
+        : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(widget.courseInfoWithAlpha);
     return Container(
       decoration: BoxDecoration(
         color: color,

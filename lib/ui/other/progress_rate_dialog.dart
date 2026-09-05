@@ -65,7 +65,7 @@ class ProgressRateDialog {
           barrierDismissible: false,
           builder: (BuildContext context) {
             _dismissingContext = context;
-            return WillPopScope(onWillPop: () async => _barrierDismissible, child: dialog);
+            return PopScope<void>(canPop: _barrierDismissible, child: dialog);
           },
         );
         // Delaying the function for 200 milliseconds
@@ -86,7 +86,7 @@ class ProgressRateDialog {
 class _Body extends StatefulWidget {
   final _BodyState _dialog = _BodyState();
 
-  update() {
+  void update() {
     _dialog.update();
   }
 
@@ -96,7 +96,7 @@ class _Body extends StatefulWidget {
 }
 
 class _BodyState extends State<_Body> {
-  update() {
+  void update() {
     setState(() {});
   }
 

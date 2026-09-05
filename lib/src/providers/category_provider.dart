@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_app/src/util/file_utils.dart';
-import 'package:mime_type/mime_type.dart';
+import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,7 +25,7 @@ class CategoryProvider extends ChangeNotifier {
   bool showHidden = false;
   int sort = 0;
 
-  getDownloads() async {
+  Future<void> getDownloads() async {
     setLoading(true);
     downloadTabs.clear();
     downloads.clear();
@@ -50,14 +50,14 @@ class CategoryProvider extends ChangeNotifier {
     setLoading(false);
   }
 
-  getImages(String type) async {
+  Future<void> getImages(String type) async {
     setLoading(true);
     imageTabs.clear();
     images.clear();
     imageTabs.add("All");
     final List<FileSystemEntity> files = await FileUtils.getAllFiles(showHidden: showHidden);
     for (final file in files) {
-      final mimeType = mime(file.path) ?? "";
+      final mimeType = lookupMimeType(file.path) ?? "";
       if (mimeType.split("/")[0] == type) {
         images.add(file);
         final tmpImageTabs = [...imageTabs, file.path.split("/")[file.path.split("/").length - 2]]..toSet().toList();
@@ -70,14 +70,14 @@ class CategoryProvider extends ChangeNotifier {
     setLoading(false);
   }
 
-  getAudios(String type) async {
+  Future<void> getAudios(String type) async {
     setLoading(true);
     audioTabs.clear();
     audio.clear();
     audioTabs.add("All");
     final List<FileSystemEntity> files = await FileUtils.getAllFiles(showHidden: showHidden);
     for (final file in files) {
-      final mimeType = mime(file.path);
+      final mimeType = lookupMimeType(file.path);
       if (type == "text" && extension(file.path) == ".pdf") {
         audio.add(file);
       }
@@ -95,32 +95,32 @@ class CategoryProvider extends ChangeNotifier {
     setLoading(false);
   }
 
-  void setLoading(value) {
+  void setLoading(bool value) {
     loading = value;
     notifyListeners();
   }
 
-  setHidden(value) async {
+  Future<void> setHidden(bool value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool("hidden", value);
     showHidden = value;
     notifyListeners();
   }
 
-  getHidden() async {
+  Future<void> getHidden() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool h = prefs.getBool("hidden") ?? false;
     setHidden(h);
   }
 
-  Future setSort(value) async {
+  Future<void> setSort(int value) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setInt("sort", value);
     sort = value;
     notifyListeners();
   }
 
-  getSort() async {
+  Future<void> getSort() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final int h = prefs.getInt("sort") ?? 0;
     setSort(h);

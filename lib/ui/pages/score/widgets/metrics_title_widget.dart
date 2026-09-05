@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class MetricsTitle extends StatelessWidget {
   const MetricsTitle({
     super.key,
-    required String title,
-  }) : _title = title;
+    required this.title,
+  });
 
-  final String _title;
+  final String title;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -14,7 +14,7 @@ class MetricsTitle extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              _title,
+              title,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,

@@ -8,37 +8,34 @@ typedef OnCategoryChanged = void Function(int? category);
 class ScoreTile extends StatelessWidget {
   ScoreTile({
     super.key,
-    required String courseName,
-    required String category,
-    required String scoreValue,
-    OnCategoryChanged? onCategoryChanged,
-  })  : _courseName = courseName,
-        _category = category,
-        _scoreValue = scoreValue,
-        _onCategoryChanged = onCategoryChanged;
+    required this.courseName,
+    required this.category,
+    required this.scoreValue,
+    this.onCategoryChanged,
+  });
 
   /// The score value of a course.
   /// Note that we should make the score's type to be a [String] instead of [int] since the score can be a string like "Q".
-  final String _scoreValue;
-  final String _category;
-  final String _courseName;
-  final OnCategoryChanged? _onCategoryChanged;
+  final String scoreValue;
+  final String category;
+  final String courseName;
+  final OnCategoryChanged? onCategoryChanged;
 
   final ValueNotifier<int?> _selectedCategory = ValueNotifier(null);
 
   int? _getInitialCategoryIndex() {
-    final index = constCourseType.indexOf(_category);
+    final index = constCourseType.indexOf(category);
     return index == -1 ? null : index;
   }
 
   Widget get _courseNameText => AutoSizeText(
-        _courseName,
+        courseName,
         style: const TextStyle(fontSize: 16.0),
       );
 
   Widget get _categoryMenu => ValueListenableBuilder(
         valueListenable: _selectedCategory,
-        builder: (_, value, __) => DropdownButton(
+        builder: (_, value, _) => DropdownButton(
           underline: const SizedBox.shrink(),
           value: value ?? _getInitialCategoryIndex(),
           items: constCourseType
@@ -48,7 +45,7 @@ class ScoreTile extends StatelessWidget {
               .toList(),
           onChanged: (newCategory) {
             _selectedCategory.value = newCategory;
-            _onCategoryChanged?.call(newCategory);
+            onCategoryChanged?.call(newCategory);
           },
         ),
       );
@@ -56,7 +53,7 @@ class ScoreTile extends StatelessWidget {
   Widget get _scoreValueText => SizedBox(
         width: 40,
         child: Text(
-          _scoreValue,
+          scoreValue,
           style: const TextStyle(fontSize: 16.0),
           textAlign: TextAlign.end,
         ),
@@ -75,7 +72,7 @@ class ScoreTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(child: _courseNameText),
-          if (_category.isNotEmpty) _categoryMenu,
+          if (category.isNotEmpty) _categoryMenu,
           _scoreValueText,
         ],
       );

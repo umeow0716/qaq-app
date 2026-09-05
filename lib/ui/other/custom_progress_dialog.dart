@@ -35,7 +35,8 @@ class CustomProgressDialog extends StatelessWidget {
   /// {@endtemplate}
   final ShapeBorder? shape;
 
-  Color _getColor(BuildContext context) => Theme.of(context).dialogBackgroundColor;
+  Color _getColor(BuildContext context) =>
+      Theme.of(context).dialogTheme.backgroundColor ?? Theme.of(context).colorScheme.surfaceContainerHigh;
 
   @override
   Widget build(BuildContext context) => AnimatedPadding(
