@@ -1,3 +1,4 @@
+import 'package:flutter_app/src/config/ischool_plus_config.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
@@ -61,7 +62,7 @@ class WebViewPage {
   }) async {
     if (shouldUseAppCookies) {
       return _launchTATWebView(
-        initialUrl: initialUrl,
+        initialUrl: ISchoolPlusConfig.rewriteToProxy(initialUrl),
         title: title,
       );
     }
