@@ -26,16 +26,28 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   /// and key is the target header name, suggest using the standard [HttpHeaders] library.
   /// Before outputting the final response, if a header provides a corresponding modifier,
   /// it will use the modifier to modify the header, so , the final output header value will be the modified version.
-  EarlyInterceptorAdapter({this.headerDecorators}) : _defaultHttpClient = HttpClient();
+  EarlyInterceptorAdapter({
+    this.headerDecorators,
+    HttpClient? httpClient,
+    bool closeHttpClient = true,
+  })  : _defaultHttpClient = httpClient ?? HttpClient(),
+        _usesInjectedHttpClient = httpClient != null,
+        _closeHttpClient = closeHttpClient;
 
   final HttpClient _defaultHttpClient;
+  final bool _usesInjectedHttpClient;
+  final bool _closeHttpClient;
   final Completer<void> _adapterLife = Completer<void>();
   final Map<String, HeaderDecorator>? headerDecorators;
 
   @override
   void close({bool force = false}) {
-    _adapterLife.complete();
-    _defaultHttpClient.close(force: force);
+    if (!_adapterLife.isCompleted) {
+      _adapterLife.complete();
+    }
+    if (_closeHttpClient) {
+      _defaultHttpClient.close(force: force);
+    }
   }
 
   @override
@@ -166,7 +178,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
         ? null
         : connectionTimeout;
 
-    if (cancelFuture != null) {
+    if (cancelFuture != null && !_usesInjectedHttpClient) {
       final httpClient = HttpClient()
         ..userAgent = null
         ..idleTimeout = Duration.zero;

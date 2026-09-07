@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/config/ischool_plus_config.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -53,33 +52,12 @@ class _TATWebViewState extends State<TATWebView> {
     URLAuthenticationChallenge challenge,
   ) async => ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.PROCEED);
 
-  Future<NavigationActionPolicy> _onShouldOverrideUrlLoading(
-    InAppWebViewController controller,
-    NavigationAction navigationAction,
-  ) async {
-    if (navigationAction.isForMainFrame == false) {
-      return NavigationActionPolicy.ALLOW;
-    }
-
-    final requestUrl = navigationAction.request.url;
-    if (requestUrl == null) return NavigationActionPolicy.ALLOW;
-
-    final uri = Uri.tryParse(requestUrl.toString());
-    if (uri == null || !ISchoolPlusConfig.shouldRewrite(uri)) {
-      return NavigationActionPolicy.ALLOW;
-    }
-
-    navigationAction.request.url = WebUri(ISchoolPlusConfig.rewriteToProxy(uri).toString());
-    await controller.loadUrl(urlRequest: navigationAction.request);
-    return NavigationActionPolicy.CANCEL;
-  }
 
   Widget _buildTATWebViewCore() => _TATWebViewCore(
     initialUrl: widget.initialUrl,
     onWebViewCreated: _onWebViewCreated,
     onProgressChanged: (_, progress) => _onProgressChanged(progress),
     onReceivedTrustAuthReqCallBack: _onReceivedTrustAuthReqCallBack,
-    onShouldOverrideUrlLoading: _onShouldOverrideUrlLoading,
   );
 
   Widget _buildButtonBar() => WebViewButtonBar(
@@ -120,7 +98,6 @@ class _TATWebViewCore extends StatelessWidget {
     this.onWebViewCreated,
     this.onProgressChanged,
     this.onReceivedTrustAuthReqCallBack,
-    this.onShouldOverrideUrlLoading,
   });
 
   final Uri initialUrl;
@@ -131,16 +108,11 @@ class _TATWebViewCore extends StatelessWidget {
     URLAuthenticationChallenge challenge,
   )?
   onReceivedTrustAuthReqCallBack;
-  final Future<NavigationActionPolicy> Function(InAppWebViewController controller, NavigationAction navigationAction)?
-  onShouldOverrideUrlLoading;
-
   @override
   Widget build(BuildContext context) => InAppWebView(
     initialUrlRequest: URLRequest(url: WebUri(initialUrl.toString())),
-    initialSettings: InAppWebViewSettings(useShouldOverrideUrlLoading: true),
     onWebViewCreated: onWebViewCreated,
     onProgressChanged: onProgressChanged,
     onReceivedServerTrustAuthRequest: onReceivedTrustAuthReqCallBack,
-    shouldOverrideUrlLoading: onShouldOverrideUrlLoading,
   );
 }

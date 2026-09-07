@@ -1,4 +1,3 @@
-import 'package:flutter_app/src/config/ischool_plus_config.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
@@ -46,7 +45,7 @@ class WebViewPage {
   /// otherwise we use the native web view.
   Future<void> call({required Uri initialUrl, String? title, bool shouldUseAppCookies = false}) async {
     if (shouldUseAppCookies) {
-      return _launchTATWebView(initialUrl: ISchoolPlusConfig.rewriteToProxy(initialUrl), title: title);
+      return _launchTATWebView(initialUrl: initialUrl, title: title);
     }
 
     return _launchNativeWebView(initialUrl: initialUrl);

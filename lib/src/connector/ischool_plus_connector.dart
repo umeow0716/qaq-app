@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/config/ischool_plus_config.dart';
 import 'package:flutter_app/src/connector/core/connector.dart';
 import 'package:flutter_app/src/model/ischoolplus/course_file_json.dart';
 import 'package:flutter_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
@@ -26,7 +25,7 @@ class ReturnWithStatus<T> {
 }
 
 class ISchoolPlusConnector {
-  static const String _iSchoolPlusUrl = ISchoolPlusConfig.proxyBaseUrl;
+  static const String _iSchoolPlusUrl = 'https://istudy.ntut.edu.tw/';
 
   //static final String _getLoginISchoolUrl = _iSchoolPlusUrl + "mooc/login.php";
   //static final String _postLoginISchoolUrl = _iSchoolPlusUrl + "login.php";
@@ -79,8 +78,7 @@ class ISchoolPlusConnector {
         if (redirectLocations == null || redirectLocations.isEmpty) {
           continue;
         }
-        final redirectLocationUrl = ISchoolPlusConfig.rewriteUrlToProxy(redirectLocations.first);
-        final login2Parameter = ConnectorParameter(redirectLocationUrl);
+        final login2Parameter = ConnectorParameter(redirectLocations.first);
         final login2Result = await Connector.getDataByGet(login2Parameter);
         if (login2Result.contains("lost")) {
           log("[TAT] ischool_plus_connector.dart: connection lost during redirection, retrying...");
