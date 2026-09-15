@@ -6,6 +6,7 @@ import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_webview_proxy.dart';
 import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:flutter_app/src/connector/ntut_connector.dart';
 import 'package:flutter_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -73,16 +74,29 @@ class _TATWebViewState extends State<TATWebView> {
   }
 
   Future<void> setInitialCookies() async {
-    final cookies = await cookieJar.loadForRequest(widget.initialUrl);
-    final initialUrl = WebUri(widget.initialUrl.toString());
+    await cookieManager.deleteAllCookies();
+
+    final portalUrl = Uri.parse(NTUTConnector.host);
+
+    await _setCookiesForUri(portalUrl);
+
+    if (widget.initialUrl.host != portalUrl.host) {
+      await _setCookiesForUri(widget.initialUrl);
+    }
+  }
+
+  Future<void> _setCookiesForUri(Uri uri) async {
+    final cookies = await cookieJar.loadForRequest(uri);
+    final webUri = WebUri(uri.toString());
 
     for (final cookie in cookies) {
       await cookieManager.setCookie(
-        url: initialUrl,
+        url: webUri,
         name: cookie.name,
         value: cookie.value,
         domain: cookie.domain,
         path: cookie.path ?? '/',
+        expiresDate: cookie.expires?.millisecondsSinceEpoch,
         maxAge: cookie.maxAge,
         isSecure: cookie.secure,
         isHttpOnly: cookie.httpOnly,
@@ -286,5 +300,32 @@ class _TATWebViewCore extends StatelessWidget {
     onProgressChanged: onProgressChanged,
     onReceivedServerTrustAuthRequest: onReceivedTrustAuthReqCallBack,
     shouldOverrideUrlLoading: shouldOverrideUrlLoading,
+    onLoadStart: (controller, url) {
+      debugPrint('[WebView] onLoadStart: $url');
+    },
+    onLoadStop: (controller, url) async {
+      debugPrint('[WebView] onLoadStop: $url');
+
+      if (url != null) {
+        final cookies =
+            await CookieManager.instance().getCookies(url: url);
+
+        debugPrint(
+          '[WebView] cookies: '
+          '${cookies.map((c) => '${c.name}@${c.domain}${c.path}').toList()}',
+        );
+      }
+
+      final title = await controller.getTitle();
+      debugPrint('[WebView] title: $title');
+
+      final bodyText = await controller.evaluateJavascript(
+        source: '''
+          document.body?.innerText?.substring(0, 500) ?? ''
+        ''',
+      );
+
+      debugPrint('[WebView] body: $bodyText');
+    },
   );
 }

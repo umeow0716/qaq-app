@@ -9,6 +9,7 @@ import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/setting/setting_json.dart';
 import 'package:flutter_app/src/model/userdata/user_data_json.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -342,6 +343,7 @@ class LocalStorage {
 
   Future<void> logout() async {
     await DioConnector.instance.deleteCookies();
+    await CookieManager.instance().deleteAllCookies();
     await clearUserData();
     clearSemesterJsonList();
     await clearCourseTableList();

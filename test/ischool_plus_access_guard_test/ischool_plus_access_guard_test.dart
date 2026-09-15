@@ -49,6 +49,6 @@ void main() {
 
   test('only guards the iStudy host', () {
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudy.ntut.edu.tw/mooc/')), isTrue);
-    expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://app.ntut.edu.tw/')), isFalse);
+    expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/')), isFalse);
   });
 }

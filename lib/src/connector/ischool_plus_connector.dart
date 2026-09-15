@@ -35,8 +35,8 @@ class ISchoolPlusConnector {
   static const _ssoLoginUrl = "${NTUTConnector.host}ssoIndex.do";
 
   /// The Authorization Step of ISchool (2023-10-21)
-  /// 1. GET https://app.ntut.edu.tw/ssoIndex.do
-  /// 2-1. POST https://app.ntut.edu.tw/oauth2Server.do (It should be. See the comment on step 2-1)
+  /// 1. GET https://nportal.ntut.edu.tw/ssoIndex.do
+  /// 2-1. POST https://nportal.ntut.edu.tw/oauth2Server.do (It should be. See the comment on step 2-1)
   /// 2-2. follow the redirection to https://istudy.ntut.edu.tw/login2.php (It should be. See the comment on step 2-2)
   static Future<ISchoolPlusConnectorStatus> login(String account) async {
     try {
