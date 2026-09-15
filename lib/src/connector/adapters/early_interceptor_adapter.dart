@@ -11,6 +11,8 @@ import 'package:meta/meta.dart';
 /// A function that may do somethings for the [originValues].
 typedef HeaderDecorator = List<String> Function(List<String> originValues);
 
+typedef HttpClientProvider = Future<HttpClient?> Function(RequestOptions options);
+
 /// An adapter which lets you do something before the Dio interceptor executes.
 /// Especially for changing the header of response.
 ///
@@ -30,6 +32,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     this.headerDecorators,
     HttpClient? httpClient,
     bool closeHttpClient = true,
+    this.httpClientProvider,
   })  : _defaultHttpClient = httpClient ?? HttpClient(),
         _usesInjectedHttpClient = httpClient != null,
         _closeHttpClient = closeHttpClient;
@@ -39,6 +42,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   final bool _closeHttpClient;
   final Completer<void> _adapterLife = Completer<void>();
   final Map<String, HeaderDecorator>? headerDecorators;
+  final HttpClientProvider? httpClientProvider;
 
   @override
   void close({bool force = false}) {
@@ -62,7 +66,12 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
       throw Exception(msg);
     }
 
-    final httpClient = _configHttpClient(cancelFuture, options.connectTimeout);
+    final providedHttpClient = await httpClientProvider?.call(options);
+    final httpClient = _configHttpClient(
+      cancelFuture,
+      options.connectTimeout,
+      providedHttpClient: providedHttpClient,
+    );
     final reqFuture = httpClient.openUrl(options.method, options.uri);
 
     Never throwConnectingTimeout() => throw DioException(
@@ -173,10 +182,21 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     );
   }
 
-  HttpClient _configHttpClient(Future<void>? cancelFuture, Duration? connectionTimeout) {
+  HttpClient _configHttpClient(
+    Future<void>? cancelFuture,
+    Duration? connectionTimeout, {
+    HttpClient? providedHttpClient,
+  }) {
     final configuredConnectionTimeout = connectionTimeout == null || connectionTimeout == Duration.zero
         ? null
         : connectionTimeout;
+
+    if (providedHttpClient != null) {
+      providedHttpClient
+        ..idleTimeout = const Duration(seconds: 3)
+        ..connectionTimeout = configuredConnectionTimeout;
+      return providedHttpClient;
+    }
 
     if (cancelFuture != null && !_usesInjectedHttpClient) {
       final httpClient = HttpClient()

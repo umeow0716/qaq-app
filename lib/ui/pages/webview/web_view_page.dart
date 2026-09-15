@@ -1,4 +1,5 @@
 import 'package:flutter_app/src/r.dart';
+import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,7 +45,11 @@ class WebViewPage {
   /// When [shouldUseAppCookies] is true, the internal web view will be launched,
   /// otherwise we use the native web view.
   Future<void> call({required Uri initialUrl, String? title, bool shouldUseAppCookies = false}) async {
-    if (shouldUseAppCookies) {
+    // Direct iStudy URLs must use our controllable WebView even when automatic
+    // VPN is enabled; native LaunchMode.inAppWebView cannot be switched onto
+    // the userspace GlobalProtect bridge. SSO entry URLs that can redirect to
+    // iStudy already pass shouldUseAppCookies=true from SubSystemPage.
+    if (IStudyAccessGuard.isIStudyUri(initialUrl) || shouldUseAppCookies) {
       return _launchTATWebView(initialUrl: initialUrl, title: title);
     }
 

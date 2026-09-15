@@ -1,9 +1,24 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:flutter_app/src/connector/global_protect/global_protect_transport.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_models.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_session_manager.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_tunnel.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeTransport implements GlobalProtectTransport {
+  @override
+  Stream<Uint8List> get packets => const Stream<Uint8List>.empty();
+
+  @override
+  Future<void> sendIpv4(Uint8List packet) async {}
+
+  @override
+  Future<void> sendIpv6(Uint8List packet) async {}
+
+  @override
+  Future<void> close() async {}
+}
 
 class _FakeConnection implements GlobalProtectConnection {
   _FakeConnection(this.id);
@@ -20,7 +35,7 @@ class _FakeConnection implements GlobalProtectConnection {
   GlobalProtectSession get session => throw UnimplementedError();
 
   @override
-  GlobalProtectTunnel get tunnel => throw UnimplementedError();
+  GlobalProtectTransport get transport => _FakeTransport();
 }
 
 void main() {
@@ -112,7 +127,7 @@ void main() {
     await events.close();
   });
 
-  test('marks the session disconnected when the tunnel event stream ends', () async {
+  test('marks the session disconnected when the transport event stream ends', () async {
     final events = StreamController<void>.broadcast();
     final connection = _FakeConnection(1);
     final manager = GlobalProtectSessionManager(

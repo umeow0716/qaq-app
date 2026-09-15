@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_app/debug/log/log.dart';
+import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:sprintf/sprintf.dart';
 
 import 'connector_parameter.dart';
@@ -9,6 +10,7 @@ import 'dio_connector.dart';
 
 class Connector {
   static Future<String> getDataByPost(ConnectorParameter parameter) async {
+    await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
     try {
       String result = await DioConnector.instance.getDataByPost(parameter);
       return result;
@@ -18,6 +20,7 @@ class Connector {
   }
 
   static Future<String> getDataByGet(ConnectorParameter parameter) async {
+    await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
     try {
       String result = await DioConnector.instance.getDataByGet(parameter);
       return result;
@@ -27,6 +30,7 @@ class Connector {
   }
 
   static Future<Response> getDataByGetResponse(ConnectorParameter parameter) async {
+    await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
     Response result;
     try {
       result = await DioConnector.instance.getDataByGetResponse(parameter);
@@ -37,6 +41,7 @@ class Connector {
   }
 
   static Future<Response> getDataByPostResponse(ConnectorParameter parameter) async {
+    await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
     Response result;
     try {
       result = await DioConnector.instance.getDataByPostResponse(parameter);

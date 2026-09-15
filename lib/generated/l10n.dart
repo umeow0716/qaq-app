@@ -823,6 +823,46 @@ class S {
     return Intl.message('Check IPlus new', name: 'checkIPlusNew', desc: '', args: []);
   }
 
+  /// `Automatically connect VPN for iStudy (Experimental)`
+  String get autoConnectIStudyVpn {
+    return Intl.message(
+      'Automatically connect VPN for iStudy (Experimental)',
+      name: 'autoConnectIStudyVpn',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `When using iStudy off campus, the app will try to establish a VPN connection automatically. This feature is still experimental and may be unstable on some networks.`
+  String get autoConnectIStudyVpnHint {
+    return Intl.message(
+      'When using iStudy off campus, the app will try to establish a VPN connection automatically. This feature is still experimental and may be unstable on some networks.',
+      name: 'autoConnectIStudyVpnHint',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Unable to connect to iStudy`
+  String get iStudyNetworkUnavailableTitle {
+    return Intl.message(
+      'Unable to connect to iStudy',
+      name: 'iStudyNetworkUnavailableTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `You do not appear to be on the campus network (140.*), and automatic VPN is disabled.\n\nTo use iStudy off campus, go to:\nOther → Settings → Automatically connect VPN for iStudy (Experimental)\n\n⚠️ This feature is still experimental, has limited real-world testing, and may be unstable depending on your network.`
+  String get iStudyNetworkUnavailableMessage {
+    return Intl.message(
+      'You do not appear to be on the campus network (140.*), and automatic VPN is disabled.\n\nTo use iStudy off campus, go to:\nOther → Settings → Automatically connect VPN for iStudy (Experimental)\n\n⚠️ This feature is still experimental, has limited real-world testing, and may be unstable depending on your network.',
+      name: 'iStudyNetworkUnavailableMessage',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `The path is wrong, please do not select the folder containing the Download directory`
   String get selectDirectoryFail {
     return Intl.message(

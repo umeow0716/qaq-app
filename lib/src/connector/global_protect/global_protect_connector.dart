@@ -1,10 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:xml/xml.dart';
 
+import 'global_protect_transport.dart';
+import 'global_protect_esp_transport.dart';
 import 'global_protect_models.dart';
-import 'global_protect_tunnel.dart';
+
+typedef GlobalProtectConnectorTrace = void Function(String message);
 
 class GlobalProtectConnector {
   GlobalProtectConnector({
@@ -132,18 +136,23 @@ class GlobalProtectConnector {
     required String username,
     required String password,
     String? gatewayHost,
-    GlobalProtectTunnelTrace? tunnelTrace,
+    GlobalProtectConnectorTrace? trace,
+    GlobalProtectTransportTrace? transportTrace,
   }) async {
+    trace?.call('portal prelogin -> ${portal.host}');
     final portalPrelogin = await prelogin();
+    trace?.call('portal prelogin ok; saml=${portalPrelogin.requiresSaml}');
     if (portalPrelogin.requiresSaml) {
       throw UnsupportedError('GlobalProtect portal requires SAML authentication. WebView SAML handoff is not implemented yet.');
     }
 
+    trace?.call('portal password authentication');
     final portalResult = await authenticatePortal(
       username: username,
       password: password,
       region: portalPrelogin.region,
     );
+    trace?.call('portal authentication ok; gateways=${portalResult.gateways.length}');
     final selected = gatewayHost == null
         ? portalResult.gateways.first
         : portalResult.gateways.firstWhere(
@@ -151,14 +160,18 @@ class GlobalProtectConnector {
             orElse: () => GlobalProtectGateway(host: gatewayHost),
           );
     final gateway = _gatewayUri(selected.host);
+    trace?.call('gateway selected -> ${gateway.host}');
 
+    trace?.call('gateway prelogin');
     final gatewayPrelogin = await prelogin(server: gateway, gateway: true);
+    trace?.call('gateway prelogin ok; saml=${gatewayPrelogin.requiresSaml}');
     if (gatewayPrelogin.requiresSaml &&
         portalResult.portalUserAuthCookie == null &&
         portalResult.portalPrelogonUserAuthCookie == null) {
       throw UnsupportedError('GlobalProtect gateway requires SAML authentication. WebView SAML handoff is not implemented yet.');
     }
 
+    trace?.call('gateway password/cookie authentication');
     final session = await authenticateGateway(
       gateway: gateway,
       username: username,
@@ -166,24 +179,60 @@ class GlobalProtectConnector {
       portalUserAuthCookie: portalResult.portalUserAuthCookie,
       portalPrelogonUserAuthCookie: portalResult.portalPrelogonUserAuthCookie,
     );
+    trace?.call('gateway authentication ok');
+
+    trace?.call('requesting tunnel config');
     final config = await getTunnelConfig(
       gateway: gateway,
       session: session,
       appVersion: portalResult.appVersion,
     );
-    final tunnel = await GlobalProtectTunnel.connect(
+    trace?.call(
+      'tunnel config ok; ip=${config.ipAddress ?? '-'} mtu=${config.mtu ?? '-'} '
+      'dns=${config.dnsServers.join(',')}',
+    );
+
+    final transport = await _openEspTransport(
       gateway: gateway,
-      tunnelPath: config.tunnelPath,
-      query: session.tunnelQuery,
-      trace: tunnelTrace,
+      config: config,
+      trace: trace,
+      transportTrace: transportTrace,
     );
 
     return GlobalProtectConnection(
       gateway: gateway,
       session: session,
       config: config,
-      tunnel: tunnel,
+      transport: transport,
     );
+  }
+
+  Future<GlobalProtectTransport> _openEspTransport({
+    required Uri gateway,
+    required GlobalProtectTunnelConfig config,
+    GlobalProtectConnectorTrace? trace,
+    GlobalProtectTransportTrace? transportTrace,
+  }) async {
+    final ipsec = config.ipsec;
+    if (ipsec == null ||
+        !ipsec.hasCompleteNegotiationMaterial ||
+        ipsec.keyMaterial == null) {
+      throw UnsupportedError(
+        'GlobalProtect gateway did not provide complete ESP-over-UDP negotiation material.',
+      );
+    }
+
+    trace?.call(
+      'opening ESP data channel; udpPort=${ipsec.udpPort ?? '-'} '
+      'enc=${ipsec.encryptionAlgorithm ?? '-'} hmac=${ipsec.authenticationAlgorithm ?? '-'}',
+    );
+    final esp = await GlobalProtectEspTransport.connect(
+      gateway: gateway,
+      config: config,
+      trace: transportTrace,
+    );
+    trace?.call('ESP data channel connected');
+    return esp;
   }
 
   void close() => _httpClient.close(force: true);
@@ -288,7 +337,6 @@ class GlobalProtectConnector {
     }
 
     return GlobalProtectTunnelConfig(
-      tunnelPath: _text(root, 'ssl-tunnel-url') ?? '/ssl-tunnel-connect.sslvpn',
       ipAddress: _text(root, 'ip-address'),
       ipv6Address: _text(root, 'ip-address-v6'),
       netmask: _text(root, 'netmask'),
@@ -298,6 +346,84 @@ class GlobalProtectConnector {
       dnsSuffixes: _members(root, const {'dns-suffix'}),
       includeRoutes: _members(root, const {'access-routes', 'access-routes-v6'}),
       excludeRoutes: _members(root, const {'exclude-access-routes', 'exclude-access-routes-v6'}),
+      ipsec: _parseIpsecConfig(root),
+    );
+  }
+
+  GlobalProtectIpsecConfig? _parseIpsecConfig(XmlElement root) {
+    final ipsec = root.descendants
+        .whereType<XmlElement>()
+        .where((element) => element.name.local == 'ipsec')
+        .firstOrNull;
+    if (ipsec == null) return null;
+
+    String? value(String name) {
+      final element = ipsec.findElements(name).firstOrNull;
+      final text = element?.innerText.trim();
+      return text == null || text.isEmpty ? null : text;
+    }
+
+    bool hasValue(String name) => value(name) != null;
+
+    Uint8List? keyBytes(String name) {
+      final element = ipsec.findElements(name).firstOrNull;
+      if (element == null) return null;
+      final bitsText = element.findElements('bits').firstOrNull?.innerText.trim();
+      final hexText = element.findElements('val').firstOrNull?.innerText.trim();
+      final bits = int.tryParse(bitsText ?? '');
+      if (bits == null || bits <= 0 || bits % 8 != 0 || hexText == null) return null;
+      final normalized = hexText.replaceAll(RegExp(r'\s+'), '');
+      if (normalized.length != bits ~/ 4 || normalized.length.isOdd) return null;
+      final result = Uint8List(bits ~/ 8);
+      for (var i = 0; i < result.length; i++) {
+        final byte = int.tryParse(normalized.substring(i * 2, i * 2 + 2), radix: 16);
+        if (byte == null) return null;
+        result[i] = byte;
+      }
+      return result;
+    }
+
+    int? spi(String name) {
+      final text = value(name);
+      if (text == null) return null;
+      final normalized = text.toLowerCase().startsWith('0x') ? text.substring(2) : text;
+      return int.tryParse(normalized, radix: 16);
+    }
+
+    final c2sSpi = spi('c2s-spi');
+    final s2cSpi = spi('s2c-spi');
+    final ekeyC2s = keyBytes('ekey-c2s');
+    final ekeyS2c = keyBytes('ekey-s2c');
+    final akeyC2s = keyBytes('akey-c2s');
+    final akeyS2c = keyBytes('akey-s2c');
+    final material = c2sSpi != null &&
+            s2cSpi != null &&
+            ekeyC2s != null &&
+            ekeyS2c != null &&
+            akeyC2s != null &&
+            akeyS2c != null
+        ? GlobalProtectIpsecKeyMaterial(
+            clientToServerSpi: c2sSpi,
+            serverToClientSpi: s2cSpi,
+            clientToServerEncryptionKey: ekeyC2s,
+            serverToClientEncryptionKey: ekeyS2c,
+            clientToServerAuthenticationKey: akeyC2s,
+            serverToClientAuthenticationKey: akeyS2c,
+          )
+        : null;
+
+    return GlobalProtectIpsecConfig(
+      mode: value('ipsec-mode'),
+      udpPort: int.tryParse(value('udp-port') ?? ''),
+      encryptionAlgorithm: value('enc-algo'),
+      authenticationAlgorithm: value('hmac-algo'),
+      hasClientToServerSpi: c2sSpi != null,
+      hasServerToClientSpi: s2cSpi != null,
+      hasClientToServerEncryptionKey: ekeyC2s != null,
+      hasServerToClientEncryptionKey: ekeyS2c != null,
+      hasClientToServerAuthenticationKey: akeyC2s != null,
+      hasServerToClientAuthenticationKey: akeyS2c != null,
+      keyMaterial: material,
     );
   }
 

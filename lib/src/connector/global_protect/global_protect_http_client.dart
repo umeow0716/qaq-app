@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'global_protect_transport.dart';
 import 'global_protect_models.dart';
-import 'global_protect_packet_transport.dart';
 import 'virtual_byte_socket.dart';
 import 'virtual_tcp_loopback_bridge.dart';
 import 'virtual_tcp_socket.dart';
@@ -15,13 +15,13 @@ typedef GlobalProtectVirtualSocketDialer = Future<VirtualByteSocket> Function(
 );
 
 /// Builds a dart:io [HttpClient] whose TCP connections are carried through a
-/// GlobalProtect packet tunnel instead of Android's normal routing table.
+/// GlobalProtect data transport instead of Android's normal routing table.
 ///
 /// HTTP parsing, cookies, redirects, compression, and connection reuse remain
 /// owned by dart:io. This class only replaces socket creation.
 class GlobalProtectHttpClient {
   GlobalProtectHttpClient({
-    required GlobalProtectPacketTransport tunnel,
+    required GlobalProtectTransport transport,
     required String localAddress,
     GlobalProtectHostResolver? resolver,
     GlobalProtectVirtualSocketDialer? socketDialer,
@@ -30,7 +30,8 @@ class GlobalProtectHttpClient {
     Duration bridgeTimeout = const Duration(seconds: 5),
     Duration tlsHandshakeTimeout = const Duration(seconds: 15),
     int maxSegmentPayload = 1200,
-  })  : _tunnel = tunnel,
+    VirtualTcpTrace? tcpTrace,
+  })  : _transport = transport,
         _localAddress = localAddress,
         _resolver = resolver ?? _defaultResolver,
         _socketDialer = socketDialer,
@@ -39,6 +40,7 @@ class GlobalProtectHttpClient {
         _bridgeTimeout = bridgeTimeout,
         _tlsHandshakeTimeout = tlsHandshakeTimeout,
         _maxSegmentPayload = maxSegmentPayload,
+        _tcpTrace = tcpTrace,
         client = HttpClient(context: securityContext) {
     client.findProxy = (_) => 'DIRECT';
     client.connectionFactory = _createConnection;
@@ -53,13 +55,14 @@ class GlobalProtectHttpClient {
     Duration bridgeTimeout = const Duration(seconds: 5),
     Duration tlsHandshakeTimeout = const Duration(seconds: 15),
     int? maxSegmentPayload,
+    VirtualTcpTrace? tcpTrace,
   }) {
     final localAddress = connection.config.ipAddress;
     if (localAddress == null || localAddress.isEmpty) {
       throw StateError('GlobalProtect did not provide an IPv4 tunnel address.');
     }
     return GlobalProtectHttpClient(
-      tunnel: connection.tunnel,
+      transport: connection.transport,
       localAddress: localAddress,
       resolver: resolver,
       socketDialer: socketDialer,
@@ -68,10 +71,11 @@ class GlobalProtectHttpClient {
       bridgeTimeout: bridgeTimeout,
       tlsHandshakeTimeout: tlsHandshakeTimeout,
       maxSegmentPayload: maxSegmentPayload ?? _payloadForMtu(connection.config.mtu),
+      tcpTrace: tcpTrace,
     );
   }
 
-  final GlobalProtectPacketTransport _tunnel;
+  final GlobalProtectTransport _transport;
   final String _localAddress;
   final GlobalProtectHostResolver _resolver;
   final GlobalProtectVirtualSocketDialer? _socketDialer;
@@ -80,6 +84,7 @@ class GlobalProtectHttpClient {
   final Duration _bridgeTimeout;
   final Duration _tlsHandshakeTimeout;
   final int _maxSegmentPayload;
+  final VirtualTcpTrace? _tcpTrace;
   final Set<VirtualTlsSocket> _tlsSockets = <VirtualTlsSocket>{};
 
   final HttpClient client;
@@ -94,7 +99,7 @@ class GlobalProtectHttpClient {
       throw StateError('GlobalProtectHttpClient is closed.');
     }
     if (proxyHost != null || proxyPort != null) {
-      throw UnsupportedError('Proxy connections are not supported inside the GlobalProtect tunnel.');
+      throw UnsupportedError('Proxy connections are not supported inside the GlobalProtect data transport.');
     }
 
     if (uri.scheme != 'http' && uri.scheme != 'https') {
@@ -108,12 +113,13 @@ class GlobalProtectHttpClient {
 
     final virtualSocket = _socketDialer == null
         ? await VirtualTcpSocket.connectIp(
-            tunnel: _tunnel,
+            transport: _transport,
             localAddress: _localAddress,
             remoteAddress: remoteAddress.address,
             remotePort: port,
             timeout: _tcpConnectTimeout,
             maxSegmentPayload: _maxSegmentPayload,
+            trace: _tcpTrace,
           )
         : await _socketDialer(remoteAddress, port);
 
@@ -156,8 +162,8 @@ class GlobalProtectHttpClient {
     _closed = true;
 
     // Stop HttpClient from creating/retaining connections first, then wait for
-    // every virtual TLS socket to finish closing while the GP tunnel is still
-    // alive. Callers that own the tunnel should await this before disposing
+    // every virtual TLS socket to finish closing while the GP data transport is still
+    // alive. Callers that own the connection should await this before disposing
     // their GlobalProtectSessionManager.
     client.close(force: force);
     final sockets = _tlsSockets.toList(growable: false);

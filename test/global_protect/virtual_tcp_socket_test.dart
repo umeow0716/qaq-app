@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter_app/src/connector/global_protect/global_protect_packet_transport.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_transport.dart';
 import 'package:flutter_app/src/connector/global_protect/ipv4_tcp_codec.dart';
 import 'package:flutter_app/src/connector/global_protect/virtual_tcp_socket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _FakeTransport implements GlobalProtectPacketTransport {
+class _FakeTransport implements GlobalProtectTransport {
   final StreamController<Uint8List> controller = StreamController<Uint8List>.broadcast();
   final List<Uint8List> sentIpv4 = [];
 
@@ -22,10 +22,11 @@ class _FakeTransport implements GlobalProtectPacketTransport {
   @override
   Future<void> sendIpv6(Uint8List packet) async {}
 
+  @override
   Future<void> close() => controller.close();
 }
 
-class _DelayedTransport implements GlobalProtectPacketTransport {
+class _DelayedTransport implements GlobalProtectTransport {
   final StreamController<Uint8List> controller = StreamController<Uint8List>.broadcast();
   final List<Uint8List> sentIpv4 = [];
   final List<Completer<void>> _pending = [];
@@ -57,6 +58,7 @@ class _DelayedTransport implements GlobalProtectPacketTransport {
   @override
   Future<void> sendIpv6(Uint8List packet) async {}
 
+  @override
   Future<void> close() => controller.close();
 }
 
@@ -64,7 +66,7 @@ void main() {
   test('completes a TCP three way handshake over the packet transport', () async {
     final transport = _FakeTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: transport,
+      transport: transport,
       localAddress: '10.0.0.2',
       remoteAddress: '10.0.0.10',
       remotePort: 443,
@@ -108,7 +110,7 @@ void main() {
   test('delivers matching TCP payload to the virtual stream', () async {
     final transport = _FakeTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: transport,
+      transport: transport,
       localAddress: '10.0.0.2',
       remoteAddress: '10.0.0.10',
       remotePort: 443,
@@ -157,7 +159,7 @@ void main() {
   test('reorders out-of-order TCP payload before exposing it to the stream', () async {
     final transport = _FakeTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: transport,
+      transport: transport,
       localAddress: '10.0.0.2',
       remoteAddress: '10.0.0.10',
       remotePort: 443,
@@ -222,7 +224,7 @@ void main() {
   test('segments large writes below the configured payload size', () async {
     final transport = _FakeTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: transport,
+      transport: transport,
       localAddress: '10.0.0.2',
       remoteAddress: '10.0.0.10',
       remotePort: 443,
@@ -260,7 +262,7 @@ void main() {
   test('serializes concurrent writes so TCP sequence numbers never overlap', () async {
     final transport = _DelayedTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: transport,
+      transport: transport,
       localAddress: '10.0.0.2',
       remoteAddress: '10.0.0.10',
       remotePort: 443,
@@ -314,11 +316,10 @@ void main() {
     await transport.close();
   });
 
-
   test('advertises maxSegmentPayload as MSS in SYN', () async {
-    final tunnel = _FakeTransport();
+    final transport = _FakeTransport();
     final connectFuture = VirtualTcpSocket.connectIp(
-      tunnel: tunnel,
+      transport: transport,
       localAddress: '172.24.1.10',
       remoteAddress: '140.124.13.231',
       remotePort: 443,
@@ -328,11 +329,11 @@ void main() {
     );
 
     await Future<void>.delayed(Duration.zero);
-    final syn = Ipv4TcpCodec.decode(tunnel.sentIpv4.single)!;
+    final syn = Ipv4TcpCodec.decode(transport.sentIpv4.single)!;
     expect(syn.syn, isTrue);
     expect(syn.tcpOptions, <int>[2, 4, 0x04, 0xb0]);
 
-    tunnel.controller.add(Ipv4TcpCodec.encode(
+    transport.controller.add(Ipv4TcpCodec.encode(
       sourceAddress: InternetAddressValue.parseIpv4('140.124.13.231'),
       destinationAddress: InternetAddressValue.parseIpv4('172.24.1.10'),
       sourcePort: 443,
@@ -344,7 +345,81 @@ void main() {
 
     final socket = await connectFuture;
     await socket.close(sendFin: false);
-    await tunnel.close();
+    await transport.close();
+  });
+
+  test('waits for missing data before consuming an out-of-order FIN', () async {
+    final transport = _FakeTransport();
+    final connectFuture = VirtualTcpSocket.connectIp(
+      transport: transport,
+      localAddress: '10.0.0.2',
+      remoteAddress: '10.0.0.10',
+      remotePort: 443,
+      localPort: 50005,
+      random: Random(6),
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    final syn = Ipv4TcpCodec.decode(transport.sentIpv4.single)!;
+    transport.controller.add(
+      Ipv4TcpCodec.encode(
+        sourceAddress: InternetAddressValue.parseIpv4('10.0.0.10'),
+        destinationAddress: InternetAddressValue.parseIpv4('10.0.0.2'),
+        sourcePort: 443,
+        destinationPort: 50005,
+        sequenceNumber: 1000,
+        acknowledgementNumber: syn.sequenceNumber + 1,
+        flags: TcpFlags.syn | TcpFlags.ack,
+      ),
+    );
+    final socket = await connectFuture;
+
+    final received = <int>[];
+    final streamDone = Completer<void>();
+    final subscription = socket.stream.listen(
+      received.addAll,
+      onDone: streamDone.complete,
+    );
+
+    // The tail arrives first and carries FIN. The socket must remain open while
+    // bytes 1001..1003 are still missing.
+    transport.controller.add(
+      Ipv4TcpCodec.encode(
+        sourceAddress: InternetAddressValue.parseIpv4('10.0.0.10'),
+        destinationAddress: InternetAddressValue.parseIpv4('10.0.0.2'),
+        sourcePort: 443,
+        destinationPort: 50005,
+        sequenceNumber: 1004,
+        acknowledgementNumber: syn.sequenceNumber + 1,
+        flags: TcpFlags.ack | TcpFlags.psh | TcpFlags.fin,
+        payload: Uint8List.fromList([4, 5, 6]),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(received, isEmpty);
+    expect(streamDone.isCompleted, isFalse);
+
+    transport.controller.add(
+      Ipv4TcpCodec.encode(
+        sourceAddress: InternetAddressValue.parseIpv4('10.0.0.10'),
+        destinationAddress: InternetAddressValue.parseIpv4('10.0.0.2'),
+        sourcePort: 443,
+        destinationPort: 50005,
+        sequenceNumber: 1001,
+        acknowledgementNumber: syn.sequenceNumber + 1,
+        flags: TcpFlags.ack,
+        payload: Uint8List.fromList([1, 2, 3]),
+      ),
+    );
+
+    await streamDone.future.timeout(const Duration(seconds: 2));
+    expect(received, [1, 2, 3, 4, 5, 6]);
+    await Future<void>.delayed(Duration.zero);
+    final finalAck = Ipv4TcpCodec.decode(transport.sentIpv4.last)!;
+    expect(finalAck.acknowledgementNumber, 1008);
+
+    await subscription.cancel();
+    await transport.close();
   });
 
 }

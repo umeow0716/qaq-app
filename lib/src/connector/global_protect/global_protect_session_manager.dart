@@ -197,6 +197,7 @@ class GlobalProtectSessionManager {
         stackTrace: stackTrace,
       ),
     );
+    unawaited(_disconnect(endedConnection).catchError((Object _, StackTrace __) {}));
   }
 
   void _clearConnectInFlight(Future<GlobalProtectConnection> future) {
@@ -216,8 +217,8 @@ class GlobalProtectSessionManager {
     }
   }
 
-  static Future<void> _defaultDisconnect(GlobalProtectConnection connection) => connection.tunnel.close();
+  static Future<void> _defaultDisconnect(GlobalProtectConnection connection) => connection.transport.close();
 
   static Stream<void> _defaultConnectionEvents(GlobalProtectConnection connection) =>
-      connection.tunnel.packets.map<void>((_) {});
+      connection.transport.packets.map<void>((_) {});
 }

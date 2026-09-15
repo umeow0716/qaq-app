@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter_app/src/connector/global_protect/global_protect_transport.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_http_client.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_packet_transport.dart';
 import 'package:flutter_app/src/connector/global_protect/virtual_byte_socket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _UnusedPacketTransport implements GlobalProtectPacketTransport {
+class _UnusedDataTransport implements GlobalProtectTransport {
   @override
   Stream<Uint8List> get packets => const Stream<Uint8List>.empty();
 
@@ -17,6 +17,9 @@ class _UnusedPacketTransport implements GlobalProtectPacketTransport {
 
   @override
   Future<void> sendIpv6(Uint8List packet) => throw UnimplementedError();
+
+  @override
+  Future<void> close() async {}
 }
 
 class _SocketBackedVirtualByteSocket implements VirtualByteSocket {
@@ -72,7 +75,7 @@ void main() {
     });
 
     final gpClient = GlobalProtectHttpClient(
-      tunnel: _UnusedPacketTransport(),
+      transport: _UnusedDataTransport(),
       localAddress: '10.0.0.2',
       securityContext: clientContext,
       resolver: (_) async => InternetAddress.loopbackIPv4,

@@ -33,6 +33,8 @@ dependencies:
   cookie_jar: ^4.0.9
   html: ^0.15.7
   xml: ^7.0.1
+  crypto: ^3.0.7
+  pointycastle: ^4.0.0
   github: ^9.26.0
   flutter_inappwebview: ^6.2.0-beta.3
   eva_icons_flutter: ^4.0.0

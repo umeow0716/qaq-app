@@ -5,6 +5,9 @@ import 'package:dart_big5/big5.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/adapters/early_interceptor_adapter.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
 
 import 'connector_parameter.dart';
 
@@ -42,7 +45,25 @@ class DioConnector {
     },
   };
 
-  final dio = Dio(dioOptions)..httpClientAdapter = EarlyInterceptorAdapter(headerDecorators: headerDecorators);
+  final dio = Dio(dioOptions)
+    ..httpClientAdapter = EarlyInterceptorAdapter(
+      headerDecorators: headerDecorators,
+      httpClientProvider: (options) async {
+        if (!IStudyAccessGuard.isIStudyUri(options.uri)) return null;
+
+        final route = await IStudyAccessGuard.route();
+        GlobalProtectDebug.log('Dio iStudy request route=${route.name}');
+        switch (route) {
+          case IStudyAccessRoute.direct:
+            return null;
+          case IStudyAccessRoute.blocked:
+            throw const IStudyAccessBlockedException();
+          case IStudyAccessRoute.vpn:
+            GlobalProtectDebug.log('Dio requesting GP-backed HttpClient');
+            return (await GlobalProtectAppSession.instance.ensureHttpClient()).client;
+        }
+      },
+    );
 
   CookieJar? _cookieJar;
 

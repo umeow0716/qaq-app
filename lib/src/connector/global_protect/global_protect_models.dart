@@ -1,6 +1,7 @@
 import 'dart:collection';
+import 'dart:typed_data';
 
-import 'global_protect_tunnel.dart';
+import 'global_protect_transport.dart';
 
 class GlobalProtectPreloginResult {
   const GlobalProtectPreloginResult({
@@ -56,19 +57,89 @@ class GlobalProtectSession {
   String get user => values['user'] ?? '';
   String get authCookie => values['authcookie'] ?? '';
 
-  Map<String, String> get tunnelQuery {
-    final result = <String, String>{};
-    final user = values['user'];
-    final authCookie = values['authcookie'];
-    if (user != null && user.isNotEmpty) result['user'] = user;
-    if (authCookie != null && authCookie.isNotEmpty) result['authcookie'] = authCookie;
-    return result;
-  }
+
+}
+
+
+class GlobalProtectIpsecConfig {
+  const GlobalProtectIpsecConfig({
+    this.mode,
+    this.udpPort,
+    this.encryptionAlgorithm,
+    this.authenticationAlgorithm,
+    this.hasClientToServerSpi = false,
+    this.hasServerToClientSpi = false,
+    this.hasClientToServerEncryptionKey = false,
+    this.hasServerToClientEncryptionKey = false,
+    this.hasClientToServerAuthenticationKey = false,
+    this.hasServerToClientAuthenticationKey = false,
+    this.keyMaterial,
+  });
+
+  /// GlobalProtect data-channel mode, normally `esp-tunnel`.
+  final String? mode;
+  final int? udpPort;
+  final String? encryptionAlgorithm;
+  final String? authenticationAlgorithm;
+
+  /// Capability flags. Secret SPI/key material, when complete, is retained only
+  /// in memory via [keyMaterial] for the userspace ESP transport.
+  final bool hasClientToServerSpi;
+  final bool hasServerToClientSpi;
+  final bool hasClientToServerEncryptionKey;
+  final bool hasServerToClientEncryptionKey;
+  final bool hasClientToServerAuthenticationKey;
+  final bool hasServerToClientAuthenticationKey;
+
+  /// Sensitive ESP material retained only in memory for the userspace data
+  /// plane. Never log or persist this object. Its [toString] is redacted.
+  final GlobalProtectIpsecKeyMaterial? keyMaterial;
+
+  bool get hasSpis => hasClientToServerSpi && hasServerToClientSpi;
+
+  bool get hasEncryptionKeys =>
+      hasClientToServerEncryptionKey && hasServerToClientEncryptionKey;
+
+  bool get hasAuthenticationKeys =>
+      hasClientToServerAuthenticationKey && hasServerToClientAuthenticationKey;
+
+  bool get hasCompleteNegotiationMaterial =>
+      mode == 'esp-tunnel' &&
+      udpPort != null &&
+      encryptionAlgorithm != null &&
+      authenticationAlgorithm != null &&
+      hasSpis &&
+      hasEncryptionKeys &&
+      hasAuthenticationKeys;
+}
+
+
+class GlobalProtectIpsecKeyMaterial {
+  GlobalProtectIpsecKeyMaterial({
+    required this.clientToServerSpi,
+    required this.serverToClientSpi,
+    required Uint8List clientToServerEncryptionKey,
+    required Uint8List serverToClientEncryptionKey,
+    required Uint8List clientToServerAuthenticationKey,
+    required Uint8List serverToClientAuthenticationKey,
+  })  : clientToServerEncryptionKey = Uint8List.fromList(clientToServerEncryptionKey),
+        serverToClientEncryptionKey = Uint8List.fromList(serverToClientEncryptionKey),
+        clientToServerAuthenticationKey = Uint8List.fromList(clientToServerAuthenticationKey),
+        serverToClientAuthenticationKey = Uint8List.fromList(serverToClientAuthenticationKey);
+
+  final int clientToServerSpi;
+  final int serverToClientSpi;
+  final Uint8List clientToServerEncryptionKey;
+  final Uint8List serverToClientEncryptionKey;
+  final Uint8List clientToServerAuthenticationKey;
+  final Uint8List serverToClientAuthenticationKey;
+
+  @override
+  String toString() => 'GlobalProtectIpsecKeyMaterial(<redacted>)';
 }
 
 class GlobalProtectTunnelConfig {
   const GlobalProtectTunnelConfig({
-    required this.tunnelPath,
     this.ipAddress,
     this.ipv6Address,
     this.netmask,
@@ -78,9 +149,9 @@ class GlobalProtectTunnelConfig {
     this.dnsSuffixes = const [],
     this.includeRoutes = const [],
     this.excludeRoutes = const [],
+    this.ipsec,
   });
 
-  final String tunnelPath;
   final String? ipAddress;
   final String? ipv6Address;
   final String? netmask;
@@ -90,6 +161,11 @@ class GlobalProtectTunnelConfig {
   final List<String> dnsSuffixes;
   final List<String> includeRoutes;
   final List<String> excludeRoutes;
+
+  /// ESP/IPsec capability advertised by getconfig.esp.
+  ///
+  /// Sensitive ESP key material may also be retained in memory for the ESP data plane.
+  final GlobalProtectIpsecConfig? ipsec;
 }
 
 class GlobalProtectConnection {
@@ -97,11 +173,11 @@ class GlobalProtectConnection {
     required this.gateway,
     required this.session,
     required this.config,
-    required this.tunnel,
+    required this.transport,
   });
 
   final Uri gateway;
   final GlobalProtectSession session;
   final GlobalProtectTunnelConfig config;
-  final GlobalProtectTunnel tunnel;
+  final GlobalProtectTransport transport;
 }

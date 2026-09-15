@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'global_protect_packet_transport.dart';
+import 'global_protect_transport.dart';
 import 'ipv4_tcp_codec.dart';
 import 'virtual_byte_socket.dart';
 import 'virtual_tcp_loopback_bridge.dart';
@@ -12,7 +12,7 @@ typedef VirtualTcpTrace = void Function(String message);
 
 class VirtualTcpSocket implements VirtualByteSocket {
   VirtualTcpSocket._({
-    required GlobalProtectPacketTransport tunnel,
+    required GlobalProtectTransport transport,
     required this.localAddress,
     required this.remoteAddress,
     required this.localPort,
@@ -20,11 +20,11 @@ class VirtualTcpSocket implements VirtualByteSocket {
     required int initialSequence,
     required this.maxSegmentPayload,
     VirtualTcpTrace? trace,
-  })  : _tunnel = tunnel,
+  })  : _transport = transport,
         _trace = trace,
         _sendSequence = initialSequence;
 
-  final GlobalProtectPacketTransport _tunnel;
+  final GlobalProtectTransport _transport;
   final VirtualTcpTrace? _trace;
   final InternetAddressValue localAddress;
   final InternetAddressValue remoteAddress;
@@ -37,6 +37,8 @@ class VirtualTcpSocket implements VirtualByteSocket {
   int _sendSequence;
   int _receiveSequence = 0;
   final Map<int, Uint8List> _outOfOrder = <int, Uint8List>{};
+  int? _pendingFinSequence;
+  bool _remoteFinConsumed = false;
   bool _connected = false;
   bool _closed = false;
   Future<void> _writeTail = Future<void>.value();
@@ -51,7 +53,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
   }) => VirtualTcpLoopbackBridge.attach(this, timeout: timeout);
 
   static Future<VirtualTcpSocket> connectIp({
-    required GlobalProtectPacketTransport tunnel,
+    required GlobalProtectTransport transport,
     required String localAddress,
     required String remoteAddress,
     required int remotePort,
@@ -66,7 +68,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
     }
     final rng = random ?? Random.secure();
     final socket = VirtualTcpSocket._(
-      tunnel: tunnel,
+      transport: transport,
       localAddress: InternetAddressValue.parseIpv4(localAddress),
       remoteAddress: InternetAddressValue.parseIpv4(remoteAddress),
       localPort: localPort ?? (49152 + rng.nextInt(16384)),
@@ -81,7 +83,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
 
   Future<void> _connect(Duration timeout) async {
     _connectCompleter = Completer<void>();
-    _packetSubscription = _tunnel.packets.listen(
+    _packetSubscription = _transport.packets.listen(
       _handlePacket,
       onError: (Object error, StackTrace stackTrace) {
         if (!(_connectCompleter?.isCompleted ?? true)) {
@@ -92,7 +94,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
       },
       onDone: () {
         if (!(_connectCompleter?.isCompleted ?? true)) {
-          _connectCompleter!.completeError(StateError('GlobalProtect tunnel closed during TCP connect.'));
+          _connectCompleter!.completeError(StateError('GlobalProtect data transport closed during TCP connect.'));
         }
         unawaited(close(sendFin: false));
       },
@@ -180,29 +182,36 @@ class VirtualTcpSocket implements VirtualByteSocket {
     }
 
     final payloadLength = packet.payload.length;
+
+    // FIN consumes one sequence number, but it must not close the byte stream
+    // until every preceding byte has arrived. Real HTTP responses can reorder
+    // the final data segment and FIN. Closing immediately on an out-of-order
+    // FIN makes dart:io report "Connection closed while receiving data" even
+    // though the missing TCP segment may arrive/retransmit moments later.
+    if (packet.fin) {
+      _pendingFinSequence = _add32(packet.sequenceNumber, payloadLength);
+    }
+
     if (payloadLength > 0) {
       _handlePayload(packet.sequenceNumber, packet.payload);
     }
 
-    if (packet.fin) {
-      final finSequence = _add32(packet.sequenceNumber, payloadLength);
-      if (finSequence == _receiveSequence) {
-        _receiveSequence = _add32(_receiveSequence, 1);
-        unawaited(_send(flags: TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence));
-      }
-      unawaited(close(sendFin: false));
-    }
+    _tryConsumePendingFin();
   }
 
   void _handlePayload(int sequence, Uint8List payload) {
     if (sequence == _receiveSequence) {
       _deliverPayload(payload);
       _drainOutOfOrder();
+      _tryConsumePendingFin();
       return;
     }
 
     // Duplicate/retransmitted data that is already fully acknowledged.
     if (_sequenceBefore(sequence, _receiveSequence)) {
+      _trace?.call(
+        'RX duplicate/overlap seq=$sequence expected=$_receiveSequence len=${payload.length}',
+      );
       unawaited(_send(
         flags: TcpFlags.ack,
         sequence: _sendSequence,
@@ -215,6 +224,9 @@ class VirtualTcpSocket implements VirtualByteSocket {
     // a duplicate ACK advertising the next byte we still expect. This is
     // enough for TLS handshakes where certificate data is commonly split over
     // several TCP segments.
+    _trace?.call(
+      'RX out-of-order seq=$sequence expected=$_receiveSequence len=${payload.length}',
+    );
     _outOfOrder.putIfAbsent(sequence, () => Uint8List.fromList(payload));
     unawaited(_send(
       flags: TcpFlags.ack,
@@ -235,9 +247,36 @@ class VirtualTcpSocket implements VirtualByteSocket {
 
   void _drainOutOfOrder() {
     while (true) {
-      final next = _outOfOrder.remove(_receiveSequence);
+      final sequence = _receiveSequence;
+      final next = _outOfOrder.remove(sequence);
       if (next == null) return;
+      _trace?.call('RX drain out-of-order seq=$sequence len=${next.length}');
       _deliverPayload(next);
+    }
+  }
+
+
+  void _tryConsumePendingFin() {
+    final finSequence = _pendingFinSequence;
+    if (_remoteFinConsumed || finSequence == null || finSequence != _receiveSequence) {
+      return;
+    }
+
+    _remoteFinConsumed = true;
+    _pendingFinSequence = null;
+    _receiveSequence = _add32(_receiveSequence, 1);
+    unawaited(_ackRemoteFinAndClose());
+  }
+
+  Future<void> _ackRemoteFinAndClose() async {
+    try {
+      await _send(
+        flags: TcpFlags.ack,
+        sequence: _sendSequence,
+        acknowledgement: _receiveSequence,
+      );
+    } finally {
+      await close(sendFin: false);
     }
   }
 
@@ -279,7 +318,11 @@ class VirtualTcpSocket implements VirtualByteSocket {
       payload: payload,
       tcpOptions: flags & TcpFlags.syn != 0 ? _synOptions() : null,
     );
-    await _tunnel.sendIpv4(packet);
+    await _transport.sendIpv4(packet);
+    _trace?.call(
+      'TX sent seq=$sequence ack=$acknowledgement '
+      'flags=${_flagsText(flags)} len=$payloadLength',
+    );
   }
 
   static String _flagsText(int flags) {

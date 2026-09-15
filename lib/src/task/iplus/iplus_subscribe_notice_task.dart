@@ -4,7 +4,11 @@ import 'package:flutter_app/src/task/iplus/iplus_system_task.dart';
 import '../task.dart';
 
 class IPlusSubscribeNoticeTask extends IPlusSystemTask<List<String>> {
-  IPlusSubscribeNoticeTask() : super("IPlusSubscribeNoticeTask");
+  IPlusSubscribeNoticeTask() : super(
+          "IPlusSubscribeNoticeTask",
+          showNetworkUnavailable: false,
+          allowAutoVpn: false,
+        );
 
   @override
   Future<TaskStatus> execute() async {

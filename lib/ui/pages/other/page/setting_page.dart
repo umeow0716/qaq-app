@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/config/app_themes.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_webview_proxy.dart';
 import 'package:flutter_app/src/file/file_store.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
 import 'package:flutter_app/src/r.dart';
@@ -44,6 +47,7 @@ class _SettingPageState extends State<SettingPage> {
 
     listViewData.add(_buildLanguageSetting());
     listViewData.add(_buildLoadIPlusNewsSetting());
+    listViewData.add(_buildAutoConnectIStudyVpnSetting());
     listViewData.add(_buildDarkModeSetting());
 
     if (Platform.isAndroid) {
@@ -128,6 +132,30 @@ class _SettingPageState extends State<SettingPage> {
           LocalStorage.instance.getOtherSetting().checkIPlusNew = value;
           LocalStorage.instance.saveOtherSetting();
         });
+      },
+    );
+  }
+
+  Widget _buildAutoConnectIStudyVpnSetting() {
+    return SwitchListTile.adaptive(
+      contentPadding: const EdgeInsets.all(0),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(R.current.autoConnectIStudyVpn, style: textTitle),
+          Text(R.current.autoConnectIStudyVpnHint, style: textBody),
+        ],
+      ),
+      value: LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn,
+      onChanged: (value) {
+        setState(() {
+          LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn = value;
+          LocalStorage.instance.saveOtherSetting();
+        });
+        if (!value) {
+          unawaited(GlobalProtectWebViewProxyBridge.instance.close());
+          unawaited(GlobalProtectAppSession.instance.disconnect());
+        }
       },
     );
   }
