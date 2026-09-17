@@ -51,7 +51,6 @@ class LocalStorage {
   UserDataJson _userData = UserDataJson();
   List<SemesterJson> _courseSemesterList = <SemesterJson>[];
   CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
-  final Map<String, Map<String, String>> _courseCategoryCache = {};
   final Map<String, CourseExtraInfoJson> _courseExtraInfoCache = {};
   SettingJson _setting = SettingJson();
 
@@ -235,17 +234,93 @@ class LocalStorage {
       }
     }
 
-    // CourseInfoJson already contains an `extra` field. Seed the dedicated
-    // cache from saved course tables so existing persisted data is reused.
+    // Saved course tables already contain most course metadata. Merge them into
+    // the single ExtraInfo cache so Score and Course Detail can reuse it.
     for (final courseTable in _courseTableList) {
       for (final dayMap in courseTable.courseInfoMap.values) {
         for (final courseInfo in dayMap.values) {
-          final courseId = courseInfo.main.course.id;
-          if (courseId.isEmpty || courseInfo.extra.isEmpty) continue;
-          if (_courseExtraInfoCache.containsKey(courseId)) continue;
+          final main = courseInfo.main;
+          final courseId = main.course.id;
+          if (courseId.isEmpty) continue;
 
-          _courseExtraInfoCache[courseId] = courseInfo.extra;
-          changed = true;
+          changed |= _mergeCourseExtraInfoCache(
+            courseId,
+            CourseExtraInfoJson(
+              courseSemester: courseTable.courseSemester,
+              course: CourseExtraJson(
+                id: courseId,
+                name: main.course.name,
+                href: main.course.scheduleHref,
+                openClass: main.getOpenClassName(),
+              ),
+            ),
+          );
+
+          if (!courseInfo.extra.isEmpty) {
+            changed |= _mergeCourseExtraInfoCache(courseId, courseInfo.extra);
+          }
+        }
+      }
+    }
+
+    // Migrate the old dedicated category cache into ExtraInfo. The legacy key
+    // is deleted after the merged ExtraInfo cache is persisted in init().
+    final legacyCategoryJson = _readString(_courseCategoryCacheKey);
+    if (legacyCategoryJson != null) {
+      final decoded = json.decode(legacyCategoryJson);
+      if (decoded is Map<String, dynamic>) {
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          if (value is! Map) continue;
+
+          final category = value['category'];
+          final openClass = value['openClass'];
+          if (category is! String || category.isEmpty) continue;
+
+          changed |= _mergeCourseExtraInfoCache(
+            entry.key,
+            CourseExtraInfoJson(
+              course: CourseExtraJson(
+                id: entry.key,
+                category: category,
+                openClass: openClass is String ? openClass : '',
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    // Older score cache entries may already have category/open-class metadata.
+    // Merge them into ExtraInfo, then hydrate score rows from that same cache.
+    for (final semesterScore in _courseScoreList.semesterCourseScoreList) {
+      for (final courseInfo in semesterScore.courseScoreList) {
+        final courseId = courseInfo.courseId;
+        if (courseId.isEmpty) continue;
+
+        if (courseInfo.category.isNotEmpty || courseInfo.openClass.isNotEmpty) {
+          changed |= _mergeCourseExtraInfoCache(
+            courseId,
+            CourseExtraInfoJson(
+              courseSemester: semesterScore.semester,
+              course: CourseExtraJson(
+                id: courseId,
+                name: courseInfo.nameZh.isNotEmpty ? courseInfo.nameZh : courseInfo.nameEn,
+                category: courseInfo.category,
+                openClass: courseInfo.openClass,
+              ),
+            ),
+          );
+        }
+
+        final cached = _courseExtraInfoCache[courseId];
+        if (cached == null) continue;
+
+        if (courseInfo.category.isEmpty && cached.course.category.isNotEmpty) {
+          courseInfo.category = cached.course.category;
+        }
+        if (courseInfo.openClass.isEmpty && cached.course.openClass.isNotEmpty) {
+          courseInfo.openClass = cached.course.openClass;
         }
       }
     }
@@ -258,98 +333,55 @@ class LocalStorage {
     return _courseExtraInfoCache[courseId];
   }
 
+  bool hasCompleteCourseExtraInfoCache(String courseId) {
+    final cached = getCourseExtraInfoCache(courseId);
+    return cached != null && cached.course.category.isNotEmpty && !cached.courseSemester.isEmpty;
+  }
+
   void setCourseExtraInfoCache(String courseId, CourseExtraInfoJson value) {
-    if (courseId.isEmpty || value.isEmpty) return;
+    _mergeCourseExtraInfoCache(courseId, value);
+  }
 
-    _courseExtraInfoCache[courseId] = value;
+  bool _mergeCourseExtraInfoCache(String courseId, CourseExtraInfoJson value) {
+    if (courseId.isEmpty || value.isEmpty) return false;
 
-    final category = value.course.category;
-    if (category.isNotEmpty) {
-      setCourseCategoryCache(courseId, category: category, openClass: value.course.openClass);
+    final cached = _courseExtraInfoCache[courseId];
+    if (cached == null) {
+      if (value.course.id.isEmpty) {
+        value.course.id = courseId;
+      }
+      _courseExtraInfoCache[courseId] = value;
+      return true;
     }
+
+    final before = json.encode(cached.toJson());
+
+    if (!value.courseSemester.isEmpty) {
+      cached.courseSemester = value.courseSemester;
+    }
+
+    final target = cached.course;
+    final source = value.course;
+    if (source.id.isNotEmpty) target.id = source.id;
+    if (target.id.isEmpty) target.id = courseId;
+    if (source.name.isNotEmpty) target.name = source.name;
+    if (source.href.isNotEmpty) target.href = source.href;
+    if (source.category.isNotEmpty) target.category = source.category;
+    if (source.selectNumber.isNotEmpty) target.selectNumber = source.selectNumber;
+    if (source.withdrawNumber.isNotEmpty) target.withdrawNumber = source.withdrawNumber;
+    if (source.openClass.isNotEmpty) target.openClass = source.openClass;
+
+    if (value.classmate.isNotEmpty) {
+      cached.classmate = value.classmate;
+    }
+
+    return before != json.encode(cached.toJson());
   }
 
   Future<void> saveCourseExtraInfoCache() {
     final encoded = _courseExtraInfoCache.map((key, value) => MapEntry(key, value.toJson()));
     return _writeString(_courseExtraInfoCacheKey, json.encode(encoded));
   }
-
-  bool _loadCourseCategoryCache() {
-    _courseCategoryCache.clear();
-    bool changed = false;
-
-    final readJson = _readString(_courseCategoryCacheKey);
-    if (readJson != null) {
-      final decoded = json.decode(readJson);
-      if (decoded is Map<String, dynamic>) {
-        for (final entry in decoded.entries) {
-          final value = entry.value;
-          if (value is! Map) continue;
-
-          final category = value['category'];
-          final openClass = value['openClass'];
-          if (category is! String || category.isEmpty) continue;
-
-          _courseCategoryCache[entry.key] = {'category': category, 'openClass': openClass is String ? openClass : ''};
-        }
-      }
-    }
-
-    // Detailed course cache is another source of category/open-class metadata.
-    for (final entry in _courseExtraInfoCache.entries) {
-      final course = entry.value.course;
-      if (course.category.isEmpty || _courseCategoryCache.containsKey(entry.key)) continue;
-
-      _courseCategoryCache[entry.key] = {'category': course.category, 'openClass': course.openClass};
-      changed = true;
-    }
-
-    // Seed the new cache from score data saved by older app versions, then
-    // hydrate score rows from the cache when their metadata is missing.
-    for (final courseInfo in _courseScoreList.getCourseInfoList()) {
-      final courseId = courseInfo.courseId;
-      if (courseId.isEmpty) continue;
-
-      if (courseInfo.category.isNotEmpty && !_courseCategoryCache.containsKey(courseId)) {
-        _courseCategoryCache[courseId] = {'category': courseInfo.category, 'openClass': courseInfo.openClass};
-        changed = true;
-      }
-
-      final cached = _courseCategoryCache[courseId];
-      if (cached == null) continue;
-
-      if (courseInfo.category.isEmpty) {
-        courseInfo.category = cached['category'] ?? '';
-      }
-      if (courseInfo.openClass.isEmpty) {
-        courseInfo.openClass = cached['openClass'] ?? '';
-      }
-    }
-
-    return changed;
-  }
-
-  ({String category, String openClass})? getCourseCategoryCache(String courseId) {
-    final cached = _courseCategoryCache[courseId];
-    if (cached == null) return null;
-
-    final category = cached['category'] ?? '';
-    if (category.isEmpty) return null;
-
-    return (category: category, openClass: cached['openClass'] ?? '');
-  }
-
-  void setCourseCategoryCache(String courseId, {required String category, required String openClass}) {
-    if (courseId.isEmpty || category.isEmpty) return;
-
-    final cachedOpenClass = _courseCategoryCache[courseId]?['openClass'] ?? '';
-    _courseCategoryCache[courseId] = {
-      'category': category,
-      'openClass': openClass.isNotEmpty ? openClass : cachedOpenClass,
-    };
-  }
-
-  Future<void> saveCourseCategoryCache() => _writeString(_courseCategoryCacheKey, json.encode(_courseCategoryCache));
 
   Future<void> saveCourseSetting() => _saveSetting();
 
@@ -415,13 +447,12 @@ class LocalStorage {
     _loadSetting();
     _loadCourseScoreCredit();
     final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
-    final courseCategoryCacheChanged = _loadCourseCategoryCache();
     if (courseExtraInfoCacheChanged) {
       await saveCourseExtraInfoCache();
     }
-    if (courseCategoryCacheChanged) {
-      await saveCourseCategoryCache();
-    }
+    // CourseCategoryCacheKey is a legacy cache. ExtraInfo is now the single
+    // source of truth for course metadata.
+    await _remove(_courseCategoryCacheKey);
     _loadSemesterJsonList();
   }
 
@@ -460,7 +491,6 @@ class LocalStorage {
     _courseTableList.clear();
     _courseSemesterList.clear();
     _courseScoreList = CourseScoreCreditJson();
-    _courseCategoryCache.clear();
     _courseExtraInfoCache.clear();
     _setting.course = CourseSettingJson();
     _setting.announcement = AnnouncementSettingJson();

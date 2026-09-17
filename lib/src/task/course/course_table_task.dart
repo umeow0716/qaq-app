@@ -1,5 +1,6 @@
 import 'package:flutter_app/src/connector/course_connector.dart';
 import 'package:flutter_app/src/model/course/course_class_json.dart';
+import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
@@ -36,8 +37,24 @@ class CourseTableTask extends CourseSystemTask<CourseTableJson> {
         courseTable.studentId = studentId;
         courseTable.studentName = value.studentName;
 
+        final storage = LocalStorage.instance;
         for (final courseMainInfo in value.json) {
           final courseInfo = CourseInfoJson();
+          final courseId = courseMainInfo.course.id;
+          if (courseId.isNotEmpty) {
+            final tableMetadata = CourseExtraInfoJson(
+              courseSemester: semester,
+              course: CourseExtraJson(
+                id: courseId,
+                name: courseMainInfo.course.name,
+                href: courseMainInfo.course.scheduleHref,
+                openClass: courseMainInfo.getOpenClassName(),
+              ),
+            );
+            storage.setCourseExtraInfoCache(courseId, tableMetadata);
+            courseInfo.extra = storage.getCourseExtraInfoCache(courseId) ?? tableMetadata;
+          }
+
           bool add = false;
           for (int i = 0; i < 7; i++) {
             final day = Day.values[i];
@@ -49,10 +66,11 @@ class CourseTableTask extends CourseSystemTask<CourseTableJson> {
             courseTable.setCourseDetailByTime(Day.UnKnown, SectionNumber.T_UnKnown, courseInfo);
           }
         }
-        if (studentId == LocalStorage.instance.getAccount()) {
-          //只儲存自己的課表
-          LocalStorage.instance.addCourseTable(courseTable);
-          await LocalStorage.instance.saveCourseTableList();
+        if (studentId == storage.getAccount()) {
+          //只儲存自己的課表，並把同一次 request 已解析出的課程 metadata
+          // 一起寫入共用 ExtraInfo cache。
+          storage.addCourseTable(courseTable);
+          await Future.wait([storage.saveCourseTableList(), storage.saveCourseExtraInfoCache()]);
         }
         result = courseTable;
         return TaskStatus.success;

@@ -16,7 +16,7 @@ class CourseExtraInfoTask extends CourseSystemTask<CourseExtraInfoJson> {
   Future<TaskStatus> execute() async {
     final storage = LocalStorage.instance;
     final cached = storage.getCourseExtraInfoCache(id);
-    if (cached != null) {
+    if (cached != null && storage.hasCompleteCourseExtraInfoCache(id)) {
       Log.d('[CourseExtraInfoTask] cache hit: $id');
       result = cached;
       return TaskStatus.success;
@@ -33,7 +33,7 @@ class CourseExtraInfoTask extends CourseSystemTask<CourseExtraInfoJson> {
       if (value != null) {
         result = value;
         storage.setCourseExtraInfoCache(id, value);
-        await Future.wait([storage.saveCourseExtraInfoCache(), storage.saveCourseCategoryCache()]);
+        await storage.saveCourseExtraInfoCache();
         return TaskStatus.success;
       } else {
         return await super.onError(R.current.getCourseDetailError);

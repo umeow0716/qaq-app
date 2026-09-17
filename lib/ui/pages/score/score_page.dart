@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/config/app_colors.dart';
+import 'package:flutter_app/src/model/course/course_class_json.dart';
+import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 import 'package:flutter_app/src/model/course/course_syllabus_json.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
@@ -158,15 +160,38 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
         final courseId = courseInfo.courseId;
         if (courseId.isEmpty) continue;
 
+        final cached = storage.getCourseExtraInfoCache(courseId);
         if (courseInfo.category.isNotEmpty) {
-          storage.setCourseCategoryCache(courseId, category: courseInfo.category, openClass: courseInfo.openClass);
+          storage.setCourseExtraInfoCache(
+            courseId,
+            CourseExtraInfoJson(
+              courseSemester: semesterScore.semester,
+              course: CourseExtraJson(
+                id: courseId,
+                name: courseInfo.nameZh.isNotEmpty ? courseInfo.nameZh : courseInfo.nameEn,
+                category: courseInfo.category,
+                openClass: courseInfo.openClass,
+              ),
+            ),
+          );
           continue;
         }
 
-        final cached = storage.getCourseCategoryCache(courseId);
-        if (cached != null) {
-          courseInfo.category = cached.category;
-          courseInfo.openClass = cached.openClass;
+        if (cached != null && cached.course.category.isNotEmpty) {
+          courseInfo.category = cached.course.category;
+          courseInfo.openClass = cached.course.openClass;
+          storage.setCourseExtraInfoCache(
+            courseId,
+            CourseExtraInfoJson(
+              courseSemester: semesterScore.semester,
+              course: CourseExtraJson(
+                id: courseId,
+                name: courseInfo.nameZh.isNotEmpty ? courseInfo.nameZh : courseInfo.nameEn,
+                category: cached.course.category,
+                openClass: cached.course.openClass,
+              ),
+            ),
+          );
           continue;
         }
 
@@ -175,7 +200,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     }
 
     if (missingCourseIds.isEmpty) {
-      await storage.saveCourseCategoryCache();
+      await storage.saveCourseExtraInfoCache();
       return;
     }
 
@@ -207,11 +232,27 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       if (result is! CourseSyllabusJson || result.category.isEmpty) return;
 
       _applyCourseCategory(task.code, category: result.category, openClass: result.className);
-      storage.setCourseCategoryCache(task.code, category: result.category, openClass: result.className);
+      storage.setCourseExtraInfoCache(
+        task.code,
+        CourseExtraInfoJson(
+          courseSemester: SemesterJson(
+            year: result.year > 0 ? result.year.toString() : null,
+            semester: result.semester > 0 ? result.semester.toString() : null,
+          ),
+          course: CourseExtraJson(
+            id: result.courseId.isNotEmpty ? result.courseId : task.code,
+            name: result.courseName,
+            category: result.category,
+            openClass: result.className,
+            selectNumber: result.applyStudentCount > 0 ? result.applyStudentCount.toString() : null,
+            withdrawNumber: result.withdrawStudentCount > 0 ? result.withdrawStudentCount.toString() : null,
+          ),
+        ),
+      );
     };
 
     await taskFlow.start();
-    await storage.saveCourseCategoryCache();
+    await storage.saveCourseExtraInfoCache();
     await progressRateDialog.hide();
   }
 
