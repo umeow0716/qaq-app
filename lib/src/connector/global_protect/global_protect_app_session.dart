@@ -8,6 +8,7 @@ import 'global_protect_debug.dart';
 import 'global_protect_http_client.dart';
 import 'global_protect_models.dart';
 import 'global_protect_session_manager.dart';
+import 'global_protect_session_cache.dart';
 
 /// Process-local owner for the app's experimental GlobalProtect connection.
 ///
@@ -16,12 +17,13 @@ import 'global_protect_session_manager.dart';
 class GlobalProtectAppSession {
   GlobalProtectAppSession._()
       : _connector = GlobalProtectConnector() {
-    _manager = GlobalProtectSessionManager(connect: _connectUsingCurrentLogin);
+    _manager = GlobalProtectSessionManager(connect: _connectUsingCachedSessionOrPassword);
   }
 
   static final GlobalProtectAppSession instance = GlobalProtectAppSession._();
 
   final GlobalProtectConnector _connector;
+  final GlobalProtectSessionCache _sessionCache = GlobalProtectSessionCache.instance;
   late final GlobalProtectSessionManager _manager;
 
   GlobalProtectHttpClient? _httpClient;
@@ -35,13 +37,11 @@ class GlobalProtectAppSession {
 
   Future<GlobalProtectConnection> ensureConnected() async {
     final account = LocalStorage.instance.getAccount().trim();
-    final password = LocalStorage.instance.getPassword();
     GlobalProtectDebug.log(
-      'ensureConnected state=${_manager.state.name} '
-      'accountPresent=${account.isNotEmpty} passwordPresent=${password.isNotEmpty}',
+      'ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}',
     );
-    if (account.isEmpty || password.isEmpty) {
-      GlobalProtectDebug.log('credentials unavailable; refusing GP connection');
+    if (account.isEmpty) {
+      GlobalProtectDebug.log('account unavailable; refusing GP connection');
       throw const GlobalProtectCredentialsUnavailableException();
     }
 
@@ -52,6 +52,7 @@ class GlobalProtectAppSession {
     }
     try {
       final connection = await _manager.ensureConnected();
+      _connectedAccount = account;
       GlobalProtectDebug.log(
         'session ready gateway=${connection.gateway.host} '
         'transport=esp tunnelIp=${connection.config.ipAddress ?? '-'}',
@@ -101,15 +102,42 @@ class GlobalProtectAppSession {
     return next;
   }
 
-  Future<GlobalProtectConnection> _connectUsingCurrentLogin() async {
+  Future<GlobalProtectConnection> _connectUsingCachedSessionOrPassword() async {
     final username = LocalStorage.instance.getAccount().trim();
-    final password = LocalStorage.instance.getPassword();
+    if (username.isEmpty) {
+      throw const GlobalProtectCredentialsUnavailableException();
+    }
 
+    final cached = await _sessionCache.readForAccount(username);
+
+    if (cached != null) {
+      GlobalProtectDebug.log(
+        'cached GP session found; validating with gateway ${cached.gateway.host}',
+      );
+      try {
+        final connection = await _connector.resumeWithSession(
+          gateway: cached.gateway,
+          session: cached.session,
+          trace: GlobalProtectDebug.log,
+          transportTrace: (message) => GlobalProtectDebug.log('esp $message'),
+        );
+        GlobalProtectDebug.log('cached GP session resumed');
+        return connection;
+      } on GlobalProtectSessionRejectedException catch (error, stackTrace) {
+        GlobalProtectDebug.error('cached GP session rejected', error, stackTrace);
+        try {
+          await _sessionCache.clear();
+        } catch (cacheError, cacheStackTrace) {
+          GlobalProtectDebug.error('GP cache clear', cacheError, cacheStackTrace);
+        }
+      }
+    }
+
+    final password = LocalStorage.instance.getPassword();
     GlobalProtectDebug.log(
-      'starting GP login from saved NTUT credentials; '
-      'accountPresent=${username.isNotEmpty} passwordPresent=${password.isNotEmpty}',
+      'starting GP password login; passwordPresent=${password.isNotEmpty}',
     );
-    if (username.isEmpty || password.isEmpty) {
+    if (password.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
     }
 
@@ -120,11 +148,16 @@ class GlobalProtectAppSession {
         trace: GlobalProtectDebug.log,
         transportTrace: (message) => GlobalProtectDebug.log('esp $message'),
       );
-      _connectedAccount = username;
-      GlobalProtectDebug.log('GP login completed');
+      try {
+        await _sessionCache.save(account: username, connection: connection);
+        GlobalProtectDebug.log('GP session cached securely');
+      } catch (cacheError, cacheStackTrace) {
+        GlobalProtectDebug.error('GP cache write', cacheError, cacheStackTrace);
+      }
+      GlobalProtectDebug.log('GP password login completed');
       return connection;
     } catch (error, stackTrace) {
-      GlobalProtectDebug.error('GP login', error, stackTrace);
+      GlobalProtectDebug.error('GP password login', error, stackTrace);
       rethrow;
     }
   }
@@ -150,7 +183,22 @@ class GlobalProtectAppSession {
     if (http != null) await http.close(force: true);
   }
 
+  Future<void> disconnectAndClearCachedSession() async {
+    try {
+      await disconnect();
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('GP disconnect during logout', error, stackTrace);
+    }
+
+    try {
+      await _sessionCache.clear();
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('GP cache clear during logout', error, stackTrace);
+    }
+  }
+
   Future<void> disconnect() async {
+    _httpInFlight = null;
     await _closeHttpClient();
     _connectedAccount = null;
     if (_manager.state != GlobalProtectSessionState.disposed) {

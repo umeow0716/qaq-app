@@ -3,13 +3,19 @@ import 'dart:convert';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_app/src/connector/campus_network_detector.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
+import 'package:flutter_app/src/connector/interceptors/request_interceptor.dart';
 import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/setting/setting_json.dart';
 import 'package:flutter_app/src/model/userdata/user_data_json.dart';
+import 'package:flutter_app/src/store/user_session_artifacts.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -421,17 +427,58 @@ class LocalStorage {
   }
 
   Future<void> logout() async {
-    await DioConnector.instance.deleteCookies();
-    await CookieManager.instance().deleteAllCookies();
-    await clearUserData();
-    clearSemesterJsonList();
-    await clearCourseTableList();
-    await _clearCourseScoreCredit();
-    await _clearAnnouncementSetting();
-    await clearCourseSetting();
-    await cacheManager.emptyCache();
-    _setFirstUse(courseNotice, true);
+    Future<void> cleanup(String name, Future<void> Function() action) async {
+      try {
+        await action();
+      } catch (error, stackTrace) {
+        debugPrint('logout cleanup failed [$name]: $error\n$stackTrace');
+      }
+    }
+
+    // Runtime/session cleanup is best-effort and intentionally exhaustive: one
+    // failed subsystem must not prevent the remaining user state from clearing.
+    await cleanup('webview-vpn-runtime', GlobalProtectWebViewRuntime.reset);
+    await cleanup(
+      'global-protect-session',
+      GlobalProtectAppSession.instance.disconnectAndClearCachedSession,
+    );
+    await cleanup('dio-cookies', DioConnector.instance.deleteCookies);
+    await cleanup('webview-cookies', () => CookieManager.instance().deleteAllCookies());
+    await cleanup('network-image-cache', cacheManager.emptyCache);
+    await cleanup('generated-user-artifacts', UserSessionArtifacts.clear);
+
+    CampusNetworkDetector.clearCache();
+    DioConnector.instance.resetRuntimeState();
+    for (final interceptor in _httpClientInterceptors.whereType<RequestInterceptors>()) {
+      interceptor.reset();
+    }
+    await _clearUserScopedCaches();
     await init();
+  }
+
+  Future<void> _clearUserScopedCaches() async {
+    _userData = UserDataJson();
+    _courseTableList.clear();
+    _courseSemesterList.clear();
+    _courseScoreList = CourseScoreCreditJson();
+    _courseCategoryCache.clear();
+    _courseExtraInfoCache.clear();
+    _setting.course = CourseSettingJson();
+    _setting.announcement = AnnouncementSettingJson();
+    _firstRun.clear();
+
+    await Future.wait<void>([
+      _remove(_userDataJsonKey),
+      _remove(_courseTableJsonKey),
+      _remove(_courseSemesterJsonKey),
+      _remove(_scoreCreditJsonKey),
+      _remove(_courseCategoryCacheKey),
+      _remove(_courseExtraInfoCacheKey),
+      _remove('firstUse$courseNotice'),
+      // Keep global/user-choice settings (theme, file path, sort, and
+      // SettingJson.other), but persist the cleared course/announcement state.
+      _saveSetting(),
+    ]);
   }
 
   Future<void> _save(String key, dynamic saveObj) async {
@@ -455,6 +502,8 @@ class LocalStorage {
   }
 
   Future<void> _writeString(String key, String value) => _preferences.setString(key, value);
+
+  Future<void> _remove(String key) => _preferences.remove(key);
 
   Future<void> _writeInt(String key, int value) => _preferences.setInt(key, value);
 

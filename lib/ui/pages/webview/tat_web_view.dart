@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:flutter_app/src/connector/ntut_connector.dart';
 import 'package:flutter_app/ui/pages/webview/web_view_button_bar.dart';
@@ -152,7 +153,8 @@ class _TATWebViewState extends State<TATWebView> {
   }
 
   Future<void> _enableWebViewProxy() async {
-    if (_vpnProxyEnabled) return;
+    if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
+    final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
     if (!Platform.isAndroid) {
       throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
     }
@@ -164,6 +166,9 @@ class _TATWebViewState extends State<TATWebView> {
     }
 
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted();
+    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
+      throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
+    }
     GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
     final reverseBypassSupported = await WebViewFeature.isFeatureSupported(
       WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS,
@@ -186,21 +191,17 @@ class _TATWebViewState extends State<TATWebView> {
         reverseBypassEnabled: reverseBypassSupported,
       ),
     );
+    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
+      await GlobalProtectWebViewRuntime.reset();
+      throw StateError('WebView GlobalProtect runtime was reset during ProxyOverride setup.');
+    }
     _vpnProxyEnabled = true;
     GlobalProtectDebug.log('WebView ProxyOverride active');
   }
 
   Future<void> _clearWebViewProxy() async {
     _vpnProxyEnabled = false;
-    if (!Platform.isAndroid) return;
-    try {
-      final supported = await WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE);
-      if (supported) await ProxyController.instance().clearProxyOverride();
-    } catch (_) {
-      // Best-effort cleanup; the page is already being disposed.
-    } finally {
-      await GlobalProtectWebViewProxyBridge.instance.close();
-    }
+    await GlobalProtectWebViewRuntime.reset();
   }
 
   Future<ServerTrustAuthResponse?> _onReceivedTrustAuthReqCallBack(

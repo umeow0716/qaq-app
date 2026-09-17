@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/config/app_themes.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:flutter_app/src/file/file_store.dart';
 import 'package:flutter_app/src/providers/app_provider.dart';
 import 'package:flutter_app/src/r.dart';
@@ -153,7 +153,7 @@ class _SettingPageState extends State<SettingPage> {
           LocalStorage.instance.saveOtherSetting();
         });
         if (!value) {
-          unawaited(GlobalProtectWebViewProxyBridge.instance.close());
+          unawaited(GlobalProtectWebViewRuntime.reset());
           unawaited(GlobalProtectAppSession.instance.disconnect());
         }
       },

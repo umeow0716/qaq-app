@@ -10,6 +10,30 @@ import 'global_protect_models.dart';
 
 typedef GlobalProtectConnectorTrace = void Function(String message);
 
+class GlobalProtectSessionRejectedException implements Exception {
+  const GlobalProtectSessionRejectedException(this.reason, {this.statusCode});
+
+  final String reason;
+  final int? statusCode;
+
+  @override
+  String toString() => statusCode == null
+      ? 'GlobalProtect cached session was rejected: $reason'
+      : 'GlobalProtect cached session was rejected (HTTP $statusCode): $reason';
+}
+
+class GlobalProtectClientCertificateRequiredException implements Exception {
+  const GlobalProtectClientCertificateRequiredException(this.reason, {this.statusCode});
+
+  final String reason;
+  final int? statusCode;
+
+  @override
+  String toString() => statusCode == null
+      ? 'GlobalProtect requires a valid client certificate: $reason'
+      : 'GlobalProtect requires a valid client certificate (HTTP $statusCode): $reason';
+}
+
 class GlobalProtectConnector {
   GlobalProtectConnector({
     Uri? portal,
@@ -126,10 +150,47 @@ class GlobalProtectConnector {
       'enc-algo': 'aes-128-cbc,aes-256-cbc',
       ...session.values,
     };
-    final xml = await _postForm(gateway.replace(path: '/ssl-vpn/getconfig.esp', query: null), form);
+    final xml = await _postForm(
+      gateway.replace(path: '/ssl-vpn/getconfig.esp', query: null),
+      form,
+      classifySessionResumeFailure: true,
+    );
     final root = _parseXml(xml).rootElement;
-    _throwIfResponseError(root);
+    _throwIfResponseError(root, classifySessionResumeFailure: true);
     return _parseTunnelConfig(root);
+  }
+
+  Future<GlobalProtectConnection> resumeWithSession({
+    required Uri gateway,
+    required GlobalProtectSession session,
+    String? appVersion,
+    GlobalProtectConnectorTrace? trace,
+    GlobalProtectTransportTrace? transportTrace,
+  }) async {
+    trace?.call('resuming cached GP session -> ${gateway.host}');
+    final config = await getTunnelConfig(
+      gateway: gateway,
+      session: session,
+      appVersion: appVersion,
+    );
+    trace?.call(
+      'cached session accepted; ip=${config.ipAddress ?? '-'} mtu=${config.mtu ?? '-'} '
+      'dns=${config.dnsServers.join(',')}',
+    );
+
+    final transport = await _openEspTransport(
+      gateway: gateway,
+      config: config,
+      trace: trace,
+      transportTrace: transportTrace,
+    );
+
+    return GlobalProtectConnection(
+      gateway: gateway,
+      session: session,
+      config: config,
+      transport: transport,
+    );
   }
 
   Future<GlobalProtectConnection> connectWithPassword({
@@ -261,7 +322,11 @@ class GlobalProtectConnector {
     'passwd': password,
   };
 
-  Future<String> _postForm(Uri uri, Map<String, String> form) async {
+  Future<String> _postForm(
+    Uri uri,
+    Map<String, String> form, {
+    bool classifySessionResumeFailure = false,
+  }) async {
     final request = await _httpClient.postUrl(uri);
     request.headers
       ..set(HttpHeaders.userAgentHeader, userAgent)
@@ -271,7 +336,24 @@ class GlobalProtectConnector {
     final response = await request.close();
     final body = await utf8.decodeStream(response);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException('GlobalProtect request failed with HTTP ${response.statusCode}: $body', uri: uri);
+      if (classifySessionResumeFailure) {
+        if (response.statusCode == 512) {
+          throw GlobalProtectSessionRejectedException(
+            _sessionFailureReason(body, fallback: 'Invalid authentication cookie'),
+            statusCode: response.statusCode,
+          );
+        }
+        if (response.statusCode == 513) {
+          throw GlobalProtectClientCertificateRequiredException(
+            _sessionFailureReason(body, fallback: 'Valid client certificate is required'),
+            statusCode: response.statusCode,
+          );
+        }
+      }
+      throw HttpException(
+        'GlobalProtect request failed with HTTP ${response.statusCode}: $body',
+        uri: uri,
+      );
     }
     return body;
   }
@@ -291,11 +373,51 @@ class GlobalProtectConnector {
     }
   }
 
-  void _throwIfResponseError(XmlElement root) {
-    if (root.name.local == 'response' && root.getAttribute('status') == 'error') {
-      throw StateError(_text(root, 'error') ?? 'GlobalProtect request failed.');
+  void _throwIfResponseError(
+    XmlElement root, {
+    bool classifySessionResumeFailure = false,
+  }) {
+    if (root.name.local != 'response') return;
+
+    final status = (root.getAttribute('status') ?? _text(root, 'status'))?.trim();
+    final isError = status != null && status.toLowerCase() != 'success';
+    if (!isError && root.getAttribute('status') != 'error') return;
+
+    final reason = _text(root, 'error') ??
+        _text(root, 'msg') ??
+        _text(root, 'message') ??
+        'GlobalProtect request failed.';
+
+    if (classifySessionResumeFailure) {
+      if (_sessionRejectedReasons.contains(reason)) {
+        throw GlobalProtectSessionRejectedException(reason);
+      }
+      if (reason == 'Valid client certificate is required') {
+        throw GlobalProtectClientCertificateRequiredException(reason);
+      }
+    }
+
+    throw StateError(reason);
+  }
+
+  String _sessionFailureReason(String body, {required String fallback}) {
+    try {
+      final root = _parseXml(body).rootElement;
+      return _text(root, 'error') ??
+          _text(root, 'msg') ??
+          _text(root, 'message') ??
+          fallback;
+    } on FormatException {
+      final trimmed = body.trim();
+      return trimmed.isEmpty ? fallback : trimmed;
     }
   }
+
+  static const Set<String> _sessionRejectedReasons = {
+    'Invalid authentication cookie',
+    'Portal name not found',
+    'Allow Automatic Restoration of SSL VPN is disabled',
+  };
 
   GlobalProtectSession _parseLoginSession(XmlElement root) {
     if (root.name.local != 'jnlp') {

@@ -22,6 +22,7 @@ class GlobalProtectWebViewProxyBridge {
   StreamSubscription<Socket>? _serverSubscription;
   final Set<Socket> _clients = <Socket>{};
   Future<int>? _startInFlight;
+  int _generation = 0;
 
   bool get isRunning => _server != null;
   int? get port => _server?.port;
@@ -33,7 +34,8 @@ class GlobalProtectWebViewProxyBridge {
     final inFlight = _startInFlight;
     if (inFlight != null) return inFlight;
 
-    final future = _start();
+    final generation = _generation;
+    final future = _start(generation);
     _startInFlight = future;
     unawaited(
       future.then<void>(
@@ -44,11 +46,15 @@ class GlobalProtectWebViewProxyBridge {
     return future;
   }
 
-  Future<int> _start() async {
+  Future<int> _start(int generation) async {
     GlobalProtectDebug.log('WebView bridge start requested');
     await GlobalProtectAppSession.instance.ensureConnected();
     GlobalProtectDebug.log('GP session connected; binding WebView loopback proxy');
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0, shared: false);
+    if (generation != _generation) {
+      await server.close();
+      throw StateError('WebView GP proxy start was superseded by a runtime reset.');
+    }
     _server = server;
     _serverSubscription = server.listen(
       (client) {
@@ -187,6 +193,8 @@ class GlobalProtectWebViewProxyBridge {
   }
 
   Future<void> close() async {
+    _generation++;
+    _startInFlight = null;
     if (_server != null) GlobalProtectDebug.log('closing WebView GP proxy bridge');
     final subscription = _serverSubscription;
     _serverSubscription = null;

@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 class RequestInterceptors extends InterceptorsWrapper {
-  String referer = "https://nportal.ntut.edu.tw";
+  static const _initialReferer = "https://nportal.ntut.edu.tw";
+
+  String referer = _initialReferer;
+
+  void reset() => referer = _initialReferer;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
