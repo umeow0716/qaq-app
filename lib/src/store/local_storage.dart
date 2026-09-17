@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
+import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/setting/setting_json.dart';
@@ -33,6 +34,7 @@ class LocalStorage {
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
+  final _courseExtraInfoCacheKey = "CourseExtraInfoCacheKey";
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
@@ -45,6 +47,7 @@ class LocalStorage {
   List<SemesterJson> _courseSemesterList = <SemesterJson>[];
   CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
   final Map<String, Map<String, String>> _courseCategoryCache = {};
+  final Map<String, CourseExtraInfoJson> _courseExtraInfoCache = {};
   SettingJson _setting = SettingJson();
 
   SharedPreferences get _preferences {
@@ -203,6 +206,69 @@ class LocalStorage {
         : CourseScoreCreditJson();
   }
 
+  bool _loadCourseExtraInfoCache() {
+    _courseExtraInfoCache.clear();
+    bool changed = false;
+
+    final readJson = _readString(_courseExtraInfoCacheKey);
+    if (readJson != null) {
+      final decoded = json.decode(readJson);
+      if (decoded is Map<String, dynamic>) {
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          if (value is! Map) continue;
+
+          try {
+            final extra = CourseExtraInfoJson.fromJson(Map<String, dynamic>.from(value));
+            if (!extra.isEmpty) {
+              _courseExtraInfoCache[entry.key] = extra;
+            }
+          } catch (_) {
+            // Ignore malformed legacy cache entries.
+          }
+        }
+      }
+    }
+
+    // CourseInfoJson already contains an `extra` field. Seed the dedicated
+    // cache from saved course tables so existing persisted data is reused.
+    for (final courseTable in _courseTableList) {
+      for (final dayMap in courseTable.courseInfoMap.values) {
+        for (final courseInfo in dayMap.values) {
+          final courseId = courseInfo.main.course.id;
+          if (courseId.isEmpty || courseInfo.extra.isEmpty) continue;
+          if (_courseExtraInfoCache.containsKey(courseId)) continue;
+
+          _courseExtraInfoCache[courseId] = courseInfo.extra;
+          changed = true;
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  CourseExtraInfoJson? getCourseExtraInfoCache(String courseId) {
+    if (courseId.isEmpty) return null;
+    return _courseExtraInfoCache[courseId];
+  }
+
+  void setCourseExtraInfoCache(String courseId, CourseExtraInfoJson value) {
+    if (courseId.isEmpty || value.isEmpty) return;
+
+    _courseExtraInfoCache[courseId] = value;
+
+    final category = value.course.category;
+    if (category.isNotEmpty) {
+      setCourseCategoryCache(courseId, category: category, openClass: value.course.openClass);
+    }
+  }
+
+  Future<void> saveCourseExtraInfoCache() {
+    final encoded = _courseExtraInfoCache.map((key, value) => MapEntry(key, value.toJson()));
+    return _writeString(_courseExtraInfoCacheKey, json.encode(encoded));
+  }
+
   bool _loadCourseCategoryCache() {
     _courseCategoryCache.clear();
     bool changed = false;
@@ -222,6 +288,15 @@ class LocalStorage {
           _courseCategoryCache[entry.key] = {'category': category, 'openClass': openClass is String ? openClass : ''};
         }
       }
+    }
+
+    // Detailed course cache is another source of category/open-class metadata.
+    for (final entry in _courseExtraInfoCache.entries) {
+      final course = entry.value.course;
+      if (course.category.isEmpty || _courseCategoryCache.containsKey(entry.key)) continue;
+
+      _courseCategoryCache[entry.key] = {'category': course.category, 'openClass': course.openClass};
+      changed = true;
     }
 
     // Seed the new cache from score data saved by older app versions, then
@@ -334,7 +409,11 @@ class LocalStorage {
     _loadCourseTableList();
     _loadSetting();
     _loadCourseScoreCredit();
+    final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
     final courseCategoryCacheChanged = _loadCourseCategoryCache();
+    if (courseExtraInfoCacheChanged) {
+      await saveCourseExtraInfoCache();
+    }
     if (courseCategoryCacheChanged) {
       await saveCourseCategoryCache();
     }
