@@ -7,8 +7,6 @@ class RequestInterceptors extends InterceptorsWrapper {
 
   String referer = _initialReferer;
 
-  void reset() => referer = _initialReferer;
-
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     if (!options.headers.containsKey(HttpHeaders.refererHeader)) {

@@ -96,13 +96,6 @@ class DioConnector {
     await _requireCookieJar().delete(uri, true);
   }
 
-  void resetRuntimeState() {
-    dio.options.headers
-      ..clear()
-      ..addAll(_headers);
-    dio.options.responseDecoder = null;
-  }
-
   CookieJar _requireCookieJar() {
     final cookieJar = _cookieJar;
     if (cookieJar == null) {

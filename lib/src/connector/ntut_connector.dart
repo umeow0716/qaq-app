@@ -26,7 +26,7 @@ class NTUTConnector {
   static Future<SimpleLoginResult> login(String account, String password) async {
     final parameter = ConnectorParameter(_loginUrl)
       ..userAgent = _portalApiUserAgent
-      ..referer = _loginUrl
+      ..referer = "${host}index.do"
       ..data = {"muid": account, "mpassword": password};
 
     final response = await Connector.getDataByPostResponse(parameter);

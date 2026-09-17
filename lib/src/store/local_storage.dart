@@ -7,7 +7,6 @@ import 'package:flutter_app/src/connector/campus_network_detector.dart';
 import 'package:flutter_app/src/connector/core/dio_connector.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
-import 'package:flutter_app/src/connector/interceptors/request_interceptor.dart';
 import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
@@ -452,10 +451,6 @@ class LocalStorage {
     await cleanup('generated-user-artifacts', UserSessionArtifacts.clear);
 
     CampusNetworkDetector.clearCache();
-    DioConnector.instance.resetRuntimeState();
-    for (final interceptor in _httpClientInterceptors.whereType<RequestInterceptors>()) {
-      interceptor.reset();
-    }
     await _clearUserScopedCaches();
     await init();
   }
