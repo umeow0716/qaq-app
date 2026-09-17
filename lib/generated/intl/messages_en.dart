@@ -286,6 +286,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "startClass": MessageLookupByLibrary.simpleMessage("Start class"),
     "studentId": MessageLookupByLibrary.simpleMessage("student id"),
     "studentList": MessageLookupByLibrary.simpleMessage("Student list"),
+    "lastUpdated": MessageLookupByLibrary.simpleMessage("Last updated"),
     "subscribe": MessageLookupByLibrary.simpleMessage("Subscribe"),
     "sure": MessageLookupByLibrary.simpleMessage("Sure"),
     "syllabus": MessageLookupByLibrary.simpleMessage("Syllabus"),

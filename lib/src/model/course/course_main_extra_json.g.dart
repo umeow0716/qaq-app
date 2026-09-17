@@ -10,12 +10,16 @@ CourseExtraInfoJson _$CourseExtraInfoJsonFromJson(Map<String, dynamic> json) => 
   classmate: (json['classmate'] as List<dynamic>?)
       ?.map((e) => ClassmateJson.fromJson(e as Map<String, dynamic>))
       .toList(),
+  classmateUpdatedAt: json['classmateUpdatedAt'] == null
+      ? null
+      : DateTime.parse(json['classmateUpdatedAt'] as String),
 );
 
 Map<String, dynamic> _$CourseExtraInfoJsonToJson(CourseExtraInfoJson instance) => <String, dynamic>{
   'courseSemester': instance.courseSemester,
   'course': instance.course,
   'classmate': instance.classmate,
+  'classmateUpdatedAt': instance.classmateUpdatedAt?.toIso8601String(),
 };
 
 CourseMainInfoJson _$CourseMainInfoJsonFromJson(Map<String, dynamic> json) => CourseMainInfoJson(

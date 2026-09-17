@@ -968,6 +968,11 @@ class S {
     return Intl.message('Student list', name: 'studentList', desc: '', args: []);
   }
 
+  /// `Last updated`
+  String get lastUpdated {
+    return Intl.message('Last updated', name: 'lastUpdated', desc: '', args: []);
+  }
+
   /// `Use English interface`
   String get languageSwitch {
     return Intl.message('Use English interface', name: 'languageSwitch', desc: '', args: []);

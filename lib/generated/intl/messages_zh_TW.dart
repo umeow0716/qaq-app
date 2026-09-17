@@ -264,6 +264,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "startClass": MessageLookupByLibrary.simpleMessage("開課班級"),
     "studentId": MessageLookupByLibrary.simpleMessage("學號"),
     "studentList": MessageLookupByLibrary.simpleMessage("學生清單"),
+    "lastUpdated": MessageLookupByLibrary.simpleMessage("上次更新"),
     "subscribe": MessageLookupByLibrary.simpleMessage("訂閱"),
     "sure": MessageLookupByLibrary.simpleMessage("確定"),
     "syllabus": MessageLookupByLibrary.simpleMessage("教學大綱"),

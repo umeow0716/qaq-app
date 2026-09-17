@@ -371,7 +371,14 @@ class LocalStorage {
     if (source.withdrawNumber.isNotEmpty) target.withdrawNumber = source.withdrawNumber;
     if (source.openClass.isNotEmpty) target.openClass = source.openClass;
 
-    if (value.classmate.isNotEmpty) {
+    if (value.classmateUpdatedAt != null) {
+      // A timestamp marks the classmate list as an authoritative iStudy
+      // snapshot. This also lets an empty class list be cached correctly.
+      cached.classmate = value.classmate;
+      cached.classmateUpdatedAt = value.classmateUpdatedAt;
+    } else if (value.classmate.isNotEmpty) {
+      // Preserve compatibility with older ExtraInfo producers that may still
+      // provide classmates without freshness metadata.
       cached.classmate = value.classmate;
     }
 
