@@ -427,6 +427,10 @@ class LocalStorage {
   }
 
   Future<void> logout() async {
+    // Clear in-memory identity/data first so new requests cannot start using the
+    // account while the asynchronous logout cleanup is still running.
+    _resetUserScopedMemory();
+
     Future<void> cleanup(String name, Future<void> Function() action) async {
       try {
         await action();
@@ -456,7 +460,7 @@ class LocalStorage {
     await init();
   }
 
-  Future<void> _clearUserScopedCaches() async {
+  void _resetUserScopedMemory() {
     _userData = UserDataJson();
     _courseTableList.clear();
     _courseSemesterList.clear();
@@ -466,6 +470,10 @@ class LocalStorage {
     _setting.course = CourseSettingJson();
     _setting.announcement = AnnouncementSettingJson();
     _firstRun.clear();
+  }
+
+  Future<void> _clearUserScopedCaches() async {
+    _resetUserScopedMemory();
 
     await Future.wait<void>([
       _remove(_userDataJsonKey),

@@ -30,12 +30,14 @@ class GlobalProtectAppSession {
   GlobalProtectConnection? _httpConnection;
   Future<GlobalProtectHttpClient>? _httpInFlight;
   String? _connectedAccount;
+  int _runtimeGeneration = 0;
 
   GlobalProtectSessionState get state => _manager.state;
   bool get isConnected => _manager.isConnected;
   GlobalProtectConnection? get connection => _manager.connection;
 
   Future<GlobalProtectConnection> ensureConnected() async {
+    final runtimeGeneration = _runtimeGeneration;
     final account = LocalStorage.instance.getAccount().trim();
     GlobalProtectDebug.log(
       'ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}',
@@ -52,6 +54,9 @@ class GlobalProtectAppSession {
     }
     try {
       final connection = await _manager.ensureConnected();
+      if (runtimeGeneration != _runtimeGeneration) {
+        throw StateError('GlobalProtect runtime was reset while connecting.');
+      }
       _connectedAccount = account;
       GlobalProtectDebug.log(
         'session ready gateway=${connection.gateway.host} '
@@ -84,7 +89,11 @@ class GlobalProtectAppSession {
   }
 
   Future<GlobalProtectHttpClient> _ensureHttpClient() async {
+    final runtimeGeneration = _runtimeGeneration;
     final connection = await ensureConnected();
+    if (runtimeGeneration != _runtimeGeneration) {
+      throw StateError('GlobalProtect runtime was reset while creating an HTTP client.');
+    }
     final existing = _httpClient;
     if (existing != null && identical(_httpConnection, connection)) {
       GlobalProtectDebug.log('reusing GP-backed HttpClient');
@@ -95,6 +104,10 @@ class GlobalProtectAppSession {
       await existing.close(force: true);
     }
 
+    if (runtimeGeneration != _runtimeGeneration) {
+      throw StateError('GlobalProtect runtime was reset while creating an HTTP client.');
+    }
+
     GlobalProtectDebug.log('creating GP-backed HttpClient');
     final next = GlobalProtectHttpClient.fromConnection(connection);
     _httpClient = next;
@@ -103,6 +116,7 @@ class GlobalProtectAppSession {
   }
 
   Future<GlobalProtectConnection> _connectUsingCachedSessionOrPassword() async {
+    final runtimeGeneration = _runtimeGeneration;
     final username = LocalStorage.instance.getAccount().trim();
     if (username.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
@@ -121,6 +135,10 @@ class GlobalProtectAppSession {
           trace: GlobalProtectDebug.log,
           transportTrace: (message) => GlobalProtectDebug.log('esp $message'),
         );
+        if (runtimeGeneration != _runtimeGeneration) {
+          await connection.transport.close();
+          throw StateError('GlobalProtect runtime was reset while resuming a cached session.');
+        }
         GlobalProtectDebug.log('cached GP session resumed');
         return connection;
       } on GlobalProtectSessionRejectedException catch (error, stackTrace) {
@@ -131,6 +149,10 @@ class GlobalProtectAppSession {
           GlobalProtectDebug.error('GP cache clear', cacheError, cacheStackTrace);
         }
       }
+    }
+
+    if (runtimeGeneration != _runtimeGeneration) {
+      throw StateError('GlobalProtect runtime was reset before password login.');
     }
 
     final password = LocalStorage.instance.getPassword();
@@ -148,6 +170,10 @@ class GlobalProtectAppSession {
         trace: GlobalProtectDebug.log,
         transportTrace: (message) => GlobalProtectDebug.log('esp $message'),
       );
+      if (runtimeGeneration != _runtimeGeneration) {
+        await connection.transport.close();
+        throw StateError('GlobalProtect runtime was reset while password login was in flight.');
+      }
       try {
         await _sessionCache.save(account: username, connection: connection);
         GlobalProtectDebug.log('GP session cached securely');
@@ -198,6 +224,7 @@ class GlobalProtectAppSession {
   }
 
   Future<void> disconnect() async {
+    _runtimeGeneration++;
     _httpInFlight = null;
     await _closeHttpClient();
     _connectedAccount = null;
