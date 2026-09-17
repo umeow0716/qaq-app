@@ -335,8 +335,14 @@ class LocalStorage {
 
   bool hasCompleteCourseExtraInfoCache(String courseId) {
     final cached = getCourseExtraInfoCache(courseId);
-    return cached != null && cached.course.category.isNotEmpty && !cached.courseSemester.isEmpty;
+    return cached != null &&
+        cached.course.category.isNotEmpty &&
+        !cached.courseSemester.isEmpty &&
+        _isAuthoritativeCourseCount(cached.course.selectNumber) &&
+        _isAuthoritativeCourseCount(cached.course.withdrawNumber);
   }
+
+  bool _isAuthoritativeCourseCount(String value) => int.tryParse(value.trim()) != null;
 
   void setCourseExtraInfoCache(String courseId, CourseExtraInfoJson value) {
     _mergeCourseExtraInfoCache(courseId, value);
@@ -345,15 +351,11 @@ class LocalStorage {
   bool _mergeCourseExtraInfoCache(String courseId, CourseExtraInfoJson value) {
     if (courseId.isEmpty || value.isEmpty) return false;
 
-    final cached = _courseExtraInfoCache[courseId];
-    if (cached == null) {
-      if (value.course.id.isEmpty) {
-        value.course.id = courseId;
-      }
-      _courseExtraInfoCache[courseId] = value;
-      return true;
-    }
-
+    // Always merge through one controlled path, even for a brand-new cache
+    // entry. This prevents non-authoritative producers (iStudy, course table,
+    // score metadata) from seeding enrollment counts by accident.
+    final existing = _courseExtraInfoCache[courseId];
+    final cached = existing ?? CourseExtraInfoJson(course: CourseExtraJson(id: courseId));
     final before = json.encode(cached.toJson());
 
     if (!value.courseSemester.isEmpty) {
@@ -367,9 +369,22 @@ class LocalStorage {
     if (source.name.isNotEmpty) target.name = source.name;
     if (source.href.isNotEmpty) target.href = source.href;
     if (source.category.isNotEmpty) target.category = source.category;
-    if (source.selectNumber.isNotEmpty) target.selectNumber = source.selectNumber;
-    if (source.withdrawNumber.isNotEmpty) target.withdrawNumber = source.withdrawNumber;
     if (source.openClass.isNotEmpty) target.openClass = source.openClass;
+
+    // Enrollment/withdrawal counts are authoritative only when the producer
+    // explicitly marks the payload as a fresh CourseExtra/ShowSyllabus
+    // snapshot. iStudy classmate lists never carry this timestamp, so their
+    // length (or any accidental count fields) can never overwrite these
+    // numbers.
+    final hasAuthoritativeCounts =
+        value.courseExtraUpdatedAt != null &&
+        _isAuthoritativeCourseCount(source.selectNumber) &&
+        _isAuthoritativeCourseCount(source.withdrawNumber);
+    if (hasAuthoritativeCounts) {
+      target.selectNumber = source.selectNumber.trim();
+      target.withdrawNumber = source.withdrawNumber.trim();
+      cached.courseExtraUpdatedAt = value.courseExtraUpdatedAt;
+    }
 
     if (value.classmateUpdatedAt != null) {
       // A timestamp marks the classmate list as an authoritative iStudy
@@ -382,7 +397,11 @@ class LocalStorage {
       cached.classmate = value.classmate;
     }
 
-    return before != json.encode(cached.toJson());
+    final changed = before != json.encode(cached.toJson());
+    if (changed && existing == null) {
+      _courseExtraInfoCache[courseId] = cached;
+    }
+    return changed;
   }
 
   Future<void> saveCourseExtraInfoCache() {

@@ -9,20 +9,23 @@ import 'course_system_task.dart';
 
 class CourseExtraInfoTask extends CourseSystemTask<CourseExtraInfoJson> {
   final String id;
+  final bool forceRefresh;
 
-  CourseExtraInfoTask(this.id) : super("CourseExtraInfoTask");
+  CourseExtraInfoTask(this.id, {this.forceRefresh = false}) : super("CourseExtraInfoTask");
 
   @override
   Future<TaskStatus> execute() async {
     final storage = LocalStorage.instance;
     final cached = storage.getCourseExtraInfoCache(id);
-    if (cached != null && storage.hasCompleteCourseExtraInfoCache(id)) {
+    if (!forceRefresh && cached != null && storage.hasCompleteCourseExtraInfoCache(id)) {
       Log.d('[CourseExtraInfoTask] cache hit: $id');
       result = cached;
       return TaskStatus.success;
     }
 
-    Log.d('[CourseExtraInfoTask] cache miss: $id');
+    Log.d(
+      forceRefresh ? '[CourseExtraInfoTask] forced refresh: $id' : '[CourseExtraInfoTask] cache miss: $id',
+    );
     final status = await super.execute();
 
     if (status == TaskStatus.success) {
@@ -31,9 +34,15 @@ class CourseExtraInfoTask extends CourseSystemTask<CourseExtraInfoJson> {
       super.onEnd();
 
       if (value != null) {
-        result = value;
+        final hasAuthoritativeCounts =
+            int.tryParse(value.course.selectNumber.trim()) != null &&
+            int.tryParse(value.course.withdrawNumber.trim()) != null;
+        if (hasAuthoritativeCounts) {
+          value.courseExtraUpdatedAt = DateTime.now();
+        }
         storage.setCourseExtraInfoCache(id, value);
         await storage.saveCourseExtraInfoCache();
+        result = storage.getCourseExtraInfoCache(id) ?? value;
         return TaskStatus.success;
       } else {
         return await super.onError(R.current.getCourseDetailError);

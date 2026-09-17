@@ -29,13 +29,14 @@ class CourseInfoPage extends StatefulWidget {
 }
 
 class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAliveClientMixin {
-  static const _studentCacheMaxAge = Duration(days: 7);
+  static const _cacheMaxAge = Duration(days: 7);
 
   List<CourseStudent> _students = <CourseStudent>[];
   bool _isStudentLoading = true;
   bool _isStudentRefreshing = false;
   String? _studentError;
   DateTime? _studentLastUpdated;
+  bool _isCourseExtraRefreshing = false;
 
   @override
   void initState() {
@@ -47,21 +48,68 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   }
 
   Future<void> _loadCourseExtraInfo() async {
+    final storage = LocalStorage.instance;
     final courseId = widget.courseInfo.main.course.id;
-    final task = CourseExtraInfoTask(courseId)
-      ..openLoadingDialog = false
-      ..openErrorDialog = false;
-    final taskFlow = TaskFlow()..addTask(task);
+    final cached = storage.getCourseExtraInfoCache(courseId);
 
-    if (await taskFlow.start()) {
-      final result = task.result;
-      if (result != null) {
-        widget.courseInfo.extra = result;
-        if (mounted) {
-          setState(() {});
-        }
+    if (cached != null && storage.hasCompleteCourseExtraInfoCache(courseId)) {
+      // Render the cached authoritative counts immediately. A stale refresh
+      // never clears or replaces them with a spinner.
+      widget.courseInfo.extra = cached;
+      if (mounted) {
+        setState(() {});
       }
+
+      final cachedAt = cached.courseExtraUpdatedAt;
+      final isStale = cachedAt == null || DateTime.now().difference(cachedAt) > _cacheMaxAge;
+      final autoVpnEnabled = storage.getOtherSetting().autoConnectIStudyVpn;
+      if (isStale && autoVpnEnabled) {
+        unawaited(_refreshCourseExtraInfo());
+      }
+      return;
     }
+
+    await _refreshCourseExtraInfo();
+  }
+
+  Future<void> _refreshCourseExtraInfo() async {
+    if (_isCourseExtraRefreshing) return;
+    _isCourseExtraRefreshing = true;
+
+    try {
+      final courseId = widget.courseInfo.main.course.id;
+      final task = CourseExtraInfoTask(courseId, forceRefresh: true)
+        ..openLoadingDialog = false
+        ..openErrorDialog = false;
+      final taskFlow = TaskFlow()..addTask(task);
+
+      bool success;
+      try {
+        success = await taskFlow.start();
+      } catch (_) {
+        success = false;
+      }
+      if (!success) return;
+
+      final result = task.result;
+      if (result != null && mounted) {
+        setState(() {
+          // The old numbers stay visible for the whole request. Once a fresh
+          // authoritative snapshot arrives, swap them in atomically.
+          widget.courseInfo.extra = result;
+        });
+      }
+    } finally {
+      _isCourseExtraRefreshing = false;
+    }
+  }
+
+  void _manualRefreshCourseStudents() {
+    // The student-list refresh is also the explicit refresh affordance for
+    // the course-detail snapshot. These requests are independent: iStudy can
+    // fail without touching the authoritative CourseExtra counts.
+    unawaited(_refreshCourseExtraInfo());
+    unawaited(_refreshCourseStudents(manual: true));
   }
 
   Future<void> _loadCourseStudents() async {
@@ -99,7 +147,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
       final cacheAge = DateTime.now().difference(cachedAt);
       final autoVpnEnabled = LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn;
-      if (cacheAge > _studentCacheMaxAge && autoVpnEnabled) {
+      if (cacheAge > _cacheMaxAge && autoVpnEnabled) {
         unawaited(_refreshCourseStudents(manual: false));
       }
       return;
@@ -314,26 +362,46 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
       _buildCourseInfo(sprintf('%s: %s', [R.current.courseName, courseMainInfo.course.name])),
       _buildCourseInfo(sprintf('%s: %s    ', [R.current.credit, courseMainInfo.course.credits])),
       _buildCourseInfo(sprintf('%s: %s    ', [R.current.category, courseExtraInfo.course.category])),
+    ];
+
+    final selectNumber = courseExtraInfo.course.selectNumber.trim();
+    final withdrawNumber = courseExtraInfo.course.withdrawNumber.trim();
+    courseData.add(
+      _buildCourseInfo(
+        sprintf('%s: %s', [
+          R.current.numberOfStudent,
+          _isAuthoritativeCourseCount(selectNumber) ? selectNumber : '',
+        ]),
+      ),
+    );
+    courseData.add(
+      _buildCourseInfo(
+        sprintf('%s: %s', [
+          R.current.numberOfWithdraw,
+          _isAuthoritativeCourseCount(withdrawNumber) ? withdrawNumber : '',
+        ]),
+      ),
+    );
+
+    courseData.addAll([
+      _buildCourseInfo(sprintf('%s: %s', [R.current.startClass, courseMainInfo.getOpenClassName()])),
       _buildCourseInfoWithButton(
         sprintf('%s: %s', [R.current.instructor, courseMainInfo.getTeacherName()]),
         R.current.syllabus,
         courseMainInfo.course.scheduleHref,
       ),
-      _buildCourseInfo(sprintf('%s: %s', [R.current.startClass, courseMainInfo.getOpenClassName()])),
       _buildMultiButtonInfo(
         sprintf('%s: ', [R.current.classroom]),
         R.current.classroomUse,
         courseMainInfo.getClassroomNameList(),
         courseMainInfo.getClassroomHrefList(),
       ),
-    ];
-
-    if (!_isStudentLoading && _studentError == null) {
-      courseData.add(_buildCourseInfo(sprintf('%s: %s', [R.current.numberOfStudent, _students.length])));
-    }
+    ]);
 
     return courseData;
   }
+
+  bool _isAuthoritativeCourseCount(String value) => int.tryParse(value.trim()) != null;
 
   Widget _buildCourseInfo(String text) {
     const textStyle = TextStyle(fontSize: 18);
@@ -473,7 +541,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
               visualDensity: VisualDensity.compact,
               tooltip: R.current.refresh,
               onPressed: canRefresh && !_isStudentLoading && !_isStudentRefreshing
-                  ? () => unawaited(_refreshCourseStudents(manual: true))
+                  ? _manualRefreshCourseStudents
                   : null,
               icon: const Icon(Icons.refresh),
             ),

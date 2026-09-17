@@ -13,6 +13,9 @@ CourseExtraInfoJson _$CourseExtraInfoJsonFromJson(Map<String, dynamic> json) => 
   classmateUpdatedAt: json['classmateUpdatedAt'] == null
       ? null
       : DateTime.parse(json['classmateUpdatedAt'] as String),
+  courseExtraUpdatedAt: json['courseExtraUpdatedAt'] == null
+      ? null
+      : DateTime.parse(json['courseExtraUpdatedAt'] as String),
 );
 
 Map<String, dynamic> _$CourseExtraInfoJsonToJson(CourseExtraInfoJson instance) => <String, dynamic>{
@@ -20,6 +23,7 @@ Map<String, dynamic> _$CourseExtraInfoJsonToJson(CourseExtraInfoJson instance) =
   'course': instance.course,
   'classmate': instance.classmate,
   'classmateUpdatedAt': instance.classmateUpdatedAt?.toIso8601String(),
+  'courseExtraUpdatedAt': instance.courseExtraUpdatedAt?.toIso8601String(),
 };
 
 CourseMainInfoJson _$CourseMainInfoJsonFromJson(Map<String, dynamic> json) => CourseMainInfoJson(

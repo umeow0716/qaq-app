@@ -222,13 +222,34 @@ class CourseConnector {
         result = await Connector.getDataByPost(parameter);
         tagNode = parse(result);
         nodes = tagNode.getElementsByTagName("tr");
-        courseExtra.category = nodes[1].getElementsByTagName("td")[6].text;
+        final syllabusCells = nodes[1].getElementsByTagName("td");
+        courseExtra.category = syllabusCells[6].text.trim();
+        // ShowSyllabus.jsp columns are:
+        // ... category[6], teacher[7], class[8], enrolled[9], withdrawn[10].
+        // These values are authoritative; never infer enrollment from the
+        // iStudy classmate-list length because the two systems can differ.
+        if (syllabusCells.length > 10) {
+          courseExtra.selectNumber = strQ2B(syllabusCells[9].text).trim();
+          courseExtra.withdrawNumber = strQ2B(syllabusCells[10].text).trim();
+        }
       } else {
         courseExtra.category = constCourseType[4];
       }
 
-      courseExtra.selectNumber = "s?";
-      courseExtra.withdrawNumber = "w?";
+      // Some courses do not expose the syllabus link in Select.jsp even
+      // though ShowSyllabus.jsp is still addressable by course id. Try that
+      // endpoint once so enrollment/withdrawal counts can still come from the
+      // authoritative syllabus page.
+      if (!_isNumericCourseCount(courseExtra.selectNumber) ||
+          !_isNumericCourseCount(courseExtra.withdrawNumber)) {
+        final syllabus = await getCourseCategory(courseId);
+        if (syllabus.courseId.isNotEmpty) {
+          if (syllabus.category.isNotEmpty) courseExtra.category = syllabus.category;
+          if (syllabus.className.isNotEmpty) courseExtra.openClass = syllabus.className;
+          courseExtra.selectNumber = syllabus.applyStudentCount.toString();
+          courseExtra.withdrawNumber = syllabus.withdrawStudentCount.toString();
+        }
+      }
 
       courseExtraInfo.course = courseExtra;
       return courseExtraInfo;
@@ -237,6 +258,8 @@ class CourseConnector {
       return null;
     }
   }
+
+  static bool _isNumericCourseCount(String value) => int.tryParse(value.trim()) != null;
 
   static Future<CourseSyllabusJson> getCourseCategory(String courseId) async {
     try {

@@ -235,6 +235,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       storage.setCourseExtraInfoCache(
         task.code,
         CourseExtraInfoJson(
+          courseExtraUpdatedAt: DateTime.now(),
           courseSemester: SemesterJson(
             year: result.year > 0 ? result.year.toString() : null,
             semester: result.semester > 0 ? result.semester.toString() : null,
@@ -244,8 +245,8 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
             name: result.courseName,
             category: result.category,
             openClass: result.className,
-            selectNumber: result.applyStudentCount > 0 ? result.applyStudentCount.toString() : null,
-            withdrawNumber: result.withdrawStudentCount > 0 ? result.withdrawStudentCount.toString() : null,
+            selectNumber: result.applyStudentCount.toString(),
+            withdrawNumber: result.withdrawStudentCount.toString(),
           ),
         ),
       );

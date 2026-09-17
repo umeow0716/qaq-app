@@ -10,18 +10,24 @@ class CourseExtraInfoJson {
   CourseExtraJson course;
   List<ClassmateJson> classmate;
   DateTime? classmateUpdatedAt;
+  DateTime? courseExtraUpdatedAt;
 
   CourseExtraInfoJson({
     SemesterJson? courseSemester,
     CourseExtraJson? course,
     List<ClassmateJson>? classmate,
     this.classmateUpdatedAt,
+    this.courseExtraUpdatedAt,
   }) : classmate = classmate ?? <ClassmateJson>[],
        courseSemester = courseSemester ?? SemesterJson(),
        course = course ?? CourseExtraJson();
 
   bool get isEmpty =>
-      classmate.isEmpty && classmateUpdatedAt == null && courseSemester.isEmpty && course.isEmpty;
+      classmate.isEmpty &&
+      classmateUpdatedAt == null &&
+      courseExtraUpdatedAt == null &&
+      courseSemester.isEmpty &&
+      course.isEmpty;
 
   @override
   String toString() => sprintf(
