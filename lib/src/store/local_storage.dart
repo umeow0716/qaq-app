@@ -9,6 +9,7 @@ import 'package:flutter_app/src/connector/global_protect/global_protect_app_sess
 import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
+import 'package:flutter_app/src/model/coursetable/course_classroom_cache.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/setting/setting_json.dart';
 import 'package:flutter_app/src/model/userdata/user_data_json.dart';
@@ -40,6 +41,7 @@ class LocalStorage {
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
   final _courseExtraInfoCacheKey = "CourseExtraInfoCacheKey";
+  final _courseClassroomCacheKey = "CourseClassroomResolutionCacheKey";
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
@@ -52,6 +54,7 @@ class LocalStorage {
   List<SemesterJson> _courseSemesterList = <SemesterJson>[];
   CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
   final Map<String, CourseExtraInfoJson> _courseExtraInfoCache = {};
+  final Map<String, CourseClassroomCacheJson> _courseClassroomCache = {};
   SettingJson _setting = SettingJson();
 
   SharedPreferences get _preferences {
@@ -409,6 +412,84 @@ class LocalStorage {
     return _writeString(_courseExtraInfoCacheKey, json.encode(encoded));
   }
 
+  void _loadCourseClassroomCache() {
+    _courseClassroomCache.clear();
+    final readJson = _readString(_courseClassroomCacheKey);
+    if (readJson == null) return;
+
+    try {
+      final decoded = json.decode(readJson);
+      if (decoded is! Map<String, dynamic>) return;
+
+      for (final entry in decoded.entries) {
+        final value = entry.value;
+        if (value is! Map) continue;
+        try {
+          final cache = CourseClassroomCacheJson.fromJson(Map<String, dynamic>.from(value));
+          if (cache.courseId.isNotEmpty && cache.year.isNotEmpty && cache.semester.isNotEmpty) {
+            _courseClassroomCache[entry.key] = cache;
+          }
+        } catch (_) {
+          // Ignore malformed classroom-resolution cache entries.
+        }
+      }
+    } catch (_) {
+      // Ignore a malformed top-level cache payload.
+    }
+  }
+
+  CourseClassroomCacheJson? getCourseClassroomCache(SemesterJson semester, String courseId) {
+    if (semester.isEmpty || courseId.isEmpty) return null;
+    return _courseClassroomCache[CourseClassroomCacheJson.cacheKey(semester, courseId)];
+  }
+
+  bool shouldRefreshCourseClassroomCache(
+    SemesterJson semester,
+    CourseMainInfoJson main, {
+    required Duration maxAge,
+  }) {
+    if (main.course.id.isEmpty || main.classroom.length < 2) return false;
+
+    final cached = getCourseClassroomCache(semester, main.course.id);
+    if (cached == null) return true;
+    if (cached.schemaVersion != CourseClassroomCacheJson.currentSchemaVersion) return true;
+    if (cached.candidateSignature != CourseClassroomCacheJson.classroomSignature(main)) return true;
+    return DateTime.now().difference(cached.updatedAt) > maxAge;
+  }
+
+  String? getResolvedCourseClassroom(
+    SemesterJson semester,
+    CourseMainInfoJson main,
+    Day day,
+    SectionNumber section,
+  ) {
+    if (main.course.id.isEmpty || main.classroom.length < 2) return null;
+
+    final cached = getCourseClassroomCache(semester, main.course.id);
+    if (cached == null) return null;
+    if (cached.schemaVersion != CourseClassroomCacheJson.currentSchemaVersion) return null;
+    if (cached.candidateSignature != CourseClassroomCacheJson.classroomSignature(main)) return null;
+
+    final classroom = cached.getClassroom(day, section);
+    if (classroom == null || classroom.isEmpty) return null;
+    final stillCandidate = main.classroom.any((candidate) => candidate.name == classroom);
+    return stillCandidate ? classroom : null;
+  }
+
+  void setCourseClassroomCache(
+    SemesterJson semester,
+    String courseId,
+    CourseClassroomCacheJson value,
+  ) {
+    if (semester.isEmpty || courseId.isEmpty) return;
+    _courseClassroomCache[CourseClassroomCacheJson.cacheKey(semester, courseId)] = value;
+  }
+
+  Future<void> saveCourseClassroomCache() {
+    final encoded = _courseClassroomCache.map((key, value) => MapEntry(key, value.toJson()));
+    return _writeString(_courseClassroomCacheKey, json.encode(encoded));
+  }
+
   Future<void> saveCourseSetting() => _saveSetting();
 
   Future<void> clearCourseSetting() {
@@ -473,6 +554,7 @@ class LocalStorage {
     _loadSetting();
     _loadCourseScoreCredit();
     final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
+    _loadCourseClassroomCache();
     if (courseExtraInfoCacheChanged) {
       await saveCourseExtraInfoCache();
     }
@@ -518,6 +600,7 @@ class LocalStorage {
     _courseSemesterList.clear();
     _courseScoreList = CourseScoreCreditJson();
     _courseExtraInfoCache.clear();
+    _courseClassroomCache.clear();
     _setting.course = CourseSettingJson();
     _setting.announcement = AnnouncementSettingJson();
     _firstRun.clear();
@@ -533,6 +616,7 @@ class LocalStorage {
       _remove(_scoreCreditJsonKey),
       _remove(_courseCategoryCacheKey),
       _remove(_courseExtraInfoCacheKey),
+      _remove(_courseClassroomCacheKey),
       _remove('firstUse$courseNotice'),
       // Keep global/user-choice settings (theme, file path, sort, and
       // SettingJson.other), but persist the cleared course/announcement state.

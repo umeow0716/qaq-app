@@ -12,6 +12,7 @@ import 'package:flutter_app/src/model/course/course_class_json.dart';
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
+import 'package:flutter_app/src/task/course/course_classroom_resolution_task.dart';
 import 'package:flutter_app/src/task/course/course_semester_task.dart';
 import 'package:flutter_app/src/task/course/course_table_task.dart';
 import 'package:flutter_app/src/task/iplus/iplus_subscribe_notice_task.dart';
@@ -541,7 +542,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                       child: InkWell(
                         borderRadius: const BorderRadius.all(Radius.circular(5)),
                         highlightColor: isDarkMode ? Colors.white : Colors.black12,
-                        onTap: () => showCourseDetailDialog(section, courseInfo),
+                        onTap: () => showCourseDetailDialog(day, section, courseInfo),
                         child: Stack(
                           children: [
                             Align(
@@ -578,10 +579,26 @@ class _CourseTablePageState extends State<CourseTablePage> {
   }
 
   //顯示課程對話框
-  void showCourseDetailDialog(int section, CourseInfoJson courseInfo) {
+  void showCourseDetailDialog(int day, int section, CourseInfoJson courseInfo) {
     _unFocusStudentInput();
     final course = courseInfo.main.course;
-    final classroomName = courseInfo.main.getClassroomName();
+    final table = courseTableData;
+    final resolvedClassroom = table == null
+        ? null
+        : LocalStorage.instance.getResolvedCourseClassroom(
+            table.courseSemester,
+            courseInfo.main,
+            Day.values[day],
+            SectionNumber.values[section],
+          );
+    final classroomName = resolvedClassroom ?? courseInfo.main.getClassroomName();
+    final debugLine =
+        '[CLRDBG] toast id=${course.id} href=${course.href} '
+        'slot=${Day.values[day].name}/${SectionNumber.values[section].name} '
+        'rooms=${courseInfo.main.classroom.map((room) => '${room.name}|${room.href}').join(' || ')} '
+        'resolved=${resolvedClassroom ?? '<fallback>'} display=$classroomName';
+    debugPrint(debugLine);
+    Log.d(debugLine);
     final teacherName = courseInfo.main.getTeacherName();
     final studentId = LocalStorage.instance.getCourseSetting().info.studentId;
     setState(() {
@@ -690,6 +707,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
       isLoading = true;
     });
     courseTableControl.set(courseTable); //設定課表顯示狀態
+    final classroomDebugLine =
+        '[CLRDBG] table shown student=${courseTable.studentId} '
+        'semester=${courseTable.courseSemester.year}-${courseTable.courseSemester.semester}';
+    debugPrint(classroomDebugLine);
+    Log.d(classroomDebugLine);
+    CourseClassroomResolutionTask.refreshInBackground(courseTable);
     await Future.delayed(const Duration(milliseconds: 50));
     setState(() {
       isLoading = false;

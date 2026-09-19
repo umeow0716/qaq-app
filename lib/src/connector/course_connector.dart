@@ -159,6 +159,120 @@ class CourseConnector {
     }
   }
 
+  static Future<Map<Day, Map<SectionNumber, Set<String>>>?> getClassroomUsage(String url) async {
+    try {
+      final classroomUsageUrl = url.replaceFirst('/course/en/', '/course/tw/');
+      final parameter = ConnectorParameter(classroomUsageUrl);
+      final result = await Connector.getDataByGet(parameter);
+      final document = parse(result);
+      final tables = document.getElementsByTagName('table');
+      if (tables.length < 2) return null;
+
+      final usage = <Day, Map<SectionNumber, Set<String>>>{};
+      final dayOrder = <Day>[
+        Day.Sunday,
+        Day.Monday,
+        Day.Tuesday,
+        Day.Wednesday,
+        Day.Thursday,
+        Day.Friday,
+        Day.Saturday,
+      ];
+
+      final rows = tables[1].getElementsByTagName('tr');
+      var parsedSectionRows = 0;
+      for (final row in rows.skip(1)) {
+        final cells = row.children.where((element) => element.localName == 'td').toList();
+        if (cells.length < 8) continue;
+
+        final section = _sectionNumberFromClassroomLabel(cells[0].text);
+        if (section == null) continue;
+        parsedSectionRows++;
+
+        for (int dayIndex = 0; dayIndex < dayOrder.length; dayIndex++) {
+          final courseIdentifiers = <String>{};
+          final cell = cells[dayIndex + 1];
+
+          // Croom.jsp exposes both identifiers for the same class:
+          //   (361463) ... Curr.jsp?...&code=2B03024
+          // The Select/ShowSyllabus flow normally uses the six-digit snum,
+          // while Curr.jsp uses the alphanumeric course code. Cache both so
+          // either representation from the course table can match.
+          final snumMatch = RegExp(r'\((\d{6})\)').firstMatch(strQ2B(cell.text));
+          final snum = snumMatch?.group(1);
+          if (snum != null && snum.isNotEmpty) {
+            courseIdentifiers.add(_normalizeCourseIdentifier(snum));
+          }
+
+          for (final anchor in cell.getElementsByTagName('a')) {
+            final href = anchor.attributes['href'];
+            if (href == null || !href.contains('Curr.jsp')) continue;
+
+            final uri = Uri.tryParse(href);
+            final courseCode = uri?.queryParameters['code'];
+            if (courseCode != null && courseCode.trim().isNotEmpty) {
+              courseIdentifiers.add(_normalizeCourseIdentifier(courseCode));
+            }
+          }
+
+          if (courseIdentifiers.isNotEmpty) {
+            usage.putIfAbsent(dayOrder[dayIndex], () => <SectionNumber, Set<String>>{})[section] =
+                courseIdentifiers;
+          }
+        }
+      }
+
+      // A classroom page always has section rows even when no class uses a
+      // particular room. Zero parsed rows means the response was not the
+      // expected Croom.jsp shape (login/error/malformed HTML), so do not mark
+      // an empty result as a fresh seven-day cache entry.
+      if (parsedSectionRows == 0) return null;
+      return usage;
+    } catch (e, stack) {
+      Log.eWithStack('getClassroomUsage($url): $e', stack);
+      return null;
+    }
+  }
+
+  static String _normalizeCourseIdentifier(String value) =>
+      strQ2B(value).replaceAll(RegExp(r'\s'), '').toUpperCase();
+
+  static SectionNumber? _sectionNumberFromClassroomLabel(String value) {
+    final match = RegExp(r'第\s*([1-9NABCD])\s*節', caseSensitive: false).firstMatch(strQ2B(value));
+    switch (match?.group(1)?.toUpperCase()) {
+      case '1':
+        return SectionNumber.T_1;
+      case '2':
+        return SectionNumber.T_2;
+      case '3':
+        return SectionNumber.T_3;
+      case '4':
+        return SectionNumber.T_4;
+      case 'N':
+        return SectionNumber.T_N;
+      case '5':
+        return SectionNumber.T_5;
+      case '6':
+        return SectionNumber.T_6;
+      case '7':
+        return SectionNumber.T_7;
+      case '8':
+        return SectionNumber.T_8;
+      case '9':
+        return SectionNumber.T_9;
+      case 'A':
+        return SectionNumber.T_A;
+      case 'B':
+        return SectionNumber.T_B;
+      case 'C':
+        return SectionNumber.T_C;
+      case 'D':
+        return SectionNumber.T_D;
+      default:
+        return null;
+    }
+  }
+
   static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId) async {
     try {
       Map<String, String> data = {"code": courseId, "format": "-1"};
@@ -377,6 +491,8 @@ class CourseConnector {
         nodes = nodesOne[1].getElementsByTagName("a"); //確定是否有連結
         if (nodes.isNotEmpty) {
           courseMain.name = nodes[0].text;
+          final href = nodes[0].attributes["href"] ?? "";
+          courseMain.href = href.startsWith("http") ? href : _courseENHost + href;
         } else {
           courseMain.name = nodesOne[1].text;
         }
@@ -402,12 +518,24 @@ class CourseConnector {
           courseMainInfo.teacher.add(teacher);
         }
 
-        //取得教室名稱
-        length = nodesOne[13].innerHtml.split("<br>").length;
-        for (String name in nodesOne[13].innerHtml.split("<br>").getRange(0, length - 1)) {
-          ClassroomJson classroom = ClassroomJson();
-          classroom.name = name.replaceAll("\n", "");
-          courseMainInfo.classroom.add(classroom);
+        //取得教室名稱。英文課表若有教室連結也保留下來，背景教室解析
+        // 會統一改用中文版 Croom.jsp 解析星期/節次。
+        final classroomAnchors = nodesOne[13].getElementsByTagName("a");
+        if (classroomAnchors.isNotEmpty) {
+          for (final node in classroomAnchors) {
+            final classroom = ClassroomJson();
+            classroom.name = node.text.replaceAll("\n", "");
+            final href = node.attributes["href"] ?? "";
+            classroom.href = href.startsWith("http") ? href : _courseENHost + href;
+            courseMainInfo.classroom.add(classroom);
+          }
+        } else {
+          length = nodesOne[13].innerHtml.split("<br>").length;
+          for (String name in nodesOne[13].innerHtml.split("<br>").getRange(0, length - 1)) {
+            final classroom = ClassroomJson();
+            classroom.name = name.replaceAll("\n", "");
+            courseMainInfo.classroom.add(classroom);
+          }
         }
 
         //取得開設教室名稱
@@ -465,6 +593,8 @@ class CourseConnector {
         nodes = nodesOne[1].getElementsByTagName("a"); //確定是否有連結
         if (nodes.isNotEmpty) {
           courseMain.name = nodes[0].text;
+          final href = nodes[0].attributes["href"] ?? "";
+          courseMain.href = href.startsWith("http") ? href : _courseCNHost + href;
         } else {
           courseMain.name = nodesOne[1].text;
         }
