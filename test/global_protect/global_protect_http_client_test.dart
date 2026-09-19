@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_app/src/connector/global_protect/global_protect_transport.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_http_client.dart';
-import 'package:flutter_app/src/connector/global_protect/virtual_byte_socket.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_transport.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_http_client.dart';
+import 'package:qaq_app/src/connector/global_protect/virtual_byte_socket.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _UnusedDataTransport implements GlobalProtectTransport {

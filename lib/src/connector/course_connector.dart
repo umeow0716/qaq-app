@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/core/connector.dart';
-import 'package:flutter_app/src/connector/core/connector_parameter.dart';
-import 'package:flutter_app/src/connector/ntut_connector.dart';
-import 'package:flutter_app/src/model/course/course_class_json.dart';
-import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
-import 'package:flutter_app/src/model/course/course_score_json.dart';
-import 'package:flutter_app/src/model/course/course_syllabus_json.dart';
-import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/core/connector.dart';
+import 'package:qaq_app/src/connector/core/connector_parameter.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/model/course/course_class_json.dart';
+import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
+import 'package:qaq_app/src/model/course/course_score_json.dart';
+import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
+import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 
@@ -286,10 +286,10 @@ class CourseConnector {
           .whereType<String>()
           .toList();
       if (studentSemesterDetails.isEmpty) {
-        throw RangeError("[TAT] course_connector.dart: studentSemesterDetails list is empty");
+        throw RangeError("[QAQ] course_connector.dart: studentSemesterDetails list is empty");
       }
       if (studentSemesterDetails.length < 3) {
-        throw RangeError("[TAT] course_connector.dart: studentSemesterDetails list has range less than 3");
+        throw RangeError("[QAQ] course_connector.dart: studentSemesterDetails list has range less than 3");
       }
       semester.year = studentSemesterDetails[1];
       semester.semester = studentSemesterDetails[2];
@@ -302,7 +302,7 @@ class CourseConnector {
       final List<String> courseIds = nodes.skip(2).map((node) => node.getElementsByTagName("td")[0].text).toList();
       final courseIdPosition = courseIds.indexWhere((element) => element.contains(courseId));
       if (courseIdPosition == -1) {
-        throw StateError('[TAT] course_connector.dart: CourseId not found: $courseId');
+        throw StateError('[QAQ] course_connector.dart: CourseId not found: $courseId');
       }
       final node = nodes[courseIdPosition + 2];
       final classExtraInfoNodes = node.getElementsByTagName("td");

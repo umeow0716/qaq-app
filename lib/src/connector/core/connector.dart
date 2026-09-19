@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 
 import 'connector_parameter.dart';
 import 'dio_connector.dart';

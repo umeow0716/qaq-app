@@ -1,4 +1,4 @@
-import 'package:flutter_app/src/model/json_init.dart';
+import 'package:qaq_app/src/model/json_init.dart';
 
 class CourseSyllabusJson {
   int year = 0;

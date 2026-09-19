@@ -148,7 +148,7 @@ class GlobalProtectWebViewProxyBridge {
             );
 
             if (request.isConnect) {
-              client.write('HTTP/1.1 200 Connection Established\r\nProxy-Agent: TAT-GP\r\n\r\n');
+              client.write('HTTP/1.1 200 Connection Established\r\nProxy-Agent: QAQ-GP\r\n\r\n');
               await client.flush();
               if (request.remainder.isNotEmpty) {
                 await upstream!.write(request.remainder);

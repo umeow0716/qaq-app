@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/providers/category_provider.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/util/file_utils.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
+import 'package:qaq_app/src/providers/category_provider.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/util/file_utils.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
 import "package:lucide_icons_flutter/lucide_icons.dart";
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path_lib;

@@ -1,6 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/model/course/course_score_json.dart';
+import 'package:qaq_app/src/model/course/course_score_json.dart';
 
 class ScoreTile extends StatelessWidget {
   ScoreTile({super.key, required this.courseName, required this.category, required this.scoreValue});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/model/course/course_score_json.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/pages/score/widgets/score_tile_widget.dart';
-import 'package:flutter_app/ui/pages/score/widgets/metrics_title_widget.dart';
+import 'package:qaq_app/src/model/course/course_score_json.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/pages/score/widgets/score_tile_widget.dart';
+import 'package:qaq_app/ui/pages/score/widgets/metrics_title_widget.dart';
 
 class CourseScoreSection extends StatelessWidget {
   const CourseScoreSection({super.key, required this.scoreInfoList});

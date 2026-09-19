@@ -35,7 +35,7 @@ class GlobalProtectClientCertificateRequiredException implements Exception {
 }
 
 class GlobalProtectConnector {
-  GlobalProtectConnector({Uri? portal, HttpClient? httpClient, this.computerName = 'tat-android'})
+  GlobalProtectConnector({Uri? portal, HttpClient? httpClient, this.computerName = 'qaq-android'})
     : portal = portal ?? Uri.parse('https://vpn.ntut.edu.tw'),
       _httpClient = httpClient ?? HttpClient() {
     _httpClient.connectionTimeout = const Duration(seconds: 10);

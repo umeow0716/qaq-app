@@ -1,21 +1,21 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
-import 'package:flutter_app/ui/pages/coursedetail/course_detail_page.dart';
-import 'package:flutter_app/ui/pages/coursedetail/screen/ischoolplus/iplus_announcement_detail_page.dart';
-import 'package:flutter_app/ui/pages/fileviewer/file_viewer_page.dart';
-import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
-import 'package:flutter_app/ui/pages/other/page/about_page.dart';
-import 'package:flutter_app/ui/pages/other/page/contributors_page.dart';
-import 'package:flutter_app/ui/pages/other/page/dev_page.dart';
-import 'package:flutter_app/ui/pages/other/page/privacy_policy_page.dart';
-import 'package:flutter_app/ui/pages/other/page/setting_page.dart';
-import 'package:flutter_app/ui/pages/other/page/sub_system_page.dart';
-import 'package:flutter_app/ui/pages/videoplayer/class_video_player.dart';
-import 'package:flutter_app/ui/pages/webview/web_view_page.dart';
-import 'package:flutter_app/ui/screen/login_screen.dart';
-import 'package:flutter_app/ui/screen/main_screen.dart';
+import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/ui/pages/coursedetail/course_detail_page.dart';
+import 'package:qaq_app/ui/pages/coursedetail/screen/ischoolplus/iplus_announcement_detail_page.dart';
+import 'package:qaq_app/ui/pages/fileviewer/file_viewer_page.dart';
+import 'package:qaq_app/ui/pages/logconsole/log_console.dart';
+import 'package:qaq_app/ui/pages/other/page/about_page.dart';
+import 'package:qaq_app/ui/pages/other/page/contributors_page.dart';
+import 'package:qaq_app/ui/pages/other/page/dev_page.dart';
+import 'package:qaq_app/ui/pages/other/page/privacy_policy_page.dart';
+import 'package:qaq_app/ui/pages/other/page/setting_page.dart';
+import 'package:qaq_app/ui/pages/other/page/sub_system_page.dart';
+import 'package:qaq_app/ui/pages/videoplayer/class_video_player.dart';
+import 'package:qaq_app/ui/pages/webview/web_view_page.dart';
+import 'package:qaq_app/ui/screen/login_screen.dart';
+import 'package:qaq_app/ui/screen/main_screen.dart';
 import 'package:get/get.dart';
 
 class RouteUtils {

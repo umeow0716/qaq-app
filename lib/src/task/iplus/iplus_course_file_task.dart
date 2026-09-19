@@ -1,7 +1,7 @@
-import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
-import 'package:flutter_app/src/model/ischoolplus/course_file_json.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/src/connector/ischool_plus_connector.dart';
+import 'package:qaq_app/src/model/ischoolplus/course_file_json.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/other/msg_dialog.dart';
 
 import '../task.dart';
 import 'iplus_system_task.dart';

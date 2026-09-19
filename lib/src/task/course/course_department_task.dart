@@ -1,5 +1,5 @@
-import 'package:flutter_app/src/connector/course_connector.dart';
-import 'package:flutter_app/src/r.dart';
+import 'package:qaq_app/src/connector/course_connector.dart';
+import 'package:qaq_app/src/r.dart';
 
 import '../task.dart';
 import 'course_system_task.dart';

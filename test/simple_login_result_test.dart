@@ -1,5 +1,5 @@
-import 'package:flutter_app/src/portal/account_status.dart';
-import 'package:flutter_app/src/portal/simple_login_result.dart';
+import 'package:qaq_app/src/portal/account_status.dart';
+import 'package:qaq_app/src/portal/simple_login_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

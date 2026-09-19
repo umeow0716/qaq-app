@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/core/dio_connector.dart';
-import 'package:flutter_app/src/notifications/notifications.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/util/file_utils.dart';
-import 'package:flutter_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/notifications/notifications.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/util/file_utils.dart';
+import 'package:qaq_app/ui/other/msg_dialog.dart';
 
 import 'file_store.dart';
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/config/app_colors.dart';
-import 'package:flutter_app/src/config/app_link.dart';
-import 'package:flutter_app/src/connector/core/connector.dart';
-import 'package:flutter_app/src/connector/core/connector_parameter.dart';
-import 'package:flutter_app/src/r.dart';
+import 'package:qaq_app/src/config/app_colors.dart';
+import 'package:qaq_app/src/config/app_link.dart';
+import 'package:qaq_app/src/connector/core/connector.dart';
+import 'package:qaq_app/src/connector/core/connector_parameter.dart';
+import 'package:qaq_app/src/r.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 

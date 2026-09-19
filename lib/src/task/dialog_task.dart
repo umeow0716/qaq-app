@@ -1,5 +1,5 @@
-import 'package:flutter_app/ui/other/msg_dialog.dart';
-import 'package:flutter_app/ui/other/my_progress_dialog.dart';
+import 'package:qaq_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/ui/other/my_progress_dialog.dart';
 import 'package:get/get.dart';
 
 import 'task.dart';

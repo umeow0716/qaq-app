@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/r.dart';
+import 'package:qaq_app/src/r.dart';
 
 class ScoreCalculationWarning extends StatelessWidget {
   const ScoreCalculationWarning({super.key});

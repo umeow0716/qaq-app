@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/other/list_view_animator.dart';
-import 'package:flutter_app/ui/other/route_utils.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/other/list_view_animator.dart';
+import 'package:qaq_app/ui/other/route_utils.dart';
 
 enum OnListViewPress { appLog }
 

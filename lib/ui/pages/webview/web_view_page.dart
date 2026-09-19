@@ -1,7 +1,7 @@
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
-import 'package:flutter_app/ui/other/msg_dialog.dart';
-import 'package:flutter_app/ui/pages/webview/tat_web_view.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/ui/pages/webview/qaq_web_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:get/get.dart';
 import 'package:meta/meta.dart';
@@ -36,8 +36,8 @@ class WebViewPage {
     }
   }
 
-  Future<void> _launchTATWebView({required Uri initialUrl, String? title}) =>
-      Future.microtask(() => Get.to(() => TATWebView(initialUrl: initialUrl, title: title)));
+  Future<void> _launchQAQWebView({required Uri initialUrl, String? title}) =>
+      Future.microtask(() => Get.to(() => QAQWebView(initialUrl: initialUrl, title: title)));
 
   /// Launch a web view with configs.
   ///
@@ -50,7 +50,7 @@ class WebViewPage {
     // the userspace GlobalProtect bridge. SSO entry URLs that can redirect to
     // iStudy already pass shouldUseAppCookies=true from SubSystemPage.
     if (IStudyAccessGuard.isIStudyUri(initialUrl) || shouldUseAppCookies) {
-      return _launchTATWebView(initialUrl: initialUrl, title: title);
+      return _launchQAQWebView(initialUrl: initialUrl, title: title);
     }
 
     return _launchNativeWebView(initialUrl: initialUrl);

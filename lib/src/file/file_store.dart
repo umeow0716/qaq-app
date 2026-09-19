@@ -13,7 +13,7 @@ class FileStore {
         ? await getExternalStorageDirectory()
         : await getApplicationSupportDirectory();
 
-    final targetDir = Directory('${directory?.path ?? ''}/TAT');
+    final targetDir = Directory('${directory?.path ?? ''}/QAQ');
     final hasExisted = await targetDir.exists();
     if (!hasExisted) {
       targetDir.create();

@@ -1,9 +1,9 @@
 import 'dart:developer';
 
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/ntut_connector.dart';
-import 'package:flutter_app/src/model/course/course_class_json.dart';
-import 'package:flutter_app/src/model/course/course_score_json.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/model/course/course_class_json.dart';
+import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 
@@ -48,7 +48,7 @@ class ScoreConnector {
       for (int retry = 0; retry < 3; retry++) {
         final jumpResult = (await Connector.getDataByPostResponse(jumpParameter));
         if (jumpResult.statusCode != 302) {
-          log("[TAT] score_connector.dart: failed to get redirection location from oauth2Server, retrying...");
+          log("[QAQ] score_connector.dart: failed to get redirection location from oauth2Server, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
@@ -60,7 +60,7 @@ class ScoreConnector {
         final loginOAuthParameter = ConnectorParameter(redirectLocations.first);
         final loginOAuthResult = (await Connector.getDataByPostResponse(loginOAuthParameter)).toString().trim();
         if (loginOAuthResult.contains("中斷連線")) {
-          log("[TAT] score_connector.dart: connection lost during redirection, retrying...");
+          log("[QAQ] score_connector.dart: connection lost during redirection, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         } else {
@@ -105,7 +105,7 @@ class ScoreConnector {
       final List<String> evalQuestionnaireCheckTexts = ['教學評量', 'Course Evaluation Questionnaire'];
       if (evalQuestionnaireCheckTexts.any((text) => result.contains(text))) {
         throw const FormatException(
-          "[TAT] score_connector.dart: evalQuestionnaireCheckTexts was found in request result",
+          "[QAQ] score_connector.dart: evalQuestionnaireCheckTexts was found in request result",
         );
       }
 

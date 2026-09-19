@@ -10,7 +10,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "dev.umeow.tat_umeow"
+    namespace = "dev.umeow.qaq"
     compileSdk = 37
     ndkVersion = "29.0.14206865"
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.umeow.tat_umeow"
+        applicationId = "dev.umeow.qaq"
         minSdk = 24
         targetSdk = 37
         versionCode = flutter.versionCode

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/controllers/calendar_controller.dart';
-import 'package:flutter_app/src/model/ntut/ntut_calendar_json.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/pages/calendar/calendar_detail_dialog.dart';
+import 'package:qaq_app/src/controllers/calendar_controller.dart';
+import 'package:qaq_app/src/model/ntut/ntut_calendar_json.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/pages/calendar/calendar_detail_dialog.dart';
 import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 

@@ -1,4 +1,4 @@
-package dev.umeow.tat_umeow
+package dev.umeow.qaq
 
 import android.content.Intent
 import androidx.annotation.NonNull
@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.Log
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "tat/global"
+    private val CHANNEL = "qaq/global"
     private val logTag = "FlutterActivity"
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {

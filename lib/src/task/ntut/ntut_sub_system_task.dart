@@ -1,7 +1,7 @@
-import 'package:flutter_app/src/connector/ntut_connector.dart';
-import 'package:flutter_app/src/model/ntut/ap_tree_json.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/task/ntut/ntut_task.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/model/ntut/ap_tree_json.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 
 import '../task.dart';
 

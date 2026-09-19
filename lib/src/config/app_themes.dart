@@ -5,7 +5,7 @@ import 'color_schemes.g.dart';
 class AppThemes {
   static final lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'TATFont',
+    fontFamily: 'QAQFont',
     colorScheme: lightColorScheme,
     appBarTheme: AppBarThemeData(
       backgroundColor: lightColorScheme.primary,
@@ -27,7 +27,7 @@ class AppThemes {
 
   static final darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'TATFont',
+    fontFamily: 'QAQFont',
     colorScheme: darkColorScheme,
     appBarTheme: AppBarThemeData(
       backgroundColor: darkColorScheme.primaryContainer,

@@ -1,8 +1,8 @@
 class AppLink {
   static const String githubOwnerName = "umeow0716";
-  static const String tatRepoName = "tat_umeow";
+  static const String repoName = "qaq-app";
 
-  static const String tatGitHubRepoUrlString = "https://github.com/$githubOwnerName/$tatRepoName";
+  static const String githubRepoUrlString = "https://github.com/$githubOwnerName/$repoName";
   static const String privacyPolicyUrlString =
-      'https://raw.githubusercontent.com/$githubOwnerName/$tatRepoName/dev/privacy-policy.md';
+      'https://raw.githubusercontent.com/$githubOwnerName/$repoName/main/privacy-policy.md';
 }

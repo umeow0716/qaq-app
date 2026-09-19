@@ -1,5 +1,5 @@
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
-import 'package:flutter_app/src/model/setting/setting_json.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

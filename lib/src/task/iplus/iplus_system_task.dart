@@ -1,10 +1,10 @@
-import 'package:flutter_app/src/connector/ischool_plus_connector.dart';
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/store/local_storage.dart';
-import 'package:flutter_app/src/task/ntut/ntut_task.dart';
-import 'package:flutter_app/src/task/task.dart';
-import 'package:flutter_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/src/connector/ischool_plus_connector.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/task/ntut/ntut_task.dart';
+import 'package:qaq_app/src/task/task.dart';
+import 'package:qaq_app/ui/other/msg_dialog.dart';
 
 class IPlusSystemTask<T> extends NTUTTask<T> {
   IPlusSystemTask(String name, {this.showNetworkUnavailable = true, this.allowAutoVpn = true})

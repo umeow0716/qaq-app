@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/store/local_storage.dart';
 
 import 'global_protect_connector.dart';
 import 'global_protect_debug.dart';

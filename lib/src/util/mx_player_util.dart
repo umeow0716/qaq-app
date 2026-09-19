@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
-import 'package:flutter_app/ui/other/route_utils.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
+import 'package:qaq_app/ui/other/route_utils.dart';
 
 class MXPlayerUtil {
   static String mxPlayerFreePackageName = "com.mxtech.videoplayer.ad";

@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dart_big5/big5.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/adapters/early_interceptor_adapter.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_app_session.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/adapters/early_interceptor_adapter.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 
 import 'connector_parameter.dart';
 

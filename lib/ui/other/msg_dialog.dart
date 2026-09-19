@@ -5,8 +5,8 @@
 // not include or depend on Rive / rive_native.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/navigation/app_navigator.dart';
-import 'package:flutter_app/src/r.dart';
+import 'package:qaq_app/src/navigation/app_navigator.dart';
+import 'package:qaq_app/src/r.dart';
 
 enum DialogType { noHeader, info, warning, error, success }
 

@@ -1,9 +1,9 @@
-import 'package:flutter_app/src/connector/campus_network_detector.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/connector/campus_network_detector.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/store/local_storage.dart';
 
-export 'package:flutter_app/src/connector/campus_network_detector.dart';
+export 'package:qaq_app/src/connector/campus_network_detector.dart';
 
 enum IStudyAccessRoute { direct, blocked, vpn }
 

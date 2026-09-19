@@ -1,9 +1,9 @@
 import 'dart:collection';
 
-import 'package:flutter_app/src/model/ntut/ntut_calendar_json.dart';
-import 'package:flutter_app/src/task/ntut/ntut_calendar_task.dart';
-import 'package:flutter_app/src/task/task_flow.dart';
-import 'package:flutter_app/src/util/language_util.dart';
+import 'package:qaq_app/src/model/ntut/ntut_calendar_json.dart';
+import 'package:qaq_app/src/task/ntut/ntut_calendar_task.dart';
+import 'package:qaq_app/src/task/task_flow.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 import 'package:get/get_rx/get_rx.dart';
 import 'package:get/get_state_manager/get_state_manager.dart';
 import 'package:table_calendar/table_calendar.dart';

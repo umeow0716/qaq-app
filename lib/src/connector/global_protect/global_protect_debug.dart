@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app/debug/log/log.dart';
+import 'package:qaq_app/debug/log/log.dart';
 
 /// Debug-only diagnostics for the experimental in-app GlobalProtect bridge.
 ///

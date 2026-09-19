@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_app/src/config/app_config.dart';
+import 'package:qaq_app/src/config/app_config.dart';
 import 'package:path_provider/path_provider.dart';
 
 class UserSessionArtifacts {

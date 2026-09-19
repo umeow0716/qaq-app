@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter_app/src/connector/global_protect/global_protect_connector.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_http_client.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_models.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_connector.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_http_client.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

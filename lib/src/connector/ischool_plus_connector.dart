@@ -3,11 +3,11 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/core/connector.dart';
-import 'package:flutter_app/src/model/ischoolplus/course_file_json.dart';
-import 'package:flutter_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
-import 'package:flutter_app/src/util/html_utils.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/core/connector.dart';
+import 'package:qaq_app/src/model/ischoolplus/course_file_json.dart';
+import 'package:qaq_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
+import 'package:qaq_app/src/util/html_utils.dart';
 import 'package:html/dom.dart' as html;
 import 'package:html/parser.dart' as html;
 
@@ -67,7 +67,7 @@ class ISchoolPlusConnector {
         jumpParameter.data = oauthData;
         final jumpResult = (await Connector.getDataByPostResponse(jumpParameter));
         if (jumpResult.statusCode != 302) {
-          log("[TAT] ischool_plus_connector.dart: failed to get redirection location from oauth2Server, retrying...");
+          log("[QAQ] ischool_plus_connector.dart: failed to get redirection location from oauth2Server, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
@@ -81,7 +81,7 @@ class ISchoolPlusConnector {
         final login2Parameter = ConnectorParameter(redirectLocations.first);
         final login2Result = await Connector.getDataByGet(login2Parameter);
         if (login2Result.contains("lost")) {
-          log("[TAT] ischool_plus_connector.dart: connection lost during redirection, retrying...");
+          log("[QAQ] ischool_plus_connector.dart: connection lost during redirection, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
@@ -102,7 +102,7 @@ class ISchoolPlusConnector {
 
       final response = (await Connector.getDataByGet(parameter)).toString().trim();
       if (response.contains("ssoForm")) return response;
-      log("[TAT] ischool_plus_connector.dart: failed to get ssoForm, retrying...");
+      log("[QAQ] ischool_plus_connector.dart: failed to get ssoForm, retrying...");
       await Future.delayed(const Duration(milliseconds: 100));
     }
     return "";

@@ -1,8 +1,8 @@
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/course_connector.dart';
-import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/store/local_storage.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/course_connector.dart';
+import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/store/local_storage.dart';
 
 import '../task.dart';
 import 'course_system_task.dart';

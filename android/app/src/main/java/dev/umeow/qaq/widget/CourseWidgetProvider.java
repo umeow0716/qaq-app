@@ -4,7 +4,7 @@
 // TODO(TU): remove this file.
 // Refer: https://github.com/NEO-TAT/tat_flutter/issues/79
 
-package dev.umeow.tat_umeow.widget;
+package dev.umeow.qaq.widget;
 
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
@@ -20,14 +20,14 @@ import android.widget.RemoteViews;
 
 import java.util.Arrays;
 
-import dev.umeow.tat_umeow.MainActivity;
-import dev.umeow.tat_umeow.R;
+import dev.umeow.qaq.MainActivity;
+import dev.umeow.qaq.R;
 import io.flutter.Log;
 
 
 public class CourseWidgetProvider extends AppWidgetProvider {
     public static final String TAG = "CourseWidgetProvider";
-    public static final String ACTION_ONCLICK = "dev.umeow.tat_umeow.coursetable.widget.onclick";
+    public static final String ACTION_ONCLICK = "dev.umeow.qaq.coursetable.widget.onclick";
 
     @SuppressLint("UnsafeProtectedBroadcastReceiver")
     @Override

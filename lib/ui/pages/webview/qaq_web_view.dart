@@ -2,26 +2,26 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/connector/core/dio_connector.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_webview_proxy.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_webview_runtime.dart';
-import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
-import 'package:flutter_app/src/connector/ntut_connector.dart';
-import 'package:flutter_app/ui/pages/webview/web_view_button_bar.dart';
+import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-class TATWebView extends StatefulWidget {
-  const TATWebView({super.key, required this.initialUrl, this.title});
+class QAQWebView extends StatefulWidget {
+  const QAQWebView({super.key, required this.initialUrl, this.title});
 
   final Uri initialUrl;
   final String? title;
 
   @override
-  State<TATWebView> createState() => _TATWebViewState();
+  State<QAQWebView> createState() => _QAQWebViewState();
 }
 
-class _TATWebViewState extends State<TATWebView> {
+class _QAQWebViewState extends State<QAQWebView> {
   final cookieManager = CookieManager.instance();
   final cookieJar = DioConnector.instance.cookiesManager;
   InAppWebViewController? _controller;
@@ -206,7 +206,7 @@ class _TATWebViewState extends State<TATWebView> {
     URLAuthenticationChallenge challenge,
   ) async => ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.PROCEED);
 
-  Widget _buildTATWebViewCore(_InitialWebViewContent content) => _TATWebViewCore(
+  Widget _buildQAQWebViewCore(_InitialWebViewContent content) => _QAQWebViewCore(
     initialUrl: content.initialUrl,
     initialData: content.initialData,
     onWebViewCreated: _onWebViewCreated,
@@ -243,7 +243,7 @@ class _TATWebViewState extends State<TATWebView> {
               builder: (context, snapshot) {
                 final content = snapshot.data;
                 if (content == null) return const Center(child: CircularProgressIndicator());
-                return _buildTATWebViewCore(content);
+                return _buildQAQWebViewCore(content);
               },
             ),
           ),
@@ -264,8 +264,8 @@ class _InitialWebViewContent {
   final String? initialData;
 }
 
-class _TATWebViewCore extends StatelessWidget {
-  const _TATWebViewCore({
+class _QAQWebViewCore extends StatelessWidget {
+  const _QAQWebViewCore({
     this.initialUrl,
     this.initialData,
     this.onWebViewCreated,

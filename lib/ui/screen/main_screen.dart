@@ -1,17 +1,17 @@
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/notifications/notifications.dart';
-import 'package:flutter_app/src/providers/app_provider.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/task/ntut/ntut_task.dart';
-import 'package:flutter_app/src/task/task.dart';
-import 'package:flutter_app/src/util/language_util.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
-import 'package:flutter_app/ui/pages/calendar/calendar_page.dart';
-import 'package:flutter_app/ui/pages/coursetable/course_table_page.dart';
-import 'package:flutter_app/ui/pages/other/other_page.dart';
-import 'package:flutter_app/ui/pages/score/score_page.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/notifications/notifications.dart';
+import 'package:qaq_app/src/providers/app_provider.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/task/ntut/ntut_task.dart';
+import 'package:qaq_app/src/task/task.dart';
+import 'package:qaq_app/src/util/language_util.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
+import 'package:qaq_app/ui/pages/calendar/calendar_page.dart';
+import 'package:qaq_app/ui/pages/coursetable/course_table_page.dart';
+import 'package:qaq_app/ui/pages/other/other_page.dart';
+import 'package:qaq_app/ui/pages/score/score_page.dart';
 import 'package:provider/provider.dart';
 
 class MainScreen extends StatefulWidget {

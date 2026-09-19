@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/connector/course_connector.dart';
-import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
-import 'package:flutter_app/src/model/coursetable/course_classroom_cache.dart';
-import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
-import 'package:flutter_app/src/store/local_storage.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/course_connector.dart';
+import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
+import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
+import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/src/store/local_storage.dart';
 
 class CourseClassroomResolutionTask {
   static const cacheMaxAge = Duration(days: 7);

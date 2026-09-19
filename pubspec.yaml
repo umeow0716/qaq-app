@@ -1,4 +1,4 @@
-name: flutter_app
+name: qaq_app
 description: QAQ, an independent campus life assistant for NTUT students.
 publish_to: 'none'
 
@@ -78,7 +78,7 @@ flutter:
     - assets/
 
   fonts:
-    - family: TATFont
+    - family: QAQFont
       fonts:
         - asset: assets/fonts/GenSenRounded-R.ttc
           weight: 400

@@ -36,7 +36,7 @@
         </activity>
 
         <receiver
-            android:name="dev.umeow.tat_umeow.widget.CourseWidgetProvider"
+            android:name="dev.umeow.qaq.widget.CourseWidgetProvider"
             android:grantUriPermissions="true"
             android:exported="true"
             tools:replace="android:exported">

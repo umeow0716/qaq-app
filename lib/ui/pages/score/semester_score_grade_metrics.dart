@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/ui/pages/score/widgets/grade_metrics_cell_widget.dart';
-import 'package:flutter_app/ui/pages/score/widgets/metrics_title_widget.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/pages/score/widgets/grade_metrics_cell_widget.dart';
+import 'package:qaq_app/ui/pages/score/widgets/metrics_title_widget.dart';
 
 class SemesterScoreGradeMetrics extends StatelessWidget {
   const SemesterScoreGradeMetrics({

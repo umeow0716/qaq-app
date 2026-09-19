@@ -1,4 +1,4 @@
-import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
+import 'package:qaq_app/ui/pages/logconsole/log_console.dart';
 import 'package:logger/logger.dart';
 
 class MyLogFilter extends LogFilter {

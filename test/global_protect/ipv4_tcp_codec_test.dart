@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:flutter_app/src/connector/global_protect/ipv4_tcp_codec.dart';
+import 'package:qaq_app/src/connector/global_protect/ipv4_tcp_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

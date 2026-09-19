@@ -1,22 +1,22 @@
-# Contributing to the project
+# Contributing to QAQ
 
 ## Issues
 
-Feel free to submit issues requests.
+Use the QAQ repository issue tracker for bug reports and feature requests.
 
-## Contributing
+## Pull requests
 
-We follow the "fork-and-pull" GitHub flow, be free to contribute for this project.
+QAQ follows the fork-and-pull GitHub workflow:
 
-1. **Fork** the repo on GitHub
-2. **Clone** the project to your own machine
-3. **Commit** changes to your own branch
-4. **Push** your work back up to your fork
-5. Submit a **Pull request** so that we can review your changes
+1. Fork `umeow0716/qaq-app` on GitHub.
+2. Clone your fork to your machine.
+3. Commit changes on your own branch.
+4. Push the branch to your fork.
+5. Open a pull request against `umeow0716/qaq-app`.
 
-NOTE: Be sure to merge the latest from "upstream" before making a pull request!
+Before opening a pull request, merge or rebase the latest changes from the QAQ repository.
 
-### Spell Checking
+## Spell checking
 
-We have dictionary files for spell checking, located in the `dictionaries` folder. Please refer to the
-[README](dictionaries/README.md) for more information.
+Dictionary files for spell checking are in the `dictionaries` folder. See [dictionaries/README.md](dictionaries/README.md)
+for details.

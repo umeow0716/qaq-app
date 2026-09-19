@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter_app/src/model/course/course_class_json.dart';
-import 'package:flutter_app/src/model/course/course_main_extra_json.dart';
-import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/src/model/course/course_class_json.dart';
+import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
+import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 
 class CourseClassroomCacheJson {
   static const int currentSchemaVersion = 2;

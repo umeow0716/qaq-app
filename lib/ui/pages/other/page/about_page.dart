@@ -1,11 +1,11 @@
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/src/r.dart';
+import 'package:qaq_app/src/r.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_app/ui/other/list_view_animator.dart';
-import 'package:flutter_app/ui/other/my_toast.dart';
-import 'package:flutter_app/ui/other/route_utils.dart';
+import 'package:qaq_app/ui/other/list_view_animator.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
+import 'package:qaq_app/ui/other/route_utils.dart';
 
 enum OnListViewPress { contribution, privacyPolicy, version, dev }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/src/config/app_colors.dart';
-import 'package:flutter_app/src/config/app_themes.dart';
-import 'package:flutter_app/src/navigation/app_navigator.dart';
+import 'package:qaq_app/src/config/app_colors.dart';
+import 'package:qaq_app/src/config/app_themes.dart';
+import 'package:qaq_app/src/navigation/app_navigator.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

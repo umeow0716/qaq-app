@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter_app/src/connector/global_protect/global_protect_transport.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_models.dart';
-import 'package:flutter_app/src/connector/global_protect/global_protect_session_manager.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_transport.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_models.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_session_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeTransport implements GlobalProtectTransport {

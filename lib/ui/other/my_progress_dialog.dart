@@ -1,6 +1,6 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/ui/other/custom_progress_dialog.dart';
+import 'package:qaq_app/ui/other/custom_progress_dialog.dart';
 
 class MyProgressDialog {
   static void progressDialog(String? message) {

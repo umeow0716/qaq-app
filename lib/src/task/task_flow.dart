@@ -1,8 +1,8 @@
-import 'package:flutter_app/debug/log/log.dart';
-import 'package:flutter_app/src/task/course/course_system_task.dart';
-import 'package:flutter_app/src/task/iplus/iplus_system_task.dart';
-import 'package:flutter_app/src/task/ntut/ntut_task.dart';
-import 'package:flutter_app/src/task/score/score_system_task.dart';
+import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/task/course/course_system_task.dart';
+import 'package:qaq_app/src/task/iplus/iplus_system_task.dart';
+import 'package:qaq_app/src/task/ntut/ntut_task.dart';
+import 'package:qaq_app/src/task/score/score_system_task.dart';
 
 import 'task.dart';
 

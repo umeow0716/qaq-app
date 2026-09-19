@@ -1,4 +1,4 @@
-import 'package:flutter_app/src/model/json_init.dart';
+import 'package:qaq_app/src/model/json_init.dart';
 import 'package:intl/intl.dart';
 
 enum CourseFileType { pdf, word, powerPoint, excel, rar, link, unknown }
