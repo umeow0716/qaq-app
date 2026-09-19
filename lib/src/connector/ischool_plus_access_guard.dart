@@ -3,7 +3,6 @@ import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 
-
 enum IStudyAccessRoute { direct, blocked, vpn }
 
 class IStudyAccessBlockedException implements Exception {
@@ -34,9 +33,7 @@ class IStudyAccessGuard {
     final directReachable = await IStudyReachabilityProbe.canReachDirectly();
     final autoConnectVpn = LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn;
     final result = routeFor(directReachable: directReachable, autoConnectVpn: autoConnectVpn);
-    GlobalProtectDebug.log(
-      'iStudy route directReachable=$directReachable autoVpn=$autoConnectVpn -> ${result.name}',
-    );
+    GlobalProtectDebug.log('iStudy route directReachable=$directReachable autoVpn=$autoConnectVpn -> ${result.name}');
     return result;
   }
 

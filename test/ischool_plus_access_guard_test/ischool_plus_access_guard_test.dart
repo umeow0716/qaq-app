@@ -9,28 +9,16 @@ void main() {
   });
 
   test('reachable iStudy host always uses the direct route', () {
-    expect(
-      IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: false),
-      IStudyAccessRoute.direct,
-    );
-    expect(
-      IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: true),
-      IStudyAccessRoute.direct,
-    );
+    expect(IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: false), IStudyAccessRoute.direct);
+    expect(IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: true), IStudyAccessRoute.direct);
   });
 
   test('unreachable iStudy route is blocked while auto VPN is disabled', () {
-    expect(
-      IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: false),
-      IStudyAccessRoute.blocked,
-    );
+    expect(IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: false), IStudyAccessRoute.blocked);
   });
 
   test('unreachable iStudy route uses VPN while auto VPN is enabled', () {
-    expect(
-      IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true),
-      IStudyAccessRoute.vpn,
-    );
+    expect(IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true), IStudyAccessRoute.vpn);
   });
 
   test('only guards the iStudy host', () {
