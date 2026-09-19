@@ -53,20 +53,12 @@ class S {
     return Localizations.of<S>(context, S);
   }
 
-  /// `NTUT Course Assistant`
-  String get app_name {
-    return Intl.message('NTUT Course Assistant', name: 'app_name', desc: '', args: []);
-  }
 
   /// `Login`
   String get login {
     return Intl.message('Login', name: 'login', desc: '', args: []);
   }
 
-  /// `Account password has been saved`
-  String get loginSave {
-    return Intl.message('Account password has been saved', name: 'loginSave', desc: '', args: []);
-  }
 
   /// `Please enter your account`
   String get accountNull {
@@ -143,10 +135,6 @@ class S {
     return Intl.message('Are you sure to open?', name: 'AreYouSureToOpen', desc: '', args: []);
   }
 
-  /// `Download...`
-  String get downloading {
-    return Intl.message('Download...', name: 'downloading', desc: '', args: []);
-  }
 
   /// `Download complete`
   String get downloadComplete {
@@ -158,10 +146,6 @@ class S {
     return Intl.message('Prepare download...', name: 'prepareDownload', desc: '', args: []);
   }
 
-  /// `APP will close`
-  String get appWillClose {
-    return Intl.message('APP will close', name: 'appWillClose', desc: '', args: []);
-  }
 
   /// `Login to the NTUT...`
   String get loginNTUT {
@@ -173,25 +157,13 @@ class S {
     return Intl.message('Account password incorrect', name: 'accountPasswordError', desc: '', args: []);
   }
 
-  /// `Connection timed out`
-  String get connectTimeOut {
-    return Intl.message('Connection timed out', name: 'connectTimeOut', desc: '', args: []);
-  }
 
-  /// `Verification code error`
-  String get authCodeFail {
-    return Intl.message('Verification code error', name: 'authCodeFail', desc: '', args: []);
-  }
 
   /// `Account is locked, please try again in 15 minutes`
   String get accountLock {
     return Intl.message('Account is locked, please try again in 15 minutes', name: 'accountLock', desc: '', args: []);
   }
 
-  /// `Network error`
-  String get networkError {
-    return Intl.message('Network error', name: 'networkError', desc: '', args: []);
-  }
 
   /// `An unknown error occurred`
   String get unknownError {
@@ -238,10 +210,6 @@ class S {
     );
   }
 
-  /// `Check login...`
-  String get checkLogin {
-    return Intl.message('Check login...', name: 'checkLogin', desc: '', args: []);
-  }
 
   /// `Login to Score...`
   String get loginScore {
@@ -258,10 +226,6 @@ class S {
     return Intl.message('Login to ISchool Plus...', name: 'loginISchoolPlus', desc: '', args: []);
   }
 
-  /// `Login to ISchool Plus error`
-  String get loginISchoolPlusError {
-    return Intl.message('Login to ISchool Plus error', name: 'loginISchoolPlusError', desc: '', args: []);
-  }
 
   /// `Get schedule...`
   String get getCourse {
@@ -303,25 +267,9 @@ class S {
     return Intl.message('Course data reading error', name: 'getCourseDetailError', desc: '', args: []);
   }
 
-  /// `Get course announcement...`
-  String get getISchoolCourseAnnouncement {
-    return Intl.message('Get course announcement...', name: 'getISchoolCourseAnnouncement', desc: '', args: []);
-  }
 
-  /// `Get course announcement error`
-  String get getISchoolCourseAnnouncementError {
-    return Intl.message('Get course announcement error', name: 'getISchoolCourseAnnouncementError', desc: '', args: []);
-  }
 
-  /// `Get course files`
-  String get getISchoolCourseFile {
-    return Intl.message('Get course files', name: 'getISchoolCourseFile', desc: '', args: []);
-  }
 
-  /// `Get course files error`
-  String get getISchoolCourseFileError {
-    return Intl.message('Get course files error', name: 'getISchoolCourseFileError', desc: '', args: []);
-  }
 
   /// `Get course files`
   String get getISchoolPlusCourseFile {
@@ -408,90 +356,21 @@ class S {
     return Intl.message('Getting student list error', name: 'getStudentListError', desc: '', args: []);
   }
 
-  /// `Deleting message...`
-  String get deleteMessage {
-    return Intl.message('Deleting message...', name: 'deleteMessage', desc: '', args: []);
-  }
 
-  /// `Delete error`
-  String get deleteMessageError {
-    return Intl.message('Delete error', name: 'deleteMessageError', desc: '', args: []);
-  }
 
-  /// `Login to the NTUTApp...`
-  String get loginNTUTApp {
-    return Intl.message('Login to the NTUTApp...', name: 'loginNTUTApp', desc: '', args: []);
-  }
 
-  /// `Login to the NTUTApp Error`
-  String get loginNTUTAppError {
-    return Intl.message('Login to the NTUTApp Error', name: 'loginNTUTAppError', desc: '', args: []);
-  }
 
-  /// `Changing password...`
-  String get changingPassword {
-    return Intl.message('Changing password...', name: 'changingPassword', desc: '', args: []);
-  }
 
-  /// `Changing password Error`
-  String get changingPasswordError {
-    return Intl.message('Changing password Error', name: 'changingPasswordError', desc: '', args: []);
-  }
 
-  /// `Check identity`
-  String get checkIdentity {
-    return Intl.message('Check identity', name: 'checkIdentity', desc: '', args: []);
-  }
 
-  /// `Origin password`
-  String get originPassword {
-    return Intl.message('Origin password', name: 'originPassword', desc: '', args: []);
-  }
 
-  /// `Different from the original password`
-  String get passwordNotSame {
-    return Intl.message('Different from the original password', name: 'passwordNotSame', desc: '', args: []);
-  }
 
-  /// `Input new password`
-  String get inputNewPassword {
-    return Intl.message('Input new password', name: 'inputNewPassword', desc: '', args: []);
-  }
 
-  /// `Input new password again`
-  String get inputNewPasswordAgain {
-    return Intl.message('Input new password again', name: 'inputNewPasswordAgain', desc: '', args: []);
-  }
 
-  /// `Input is null`
-  String get inputNull {
-    return Intl.message('Input is null', name: 'inputNull', desc: '', args: []);
-  }
 
-  /// `The password length must be between 8 characters and 14 characters`
-  String get passwordLengthError {
-    return Intl.message(
-      'The password length must be between 8 characters and 14 characters',
-      name: 'passwordLengthError',
-      desc: '',
-      args: [],
-    );
-  }
 
-  /// `Set new password`
-  String get setNewPassword {
-    return Intl.message('Set new password', name: 'setNewPassword', desc: '', args: []);
-  }
 
-  /// `Same password as before`
-  String get sameOldPassword {
-    return Intl.message('Same password as before', name: 'sameOldPassword', desc: '', args: []);
-  }
 
-  /// `Use old password`
-  String get useOldPassword {
-    return Intl.message('Use old password', name: 'useOldPassword', desc: '', args: []);
-  }
 
   /// `MON`
   String get Monday {
@@ -698,65 +577,29 @@ class S {
     return Intl.message('Download ready to start', name: 'downloadWillStart', desc: '', args: []);
   }
 
-  /// `File attachment detected`
-  String get fileAttachmentDetected {
-    return Intl.message('File attachment detected', name: 'fileAttachmentDetected', desc: '', args: []);
-  }
 
-  /// `Are you sure you want to download the file`
-  String get areYouSureToDownload {
-    return Intl.message('Are you sure you want to download the file', name: 'areYouSureToDownload', desc: '', args: []);
-  }
 
-  /// `Score query`
-  String get scoreSearch {
-    return Intl.message('Score query', name: 'scoreSearch', desc: '', args: []);
-  }
 
-  /// `Download file`
-  String get downloadFile {
-    return Intl.message('Download file', name: 'downloadFile', desc: '', args: []);
-  }
 
   /// `Downloads`
   String get fileViewer {
     return Intl.message('Downloads', name: 'fileViewer', desc: '', args: []);
   }
 
-  /// `Language`
-  String get languageSetting {
-    return Intl.message('Language', name: 'languageSetting', desc: '', args: []);
-  }
 
   /// `Other`
   String get titleOther {
     return Intl.message('Other', name: 'titleOther', desc: '', args: []);
   }
 
-  /// `Credit Viewer`
-  String get creditViewer {
-    return Intl.message('Credit Viewer', name: 'creditViewer', desc: '', args: []);
-  }
 
-  /// `Credit search...`
-  String get creditSearch {
-    return Intl.message('Credit search...', name: 'creditSearch', desc: '', args: []);
-  }
 
   /// `Please Login`
   String get pleaseLogin {
     return Intl.message('Please Login', name: 'pleaseLogin', desc: '', args: []);
   }
 
-  /// `No function`
-  String get noFunction {
-    return Intl.message('No function', name: 'noFunction', desc: '', args: []);
-  }
 
-  /// `Change the password`
-  String get changePassword {
-    return Intl.message('Change the password', name: 'changePassword', desc: '', args: []);
-  }
 
   /// `Sign out`
   String get logout {
@@ -768,15 +611,6 @@ class S {
     return Intl.message('About', name: 'about', desc: '', args: []);
   }
 
-  /// `This is an app about National Taipei University of Technology`
-  String get aboutDialogString {
-    return Intl.message(
-      'This is an app about National Taipei University of Technology',
-      name: 'aboutDialogString',
-      desc: '',
-      args: [],
-    );
-  }
 
   /// `Press again to close`
   String get closeOnce {
@@ -853,15 +687,6 @@ class S {
     );
   }
 
-  /// `The path is wrong, please do not select the folder containing the Download directory`
-  String get selectDirectoryFail {
-    return Intl.message(
-      'The path is wrong, please do not select the folder containing the Download directory',
-      name: 'selectDirectoryFail',
-      desc: '',
-      args: [],
-    );
-  }
 
   /// `Information System`
   String get informationSystem {
@@ -893,10 +718,6 @@ class S {
     return Intl.message('Without any announcement', name: 'noAnyAnnouncement', desc: '', args: []);
   }
 
-  /// `Please go directly to the download page`
-  String get pleaseMoveToFilePage {
-    return Intl.message('Please go directly to the download page', name: 'pleaseMoveToFilePage', desc: '', args: []);
-  }
 
   /// `No files`
   String get noAnyFile {
@@ -1008,10 +829,6 @@ class S {
     return Intl.message('Subscribe', name: 'subscribe', desc: '', args: []);
   }
 
-  /// `Search`
-  String get search {
-    return Intl.message('Search', name: 'search', desc: '', args: []);
-  }
 
   /// `Not find support external video player`
   String get noSupportExternalVideoPlayer {
@@ -1228,75 +1045,27 @@ class S {
     return Intl.message('Rank', name: 'rank', desc: '', args: []);
   }
 
-  /// `Total people`
-  String get totalPeople {
-    return Intl.message('Total people', name: 'totalPeople', desc: '', args: []);
-  }
 
   /// `Percentage`
   String get percentage {
     return Intl.message('Percentage', name: 'percentage', desc: '', args: []);
   }
 
-  /// `Cultural dimension`
-  String get culturalDimension {
-    return Intl.message('Cultural dimension', name: 'culturalDimension', desc: '', args: []);
-  }
 
-  /// `Historical dimension`
-  String get historicalDimension {
-    return Intl.message('Historical dimension', name: 'historicalDimension', desc: '', args: []);
-  }
 
-  /// `Philosophical dimension`
-  String get philosophicalDimension {
-    return Intl.message('Philosophical dimension', name: 'philosophicalDimension', desc: '', args: []);
-  }
 
-  /// `Rule of law`
-  String get ruleDimension {
-    return Intl.message('Rule of law', name: 'ruleDimension', desc: '', args: []);
-  }
 
-  /// `Social dimension`
-  String get socialDimension {
-    return Intl.message('Social dimension', name: 'socialDimension', desc: '', args: []);
-  }
 
-  /// `Natural dimension`
-  String get naturalDimension {
-    return Intl.message('Natural dimension', name: 'naturalDimension', desc: '', args: []);
-  }
 
-  /// `Sociological Dimension`
-  String get sociologicalDimension {
-    return Intl.message('Sociological Dimension', name: 'sociologicalDimension', desc: '', args: []);
-  }
 
-  /// `Creative direction`
-  String get creativeDirection {
-    return Intl.message('Creative direction', name: 'creativeDirection', desc: '', args: []);
-  }
 
-  /// `Aesthetic dimension`
-  String get aestheticDimension {
-    return Intl.message('Aesthetic dimension', name: 'aestheticDimension', desc: '', args: []);
-  }
 
-  /// `Cultural and Historical dimension`
-  String get culturalHistoricalDimension {
-    return Intl.message('Cultural and Historical dimension', name: 'culturalHistoricalDimension', desc: '', args: []);
-  }
 
   /// `Credit info`
   String get creditInfo {
     return Intl.message('Credit info', name: 'creditInfo', desc: '', args: []);
   }
 
-  /// `Searching`
-  String get searching {
-    return Intl.message('Searching', name: 'searching', desc: '', args: []);
-  }
 
   /// `Searching year`
   String get searchingYear {
@@ -1333,10 +1102,6 @@ class S {
     return Intl.message('Loading...', name: 'loading', desc: '', args: []);
   }
 
-  /// `Please connect to network`
-  String get pleaseConnectToNetwork {
-    return Intl.message('Please connect to network', name: 'pleaseConnectToNetwork', desc: '', args: []);
-  }
 
   /// `The video loading time depends on the current network environment\nIf it takes too long to load, try leave this page and trying again`
   String get videoMayLoadFailedWarningMsg {
@@ -1348,40 +1113,12 @@ class S {
     );
   }
 
-  /// `Missing required information`
-  String get missingRequiredInformation {
-    return Intl.message('Missing required information', name: 'missingRequiredInformation', desc: '', args: []);
-  }
 
-  /// `Incorrect information entered`
-  String get incorrectInformationEntered {
-    return Intl.message('Incorrect information entered', name: 'incorrectInformationEntered', desc: '', args: []);
-  }
 
-  /// `Please select a start time`
-  String get pleaseSelectStartTime {
-    return Intl.message('Please select a start time', name: 'pleaseSelectStartTime', desc: '', args: []);
-  }
 
-  /// `Please select an end time`
-  String get pleaseSelectEndTime {
-    return Intl.message('Please select an end time', name: 'pleaseSelectEndTime', desc: '', args: []);
-  }
 
-  /// `Please select a weekday`
-  String get pleaseSelectWeekday {
-    return Intl.message('Please select a weekday', name: 'pleaseSelectWeekday', desc: '', args: []);
-  }
 
-  /// `End time must be after start time`
-  String get endTimeMustBeAfterStartTime {
-    return Intl.message('End time must be after start time', name: 'endTimeMustBeAfterStartTime', desc: '', args: []);
-  }
 
-  /// `ADD`
-  String get capitalAdd {
-    return Intl.message('ADD', name: 'capitalAdd', desc: '', args: []);
-  }
 
   /// `End`
   String get end {
@@ -1393,10 +1130,6 @@ class S {
     return Intl.message('Begin', name: 'begin', desc: '', args: []);
   }
 
-  /// `Coming Soon！`
-  String get comingSoon {
-    return Intl.message('Coming Soon！', name: 'comingSoon', desc: '', args: []);
-  }
 
   /// `class`
   String get kClass {
@@ -1428,15 +1161,7 @@ class S {
     return Intl.message('student id', name: 'studentId', desc: '', args: []);
   }
 
-  /// `Getting classmate list...`
-  String get getCourseClassmateList {
-    return Intl.message('Getting classmate list...', name: 'getCourseClassmateList', desc: '', args: []);
-  }
 
-  /// `Get classmate list error`
-  String get getCourseClassmateListError {
-    return Intl.message('Get classmate list error', name: 'getCourseClassmateListError', desc: '', args: []);
-  }
 
   /// `NTPU`
   String get nationalTaipeiUniversity {

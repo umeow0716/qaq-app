@@ -21,7 +21,6 @@ class NTUTConnector {
   static const _getPictureUrl = "${host}photoView.do";
   static const _getTreeUrl = "${host}aptreeList.do";
   static const _getCalendarUrl = "${host}calModeApp.do";
-  static const _changePasswordUrl = "${host}passwordMdy.do";
 
   static Future<SimpleLoginResult> login(String account, String password) async {
     final parameter = ConnectorParameter(_loginUrl)
@@ -154,21 +153,4 @@ class NTUTConnector {
     return imageInfo;
   }
 
-  static Future<String?> changePassword(String password) async {
-    try {
-      final parameter = ConnectorParameter(_changePasswordUrl);
-      final oldPassword = LocalStorage.instance.getPassword();
-      parameter.data = {"userPassword": password, "oldPassword": oldPassword, "pwdForceMdy": "profile"};
-      final result = await Connector.getDataByPost(parameter);
-      final jsonResult = json.decode(result);
-      if (jsonResult["success"] == 'true') {
-        return "";
-      } else {
-        return jsonResult["returnMsg"];
-      }
-    } catch (e, stack) {
-      Log.eWithStack(e.toString(), stack);
-      return null;
-    }
-  }
 }

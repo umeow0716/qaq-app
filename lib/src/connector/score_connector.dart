@@ -17,7 +17,6 @@ class ScoreConnector {
   static const _ssoLoginUrl = "${NTUTConnector.host}ssoIndex.do";
   static const String _scoreRankUrl = "${_scoreHost}StuQuery/QryRank.jsp";
   static const String _scoreAllScoreUrl = "${_scoreHost}StuQuery/QryScore.jsp";
-  static const String _generalLessonAllScoreUrl = "${_scoreHost}StuQuery/QryLAECourse.jsp";
 
   static Future<ScoreConnectorStatus> login() async {
     try {
@@ -243,37 +242,4 @@ class ScoreConnector {
     }
   }
 
-  static Future<List<String>?> getCoreGeneralLesson() async {
-    ConnectorParameter parameter;
-    String result;
-    Document tagNode;
-    Element node;
-    List<Element> nodes;
-    List<String> coreGeneralLessonList = [];
-    try {
-      parameter = ConnectorParameter(_generalLessonAllScoreUrl);
-      parameter.charsetName = "big5";
-      result = await Connector.getDataByGet(parameter);
-      tagNode = parse(result);
-      node = tagNode.getElementsByTagName("tbody").first;
-      nodes = node.getElementsByTagName("tr");
-      for (int i = 2; i < nodes.length; i++) {
-        node = nodes[i];
-        if (node.innerHtml.contains("＊")) {
-          String name;
-          if (node.getElementsByTagName("td")[0].attributes.containsKey("rowspan")) {
-            name = node.getElementsByTagName("td")[7].text;
-          } else {
-            name = node.getElementsByTagName("td")[3].text;
-          }
-          name = name.replaceAll(RegExp(r"[\s|\n| ]"), "");
-          coreGeneralLessonList.add(name);
-        }
-      }
-      return coreGeneralLessonList;
-    } catch (e, stack) {
-      Log.eWithStack(e.toString(), stack);
-      return null;
-    }
-  }
 }

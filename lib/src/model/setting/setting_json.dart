@@ -9,19 +9,17 @@ part 'setting_json.g.dart';
 class SettingJson {
   CourseSettingJson course;
   OtherSettingJson other;
-  AnnouncementSettingJson announcement;
 
-  SettingJson({CourseSettingJson? course, OtherSettingJson? other, AnnouncementSettingJson? announcement})
+  SettingJson({CourseSettingJson? course, OtherSettingJson? other})
     : course = course ?? CourseSettingJson(),
-      other = other ?? OtherSettingJson(),
-      announcement = announcement ?? AnnouncementSettingJson();
+      other = other ?? OtherSettingJson();
 
-  bool get isEmpty => course.isEmpty && other.isEmpty && announcement.isEmpty;
+  bool get isEmpty => course.isEmpty && other.isEmpty;
 
   @override
   String toString() => sprintf(
-    '---------course--------        \n%s \n---------other--------         \n%s \n---------announcement--------  \n%s \n',
-    [course.toString(), other.toString(), announcement.toString()],
+    '---------course--------        \n%s \n---------other--------         \n%s \n',
+    [course.toString(), other.toString()],
   );
 
   factory SettingJson.fromJson(Map<String, dynamic> json) => _$SettingJsonFromJson(json);
@@ -43,21 +41,6 @@ class CourseSettingJson {
   Map<String, dynamic> toJson() => _$CourseSettingJsonToJson(this);
 }
 
-@JsonSerializable()
-class AnnouncementSettingJson {
-  int page;
-  int maxPage;
-
-  AnnouncementSettingJson({this.page = 0, this.maxPage = 0});
-
-  bool get isEmpty => page == 0 && maxPage == 0;
-
-  @override
-  String toString() => sprintf('page      :%s \n maxPage   :%s \n ', [page.toString(), maxPage.toString()]);
-
-  factory AnnouncementSettingJson.fromJson(Map<String, dynamic> json) => _$AnnouncementSettingJsonFromJson(json);
-  Map<String, dynamic> toJson() => _$AnnouncementSettingJsonToJson(this);
-}
 
 @JsonSerializable()
 class OtherSettingJson {

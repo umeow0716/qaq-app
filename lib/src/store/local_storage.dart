@@ -84,14 +84,9 @@ class LocalStorage {
 
   void setAlreadyUse(String key) => _firstRun[key] = false;
 
-  void _setFirstUse(String key, bool value) => _firstRun[key] = value;
 
   Future<void> saveUserData() => _save(_userDataJsonKey, _userData);
 
-  Future<void> clearUserData() {
-    _userData = UserDataJson();
-    return saveUserData();
-  }
 
   void _loadUserData() {
     final readJson = _readString(_userDataJsonKey);
@@ -188,10 +183,6 @@ class LocalStorage {
 
   CourseScoreCreditJson getCourseScoreCredit() => _courseScoreList;
 
-  Future<void> _clearCourseScoreCredit() {
-    _courseScoreList = CourseScoreCreditJson();
-    return saveCourseScoreCredit();
-  }
 
   Future<void> setCourseScoreCredit(CourseScoreCreditJson value) {
     _courseScoreList = value;
@@ -503,12 +494,6 @@ class LocalStorage {
 
   OtherSettingJson getOtherSetting() => _setting.other;
 
-  Future<void> _saveAnnouncementSetting() => _saveSetting();
-
-  Future<void> _clearAnnouncementSetting() {
-    _setting.announcement = AnnouncementSettingJson();
-    return _saveAnnouncementSetting();
-  }
 
   void clearSemesterJsonList() => _courseSemesterList.clear();
 
@@ -596,7 +581,6 @@ class LocalStorage {
     _courseExtraInfoCache.clear();
     _courseClassroomCache.clear();
     _setting.course = CourseSettingJson();
-    _setting.announcement = AnnouncementSettingJson();
     _firstRun.clear();
   }
 

@@ -485,8 +485,6 @@ class GlobalProtectConnector {
       return text == null || text.isEmpty ? null : text;
     }
 
-    bool hasValue(String name) => value(name) != null;
-
     Uint8List? keyBytes(String name) {
       final element = ipsec.findElements(name).firstOrNull;
       if (element == null) return null;
