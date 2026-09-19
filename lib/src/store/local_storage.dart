@@ -3,8 +3,9 @@ import 'dart:convert';
 
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:qaq_app/src/connector/campus_network_detector.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
@@ -32,6 +33,8 @@ class LocalStorage {
 
   static const courseNotice = "CourseNotice";
   static const appCheckUpdate = "AppCheckUpdate";
+  static const _ntutPasswordStorageKey = 'ntut_password_v1';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   final cacheManager = DefaultCacheManager();
 
@@ -84,11 +87,39 @@ class LocalStorage {
 
   void setAlreadyUse(String key) => _firstRun[key] = false;
 
-  Future<void> saveUserData() => _save(_userDataJsonKey, _userData);
+  Future<void> saveUserData() async {
+    final password = _userData.password;
+    if (password.isEmpty) {
+      await _secureStorage.delete(key: _ntutPasswordStorageKey);
+    } else {
+      await _secureStorage.write(key: _ntutPasswordStorageKey, value: password);
+    }
 
-  void _loadUserData() {
+    // UserDataJson.password is excluded from JSON serialization.
+    await _save(_userDataJsonKey, _userData);
+  }
+
+  Future<void> _loadUserData() async {
     final readJson = _readString(_userDataJsonKey);
     _userData = (readJson != null) ? UserDataJson.fromJson(json.decode(readJson)) : UserDataJson();
+
+    // Migrate the legacy plaintext password from SharedPreferences exactly once.
+    // Only rewrite the JSON after secure storage has accepted the credential, so
+    // a secure-storage failure never destroys the only remaining copy.
+    final legacyPassword = _userData.password;
+    final securePassword = await _secureStorage.read(key: _ntutPasswordStorageKey);
+
+    if (securePassword != null && securePassword.isNotEmpty) {
+      _userData.password = securePassword;
+    } else if (legacyPassword.isNotEmpty) {
+      await _secureStorage.write(key: _ntutPasswordStorageKey, value: legacyPassword);
+    } else {
+      _userData.password = '';
+    }
+
+    if (legacyPassword.isNotEmpty) {
+      await _save(_userDataJsonKey, _userData);
+    }
   }
 
   void setAccount(String account) => _userData.account = account;
@@ -511,7 +542,7 @@ class LocalStorage {
     }
 
     await DioConnector.instance.init(interceptors: _httpClientInterceptors, cookieJar: _cookieJar);
-    _loadUserData();
+    await _loadUserData();
     _loadCourseTableList();
     _loadSetting();
     _loadCourseScoreCredit();
@@ -548,7 +579,7 @@ class LocalStorage {
     await cleanup('network-image-cache', cacheManager.emptyCache);
     await cleanup('generated-user-artifacts', UserSessionArtifacts.clear);
 
-    CampusNetworkDetector.clearCache();
+    IStudyReachabilityProbe.clearCache();
     await _clearUserScopedCaches();
     await init();
   }
@@ -568,6 +599,7 @@ class LocalStorage {
     _resetUserScopedMemory();
 
     await Future.wait<void>([
+      _secureStorage.delete(key: _ntutPasswordStorageKey),
       _remove(_userDataJsonKey),
       _remove(_courseTableJsonKey),
       _remove(_courseSemesterJsonKey),

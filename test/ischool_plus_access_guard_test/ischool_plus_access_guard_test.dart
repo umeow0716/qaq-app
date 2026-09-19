@@ -8,30 +8,29 @@ void main() {
     expect(OtherSettingJson.fromJson(const <String, dynamic>{}).autoConnectIStudyVpn, isFalse);
   });
 
-  test('classifies 140.* public IPv4 as campus network', () {
-    expect(CampusNetworkDetector.classifyPublicIp('140.124.13.1'), CampusNetworkStatus.onCampus);
+  test('reachable iStudy host always uses the direct route', () {
+    expect(
+      IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: false),
+      IStudyAccessRoute.direct,
+    );
+    expect(
+      IStudyAccessGuard.routeFor(directReachable: true, autoConnectVpn: true),
+      IStudyAccessRoute.direct,
+    );
   });
 
-  test('classifies non-140 IPv4 as off-campus network', () {
-    expect(CampusNetworkDetector.classifyPublicIp('8.8.8.8'), CampusNetworkStatus.offCampus);
+  test('unreachable iStudy route is blocked while auto VPN is disabled', () {
+    expect(
+      IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: false),
+      IStudyAccessRoute.blocked,
+    );
   });
 
-  test('unknown public IP does not pretend to be off-campus', () {
-    expect(CampusNetworkDetector.classifyPublicIp(null), CampusNetworkStatus.unknown);
-    expect(CampusNetworkDetector.classifyPublicIp('not-an-ip'), CampusNetworkStatus.unknown);
-  });
-
-  test('off-campus route is blocked while auto VPN is disabled', () {
-    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: false), IStudyAccessRoute.blocked);
-  });
-
-  test('off-campus route uses VPN while auto VPN is enabled', () {
-    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: true), IStudyAccessRoute.vpn);
-  });
-
-  test('campus and unknown states keep the direct route', () {
-    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.onCampus, autoConnectVpn: true), IStudyAccessRoute.direct);
-    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.unknown, autoConnectVpn: true), IStudyAccessRoute.direct);
+  test('unreachable iStudy route uses VPN while auto VPN is enabled', () {
+    expect(
+      IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true),
+      IStudyAccessRoute.vpn,
+    );
   });
 
   test('only guards the iStudy host', () {

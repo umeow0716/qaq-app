@@ -1,9 +1,8 @@
-import 'package:qaq_app/src/connector/campus_network_detector.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 
-export 'package:qaq_app/src/connector/campus_network_detector.dart';
 
 enum IStudyAccessRoute { direct, blocked, vpn }
 
@@ -28,21 +27,21 @@ class IStudyAccessGuard {
 
   /// Decides how an iStudy request should leave the app.
   ///
-  /// Unknown public-IP state intentionally fails open and uses the normal
-  /// network path. This avoids blocking users merely because the IP check
-  /// service is unavailable.
+  /// Probe the actual iStudy HTTPS port instead of inferring network location
+  /// from the user's public IP. This avoids third-party IP disclosure and keeps
+  /// the slow off-campus failure bounded by [IStudyReachabilityProbe.timeout].
   static Future<IStudyAccessRoute> route() async {
-    final campus = await CampusNetworkDetector.detect();
+    final directReachable = await IStudyReachabilityProbe.canReachDirectly();
     final autoConnectVpn = LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn;
-    final result = routeFor(campus, autoConnectVpn: autoConnectVpn);
-    GlobalProtectDebug.log('iStudy route campus=${campus.name} autoVpn=$autoConnectVpn -> ${result.name}');
+    final result = routeFor(directReachable: directReachable, autoConnectVpn: autoConnectVpn);
+    GlobalProtectDebug.log(
+      'iStudy route directReachable=$directReachable autoVpn=$autoConnectVpn -> ${result.name}',
+    );
     return result;
   }
 
-  static IStudyAccessRoute routeFor(CampusNetworkStatus campus, {required bool autoConnectVpn}) {
-    if (campus != CampusNetworkStatus.offCampus) {
-      return IStudyAccessRoute.direct;
-    }
+  static IStudyAccessRoute routeFor({required bool directReachable, required bool autoConnectVpn}) {
+    if (directReachable) return IStudyAccessRoute.direct;
     return autoConnectVpn ? IStudyAccessRoute.vpn : IStudyAccessRoute.blocked;
   }
 

@@ -7,7 +7,12 @@ part 'user_data_json.g.dart';
 @JsonSerializable()
 class UserDataJson {
   String account;
+
+  // Kept in memory so old SharedPreferences payloads can still be migrated,
+  // but never serialized back to disk.
+  @JsonKey(includeToJson: false)
   String password;
+
   UserInfoJson info;
 
   UserDataJson({String? account, String? password, UserInfoJson? info})
@@ -22,13 +27,10 @@ class UserDataJson {
   bool get isEmpty => account.isEmpty && password.isEmpty && info.isEmpty;
 
   @override
-  String toString() {
-    return sprintf('account  : %s \npassword : %s \n---------info--------     \n%s \n', [
-      account,
-      password,
-      info.toString(),
-    ]);
-  }
+  String toString() =>
+      'UserDataJson(accountPresent: ${account.isNotEmpty}, '
+      'passwordPresent: ${password.isNotEmpty}, '
+      'infoPresent: ${!info.isEmpty})';
 }
 
 @JsonSerializable()
