@@ -28,14 +28,25 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
   /// and key is the target header name, suggest using the standard [HttpHeaders] library.
   /// Before outputting the final response, if a header provides a corresponding modifier,
   /// it will use the modifier to modify the header, so , the final output header value will be the modified version.
-  EarlyInterceptorAdapter({
-    this.headerDecorators,
+  factory EarlyInterceptorAdapter({
+    Map<String, HeaderDecorator>? headerDecorators,
     HttpClient? httpClient,
     bool closeHttpClient = true,
+    HttpClientProvider? httpClientProvider,
+  }) => EarlyInterceptorAdapter._(
+    headerDecorators: headerDecorators,
+    httpClient: httpClient,
+    closeHttpClient: closeHttpClient,
+    httpClientProvider: httpClientProvider,
+  );
+
+  EarlyInterceptorAdapter._({
+    this.headerDecorators,
+    HttpClient? httpClient,
+    this._closeHttpClient = true,
     this.httpClientProvider,
   })  : _defaultHttpClient = httpClient ?? HttpClient(),
-        _usesInjectedHttpClient = httpClient != null,
-        _closeHttpClient = closeHttpClient;
+        _usesInjectedHttpClient = httpClient != null;
 
   final HttpClient _defaultHttpClient;
   final bool _usesInjectedHttpClient;

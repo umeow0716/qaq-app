@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_app/src/connector/global_protect/global_protect_connector.dart';

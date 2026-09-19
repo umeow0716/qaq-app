@@ -316,8 +316,8 @@ class GlobalProtectConnector {
     'os-version': osVersion,
     'server': server.host,
     'computer': computerName,
-    if (portalUserAuthCookie != null) 'portal-userauthcookie': portalUserAuthCookie,
-    if (portalPrelogonUserAuthCookie != null) 'portal-prelogonuserauthcookie': portalPrelogonUserAuthCookie,
+    'portal-userauthcookie': ?portalUserAuthCookie,
+    'portal-prelogonuserauthcookie': ?portalPrelogonUserAuthCookie,
     'user': username,
     'passwd': password,
   };

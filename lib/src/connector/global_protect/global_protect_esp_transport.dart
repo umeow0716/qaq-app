@@ -8,20 +8,15 @@ import 'global_protect_models.dart';
 
 class GlobalProtectEspTransport implements GlobalProtectTransport {
   GlobalProtectEspTransport._({
-    required RawDatagramSocket socket,
-    required InternetAddress gatewayAddress,
-    required int gatewayPort,
+    required this._socket,
+    required this._gatewayAddress,
+    required this._gatewayPort,
     required String tunnelAddress,
     required String probeAddress,
-    required GlobalProtectEspCodec codec,
-    GlobalProtectTransportTrace? trace,
-  })  : _socket = socket,
-        _gatewayAddress = gatewayAddress,
-        _gatewayPort = gatewayPort,
-        _tunnelAddress = InternetAddress(tunnelAddress),
-        _probeAddress = InternetAddress(probeAddress),
-        _codec = codec,
-        _trace = trace {
+    required this._codec,
+    this._trace,
+  })  : _tunnelAddress = InternetAddress(tunnelAddress),
+        _probeAddress = InternetAddress(probeAddress) {
     _subscription = _socket.listen(_onSocketEvent, onError: _onSocketError, onDone: _onSocketDone);
   }
 

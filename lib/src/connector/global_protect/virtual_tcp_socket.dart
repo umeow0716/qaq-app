@@ -12,17 +12,15 @@ typedef VirtualTcpTrace = void Function(String message);
 
 class VirtualTcpSocket implements VirtualByteSocket {
   VirtualTcpSocket._({
-    required GlobalProtectTransport transport,
+    required this._transport,
     required this.localAddress,
     required this.remoteAddress,
     required this.localPort,
     required this.remotePort,
     required int initialSequence,
     required this.maxSegmentPayload,
-    VirtualTcpTrace? trace,
-  })  : _transport = transport,
-        _trace = trace,
-        _sendSequence = initialSequence;
+    this._trace,
+  }) : _sendSequence = initialSequence;
 
   final GlobalProtectTransport _transport;
   final VirtualTcpTrace? _trace;
@@ -124,7 +122,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
     final operation = _writeTail.then((_) => _writeSerialized(copy));
     _writeTail = operation.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object _, StackTrace _) {},
     );
     return operation;
   }

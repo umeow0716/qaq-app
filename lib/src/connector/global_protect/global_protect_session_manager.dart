@@ -32,12 +32,21 @@ class GlobalProtectSessionSnapshot {
 }
 
 class GlobalProtectSessionManager {
-  GlobalProtectSessionManager({
+  factory GlobalProtectSessionManager({
     required GlobalProtectConnectCallback connect,
     GlobalProtectDisconnectCallback? disconnect,
     GlobalProtectConnectionEvents? connectionEvents,
-  }) : _connect = connect,
-       _disconnect = disconnect ?? _defaultDisconnect,
+  }) => GlobalProtectSessionManager._(
+    connect: connect,
+    disconnect: disconnect,
+    connectionEvents: connectionEvents,
+  );
+
+  GlobalProtectSessionManager._({
+    required this._connect,
+    GlobalProtectDisconnectCallback? disconnect,
+    GlobalProtectConnectionEvents? connectionEvents,
+  }) : _disconnect = disconnect ?? _defaultDisconnect,
        _connectionEvents = connectionEvents ?? _defaultConnectionEvents;
 
   final GlobalProtectConnectCallback _connect;
@@ -113,7 +122,7 @@ class GlobalProtectSessionManager {
     unawaited(
       future.then<void>(
         (_) => _clearConnectInFlight(future),
-        onError: (Object _, StackTrace __) => _clearConnectInFlight(future),
+        onError: (Object _, StackTrace _) => _clearConnectInFlight(future),
       ),
     );
     return future;
@@ -197,7 +206,7 @@ class GlobalProtectSessionManager {
         stackTrace: stackTrace,
       ),
     );
-    unawaited(_disconnect(endedConnection).catchError((Object _, StackTrace __) {}));
+    unawaited(_disconnect(endedConnection).catchError((Object _, StackTrace _) {}));
   }
 
   void _clearConnectInFlight(Future<GlobalProtectConnection> future) {

@@ -20,7 +20,7 @@ typedef GlobalProtectVirtualSocketDialer = Future<VirtualByteSocket> Function(
 /// HTTP parsing, cookies, redirects, compression, and connection reuse remain
 /// owned by dart:io. This class only replaces socket creation.
 class GlobalProtectHttpClient {
-  GlobalProtectHttpClient({
+  factory GlobalProtectHttpClient({
     required GlobalProtectTransport transport,
     required String localAddress,
     GlobalProtectHostResolver? resolver,
@@ -31,16 +31,32 @@ class GlobalProtectHttpClient {
     Duration tlsHandshakeTimeout = const Duration(seconds: 15),
     int maxSegmentPayload = 1200,
     VirtualTcpTrace? tcpTrace,
-  })  : _transport = transport,
-        _localAddress = localAddress,
-        _resolver = resolver ?? _defaultResolver,
-        _socketDialer = socketDialer,
+  }) => GlobalProtectHttpClient._(
+    transport: transport,
+    localAddress: localAddress,
+    resolver: resolver,
+    socketDialer: socketDialer,
+    securityContext: securityContext,
+    tcpConnectTimeout: tcpConnectTimeout,
+    bridgeTimeout: bridgeTimeout,
+    tlsHandshakeTimeout: tlsHandshakeTimeout,
+    maxSegmentPayload: maxSegmentPayload,
+    tcpTrace: tcpTrace,
+  );
+
+  GlobalProtectHttpClient._({
+    required this._transport,
+    required this._localAddress,
+    GlobalProtectHostResolver? resolver,
+    this._socketDialer,
+    SecurityContext? securityContext,
+    this._tcpConnectTimeout = const Duration(seconds: 8),
+    this._bridgeTimeout = const Duration(seconds: 5),
+    this._tlsHandshakeTimeout = const Duration(seconds: 15),
+    this._maxSegmentPayload = 1200,
+    this._tcpTrace,
+  })  : _resolver = resolver ?? _defaultResolver,
         _securityContext = securityContext,
-        _tcpConnectTimeout = tcpConnectTimeout,
-        _bridgeTimeout = bridgeTimeout,
-        _tlsHandshakeTimeout = tlsHandshakeTimeout,
-        _maxSegmentPayload = maxSegmentPayload,
-        _tcpTrace = tcpTrace,
         client = HttpClient(context: securityContext) {
     client.findProxy = (_) => 'DIRECT';
     client.connectionFactory = _createConnection;

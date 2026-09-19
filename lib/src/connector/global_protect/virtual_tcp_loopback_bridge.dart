@@ -13,12 +13,10 @@ import 'virtual_byte_socket.dart';
 class VirtualTcpLoopbackBridge {
   VirtualTcpLoopbackBridge._({
     required this.socket,
-    required VirtualByteSocket virtualSocket,
-    required ServerSocket server,
-    required Socket peer,
-  })  : _virtualSocket = virtualSocket,
-        _server = server,
-        _peer = peer;
+    required this._virtualSocket,
+    required this._server,
+    required this._peer,
+  });
 
   final Socket socket;
   final VirtualByteSocket _virtualSocket;

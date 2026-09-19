@@ -40,7 +40,7 @@ class GlobalProtectWebViewProxyBridge {
     unawaited(
       future.then<void>(
         (_) => _clearStartFuture(future),
-        onError: (Object _, StackTrace __) => _clearStartFuture(future),
+        onError: (Object _, StackTrace _) => _clearStartFuture(future),
       ),
     );
     return future;

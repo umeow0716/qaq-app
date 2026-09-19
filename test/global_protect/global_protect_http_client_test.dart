@@ -79,7 +79,7 @@ void main() {
       localAddress: '10.0.0.2',
       securityContext: clientContext,
       resolver: (_) async => InternetAddress.loopbackIPv4,
-      socketDialer: (_, __) async => _SocketBackedVirtualByteSocket(
+      socketDialer: (_, _) async => _SocketBackedVirtualByteSocket(
         await Socket.connect(InternetAddress.loopbackIPv4, server.port),
       ),
     );
