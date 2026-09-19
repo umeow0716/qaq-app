@@ -768,11 +768,6 @@ class S {
     return Intl.message('Sign out', name: 'logout', desc: '', args: []);
   }
 
-  /// `Feedback`
-  String get feedback {
-    return Intl.message('Feedback', name: 'feedback', desc: '', args: []);
-  }
-
   /// `About`
   String get about {
     return Intl.message('About', name: 'about', desc: '', args: []);

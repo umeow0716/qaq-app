@@ -109,7 +109,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "end": MessageLookupByLibrary.simpleMessage("結束"),
     "endTimeMustBeAfterStartTime": MessageLookupByLibrary.simpleMessage("結束時間必須晚於開始時間"),
     "error": MessageLookupByLibrary.simpleMessage("錯誤"),
-    "feedback": MessageLookupByLibrary.simpleMessage("意見反饋"),
     "file": MessageLookupByLibrary.simpleMessage("檔案"),
     "fileAndVideo": MessageLookupByLibrary.simpleMessage("教材及錄影"),
     "fileAttachmentDetected": MessageLookupByLibrary.simpleMessage("偵測到檔案附件"),

@@ -3,22 +3,19 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
 // import 'package:flutter_app/src/config/app_config.dart';
-import 'package:flutter_app/src/config/app_link.dart';
 import 'package:flutter_app/src/connector/ntut_connector.dart';
 import 'package:flutter_app/src/file/file_store.dart';
 import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/store/local_storage.dart';
 import 'package:flutter_app/src/task/ntut/ntut_task.dart';
 import 'package:flutter_app/src/task/task_flow.dart';
-import 'package:flutter_app/src/version/update/app_update.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
-import 'package:flutter_app/ui/pages/logconsole/log_console.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
 
-enum OnListViewPress { setting, fileViewer, logout, report, about, login, subSystem }
+enum OnListViewPress { setting, fileViewer, logout, about, login, subSystem }
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -58,12 +55,6 @@ class _OtherPageState extends State<OtherPage> {
       },
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
-    {
-      "icon": EvaIcons.messageSquareOutline,
-      "color": Colors.cyan,
-      "title": R.current.feedback,
-      "onPress": OnListViewPress.report,
-    },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
@@ -111,12 +102,6 @@ class _OtherPageState extends State<OtherPage> {
         break;
       case OnListViewPress.setting:
         RouteUtils.toSettingPage(widget.pageController);
-        break;
-      case OnListViewPress.report:
-        final mainVersion = await AppUpdate.getAppVersion();
-        final link = AppLink.feedbackUrl(mainVersion, LogConsole.getLog());
-
-        RouteUtils.toWebViewPage(initialUrl: link, title: R.current.feedback);
         break;
     }
   }

@@ -111,7 +111,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "end": MessageLookupByLibrary.simpleMessage("End"),
     "endTimeMustBeAfterStartTime": MessageLookupByLibrary.simpleMessage("End time must be after start time"),
     "error": MessageLookupByLibrary.simpleMessage("Error"),
-    "feedback": MessageLookupByLibrary.simpleMessage("Feedback"),
     "file": MessageLookupByLibrary.simpleMessage("File"),
     "fileAndVideo": MessageLookupByLibrary.simpleMessage("File and Videos"),
     "fileAttachmentDetected": MessageLookupByLibrary.simpleMessage("File attachment detected"),
