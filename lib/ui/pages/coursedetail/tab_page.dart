@@ -38,8 +38,6 @@ class TabPageList {
         .map((tabPage) => Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: tabPage.tab))
         .toList();
   }
-
-  Widget getPage(int index) => tabPageList[index].tabPage;
   GlobalKey<NavigatorState> getKey(int index) => tabPageList[index].navigatorKey;
   int get length => tabPageList.length;
 }

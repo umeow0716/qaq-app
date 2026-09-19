@@ -145,20 +145,6 @@ class CourseConnector {
     }
   }
 
-  static Future<String?> getCourseENName(String url) async {
-    try {
-      final parameter = ConnectorParameter(url)..charsetName = 'big5';
-      final result = await Connector.getDataByGet(parameter);
-      final tagNode = parse(result);
-      final table = tagNode.getElementsByTagName("table").first;
-      final row = table.getElementsByTagName("tr")[1];
-      return row.getElementsByTagName("td")[2].text.replaceAll(RegExp(r"\n"), "");
-    } catch (e, stack) {
-      Log.eWithStack(e.toString(), stack);
-      return null;
-    }
-  }
-
   static Future<Map<Day, Map<SectionNumber, Set<String>>>?> getClassroomUsage(String url) async {
     try {
       final classroomUsageUrl = url.replaceFirst('/course/en/', '/course/tw/');
@@ -741,59 +727,6 @@ class CourseConnector {
       }
       info.json = courseMainInfoList;
       return info;
-    } catch (e, stack) {
-      Log.eWithStack(e.toString(), stack);
-      return null;
-    }
-  }
-
-  static Future<Map?> getGraduation(String year, String department) async {
-    RegExpMatch? matches;
-    Map graduationMap = {};
-    try {
-      var parameter = ConnectorParameter("https://aps.ntut.edu.tw/course/tw/Cprog.jsp");
-      parameter.data = {"format": "-3", "year": year, "matric": "7"};
-      var result = await Connector.getDataByGet(parameter);
-      final tagNode = parse(result);
-      var node = tagNode.getElementsByTagName("tbody").first;
-      final nodes = node.getElementsByTagName("tr");
-      String? href;
-      for (int i = 1; i < nodes.length; i++) {
-        node = nodes[i];
-        node = node.getElementsByTagName("a").first;
-        if (node.text.contains(department)) {
-          href = node.attributes["href"];
-          break;
-        }
-      }
-      if (href == null || href.isEmpty) return null;
-      final graduationUrl = "https://aps.ntut.edu.tw/course/tw/$href";
-      parameter = ConnectorParameter(graduationUrl);
-      result = await Connector.getDataByGet(parameter);
-
-      var exp = RegExp(r"最低畢業學分：?(\d+)學分");
-      matches = exp.firstMatch(result);
-      graduationMap["lowCredit"] = int.parse(matches?.group(1) ?? "0");
-
-      exp = RegExp(r"共同必修：?(\d+)學分");
-      matches = exp.firstMatch(result);
-      graduationMap["△"] = int.parse(matches?.group(1) ?? "0");
-
-      exp = RegExp(r"專業必修：?(\d+)學分");
-      matches = exp.firstMatch(result);
-      graduationMap["▲"] = int.parse(matches?.group(1) ?? "0");
-
-      exp = RegExp(r"專業選修：?(\d+)學分");
-      matches = exp.firstMatch(result);
-      graduationMap["★"] = int.parse(matches?.group(1) ?? "0");
-
-      /*
-      exp = RegExp("通識博雅課程應修滿(\d+)學分");
-      matches = exp.firstMatch(result);
-      exp = RegExp("跨系所專業選修(\d+)學分為畢業學分");
-      matches = exp.firstMatch(result);
-      */
-      return graduationMap;
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
       return null;

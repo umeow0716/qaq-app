@@ -65,8 +65,6 @@ class LocalStorage {
     return preferences;
   }
 
-  bool get autoCheckAppUpdate => _setting.other.autoCheckAppUpdate;
-
   bool getFirstUse(String key, {int? timeOut}) {
     if (timeOut != null) {
       final millsTimeOut = timeOut * 1000;
@@ -531,10 +529,6 @@ class LocalStorage {
       _courseSemesterList.length > index ? _courseSemesterList[index] : null;
 
   List<SemesterJson> getSemesterList() => _courseSemesterList;
-
-  String? getVersion() => _readString("version");
-
-  Future<void> setVersion(String version) => _writeString("version", version);
 
   Future<void> init({List<Interceptor> httpClientInterceptors = const [], CookieJar? cookieJar}) async {
     _pref = await SharedPreferences.getInstance();

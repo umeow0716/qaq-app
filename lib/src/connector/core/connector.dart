@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_app/debug/log/log.dart';
 import 'package:flutter_app/src/connector/ischool_plus_access_guard.dart';
-import 'package:sprintf/sprintf.dart';
 
 import 'connector_parameter.dart';
 import 'dio_connector.dart';
@@ -95,12 +94,6 @@ class Connector {
     } catch (e) {
       Log.d(e.toString());
       return null;
-    }
-  }
-
-  static void printHeader(Map<String, String> headers) {
-    for (String key in headers.keys) {
-      Log.d(sprintf("%s : %s", [key, headers[key]]));
     }
   }
 }

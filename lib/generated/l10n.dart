@@ -163,11 +163,6 @@ class S {
     return Intl.message('APP will close', name: 'appWillClose', desc: '', args: []);
   }
 
-  /// `isFocusUpdate`
-  String get isFocusUpdate {
-    return Intl.message('isFocusUpdate', name: 'isFocusUpdate', desc: '', args: []);
-  }
-
   /// `Login to the NTUT...`
   String get loginNTUT {
     return Intl.message('Login to the NTUT...', name: 'loginNTUT', desc: '', args: []);
@@ -1043,21 +1038,6 @@ class S {
     return Intl.message('Permission denied', name: 'noPermission', desc: '', args: []);
   }
 
-  /// `Find new version`
-  String get findNewVersion {
-    return Intl.message('Find new version', name: 'findNewVersion', desc: '', args: []);
-  }
-
-  /// `Check version`
-  String get checkVersion {
-    return Intl.message('Check version', name: 'checkVersion', desc: '', args: []);
-  }
-
-  /// `Checking version...`
-  String get checkingVersion {
-    return Intl.message('Checking version...', name: 'checkingVersion', desc: '', args: []);
-  }
-
   /// `Contribution`
   String get Contribution {
     return Intl.message('Contribution', name: 'Contribution', desc: '', args: []);
@@ -1066,16 +1046,6 @@ class S {
   /// `Version info`
   String get versionInfo {
     return Intl.message('Version info', name: 'versionInfo', desc: '', args: []);
-  }
-
-  /// `Already the latest version`
-  String get isNewVersion {
-    return Intl.message('Already the latest version', name: 'isNewVersion', desc: '', args: []);
-  }
-
-  /// `Auto App Check`
-  String get autoAppCheck {
-    return Intl.message('Auto App Check', name: 'autoAppCheck', desc: '', args: []);
   }
 
   /// `Are you sure you want to log out? \nAll data will be cleared`

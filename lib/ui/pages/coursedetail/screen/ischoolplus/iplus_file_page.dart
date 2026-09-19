@@ -270,13 +270,6 @@ class SelectList {
       ..addAll(List<bool>.filled(number, false));
   }
 
-  void setItemSelect(int index, bool value) {
-    if (index >= _selectList.length) {
-      return;
-    }
-    _selectList[index] = value;
-  }
-
   void setItemReverse(int index) {
     if (index >= _selectList.length) {
       return;

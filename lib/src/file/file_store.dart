@@ -34,16 +34,6 @@ class FileStore {
     return savedDir.path;
   }
 
-  static Future<bool> setFilePath(String? directory) async {
-    if (directory != null) {
-      final pref = await SharedPreferences.getInstance();
-      pref.setString(storeKey, base64Encode(directory.codeUnits));
-      return true;
-    }
-
-    return false;
-  }
-
   static Future<Directory?> _getFilePath() async {
     final pref = await SharedPreferences.getInstance();
     final path = pref.getString(storeKey);

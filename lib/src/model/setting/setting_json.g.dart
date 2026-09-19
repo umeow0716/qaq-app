@@ -32,7 +32,6 @@ Map<String, dynamic> _$AnnouncementSettingJsonToJson(AnnouncementSettingJson ins
 
 OtherSettingJson _$OtherSettingJsonFromJson(Map<String, dynamic> json) => OtherSettingJson(
   lang: json['lang'] as String?,
-  autoCheckAppUpdate: json['autoCheckAppUpdate'] as bool? ?? true,
   useExternalVideoPlayer: json['useExternalVideoPlayer'] as bool? ?? false,
   checkIPlusNew: json['checkIPlusNew'] as bool? ?? true,
   autoConnectIStudyVpn: json['autoConnectIStudyVpn'] as bool? ?? false,
@@ -40,7 +39,6 @@ OtherSettingJson _$OtherSettingJsonFromJson(Map<String, dynamic> json) => OtherS
 
 Map<String, dynamic> _$OtherSettingJsonToJson(OtherSettingJson instance) => <String, dynamic>{
   'lang': instance.lang,
-  'autoCheckAppUpdate': instance.autoCheckAppUpdate,
   'useExternalVideoPlayer': instance.useExternalVideoPlayer,
   'checkIPlusNew': instance.checkIPlusNew,
   'autoConnectIStudyVpn': instance.autoConnectIStudyVpn,

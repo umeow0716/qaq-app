@@ -2,15 +2,12 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 
-typedef OnCategoryChanged = void Function(int? category);
-
 class ScoreTile extends StatelessWidget {
   ScoreTile({
     super.key,
     required this.courseName,
     required this.category,
     required this.scoreValue,
-    this.onCategoryChanged,
   });
 
   /// The score value of a course.
@@ -18,7 +15,6 @@ class ScoreTile extends StatelessWidget {
   final String scoreValue;
   final String category;
   final String courseName;
-  final OnCategoryChanged? onCategoryChanged;
 
   final ValueNotifier<int?> _selectedCategory = ValueNotifier(null);
 
@@ -41,7 +37,6 @@ class ScoreTile extends StatelessWidget {
           .toList(),
       onChanged: (newCategory) {
         _selectedCategory.value = newCategory;
-        onCategoryChanged?.call(newCategory);
       },
     ),
   );

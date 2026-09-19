@@ -31,32 +31,6 @@ class LogConsole extends StatefulWidget {
     _initialized = true;
   }
 
-  static String getLog() {
-    bool error = false;
-    final List<OutputEvent> events = [];
-    for (final event in _outputEventBuffer) {
-      events.add(event);
-    }
-    String log = "";
-    for (int i = 0; i < events.length; i++) {
-      final event = events[i];
-      if (event.level == Level.error) {
-        error = true;
-        log += event.lines.join("\n");
-      }
-    }
-    if (error) {
-      log = log.replaceAll("┌───────────────────────────────────────────────────────────", "");
-      log = log.replaceAll("└───────────────────────────────────────────────────────────", "");
-      log = log.replaceAll("├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄", "");
-      log = log.replaceAll("├", "");
-      log = log.replaceAll("│", "");
-      return log.substring(0, (log.length > 2000) ? 2000 : log.length);
-    } else {
-      return "沒有任何錯誤";
-    }
-  }
-
   @override
   State<LogConsole> createState() => _LogConsoleState();
 }

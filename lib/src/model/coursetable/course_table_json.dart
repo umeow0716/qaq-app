@@ -92,8 +92,6 @@ class CourseTableJson {
 
   bool get isEmpty => studentId.isEmpty && courseSemester.isEmpty;
 
-  CourseInfoJson? getCourseDetailByTime(Day day, SectionNumber sectionNumber) => courseInfoMap[day]?[sectionNumber];
-
   void setCourseDetailByTime(Day day, SectionNumber sectionNumber, CourseInfoJson courseInfo) {
     final dayMap = courseInfoMap.putIfAbsent(day, () => <SectionNumber, CourseInfoJson>{});
     if (day == Day.UnKnown) {

@@ -32,6 +32,4 @@ class MyProgressDialog {
   }
 
   static void hideProgressDialog() => BotToast.cleanAll();
-
-  static void hideAllDialog() => BotToast.cleanAll();
 }

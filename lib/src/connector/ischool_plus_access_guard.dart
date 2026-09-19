@@ -53,10 +53,6 @@ class IStudyAccessGuard {
 
   static Future<bool> shouldBlock() async => await route() == IStudyAccessRoute.blocked;
 
-  static Future<bool> shouldUseVpn() async => await route() == IStudyAccessRoute.vpn;
-
-  static Future<bool> shouldBlockUri(Uri uri) async => isIStudyUri(uri) && await shouldBlock();
-
   static Future<void> ensureUrlAllowed(String url) async {
     if (!isIStudyUrl(url)) return;
     if (await shouldBlock()) throw const IStudyAccessBlockedException();

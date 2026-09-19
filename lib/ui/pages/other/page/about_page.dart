@@ -2,7 +2,7 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/version/update/app_update.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
@@ -73,7 +73,7 @@ class _AboutPageState extends State<AboutPage> {
         RouteUtils.toContributorsPage();
         break;
       case OnListViewPress.version:
-        String mainVersion = await AppUpdate.getAppVersion();
+        final mainVersion = (await PackageInfo.fromPlatform()).version;
         if (pressTime == 0) {
           MyToast.show(mainVersion);
         }

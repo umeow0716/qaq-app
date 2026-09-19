@@ -26,39 +26,6 @@ class CourseScoreCreditJson {
   }) : graduationInformation = graduationInformation ?? GraduationInformationJson(),
        semesterCourseScoreList = semesterCourseScoreList ?? <SemesterCourseScoreJson>[];
 
-  //利用學期取得課程資訊
-  SemesterCourseScoreJson? getCourseBySemester(SemesterJson semesterJson) {
-    for (final i in semesterCourseScoreList) {
-      if (i.semester == semesterJson) {
-        return i;
-      }
-    }
-    return null;
-  }
-
-  //取得所有課程資訊
-  List<CourseScoreInfoJson> getCourseInfoList() {
-    final courseInfoList = <CourseScoreInfoJson>[];
-
-    for (final i in semesterCourseScoreList) {
-      courseInfoList.addAll(i.courseScoreList);
-    }
-
-    return courseInfoList;
-  }
-
-  //利用課程id取得課程資訊
-  CourseScoreInfoJson? getCourseByCourseId(String courseId) {
-    for (final i in semesterCourseScoreList) {
-      for (final j in i.courseScoreList) {
-        if (courseId == j.courseId) {
-          return j;
-        }
-      }
-    }
-    return null;
-  }
-
   //取得所有課程id
   List<String> getCourseIdList() {
     final courseIdList = <String>[];

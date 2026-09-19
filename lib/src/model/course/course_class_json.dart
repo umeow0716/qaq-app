@@ -1,6 +1,5 @@
 import 'package:flutter_app/src/model/coursetable/course_table_json.dart';
 import 'package:flutter_app/src/model/json_init.dart';
-import 'package:flutter_app/src/util/language_util.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:sprintf/sprintf.dart';
 
@@ -209,12 +208,6 @@ class ClassmateJson {
     'className           : %s \nstudentEnglishName  : %s \nstudentName         : %s \nstudentId           : %s \nhref                : %s \nisSelect            : %s \n',
     [className, studentEnglishName, studentName, studentId, href, isSelect.toString()],
   );
-
-  String getName() {
-    var name = LanguageUtil.getLangIndex() == LangEnum.en ? studentEnglishName : studentName;
-    if (!name.contains(RegExp(r'\w'))) name = studentName;
-    return name;
-  }
 
   factory ClassmateJson.fromJson(Map<String, dynamic> json) => _$ClassmateJsonFromJson(json);
   Map<String, dynamic> toJson() => _$ClassmateJsonToJson(this);

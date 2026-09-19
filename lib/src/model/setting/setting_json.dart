@@ -62,14 +62,12 @@ class AnnouncementSettingJson {
 @JsonSerializable()
 class OtherSettingJson {
   String lang;
-  bool autoCheckAppUpdate;
   bool useExternalVideoPlayer;
   bool checkIPlusNew;
   bool autoConnectIStudyVpn;
 
   OtherSettingJson({
     String? lang,
-    this.autoCheckAppUpdate = true,
     this.useExternalVideoPlayer = false,
     this.checkIPlusNew = true,
     this.autoConnectIStudyVpn = false,

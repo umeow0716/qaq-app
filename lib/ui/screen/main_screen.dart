@@ -7,7 +7,6 @@ import 'package:flutter_app/src/r.dart';
 import 'package:flutter_app/src/task/ntut/ntut_task.dart';
 import 'package:flutter_app/src/task/task.dart';
 import 'package:flutter_app/src/util/language_util.dart';
-import 'package:flutter_app/src/version/app_version.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/pages/calendar/calendar_page.dart';
 import 'package:flutter_app/ui/pages/coursetable/course_table_page.dart';
@@ -37,7 +36,6 @@ class _MainScreenState extends State<MainScreen> {
   void appInit() async {
     try {
       await initLanguage();
-      APPVersion.initAndCheck();
       initNotifications();
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);

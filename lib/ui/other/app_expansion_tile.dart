@@ -53,8 +53,6 @@ class AppExpansionTileState extends State<AppExpansionTile> with SingleTickerPro
     super.dispose();
   }
 
-  void expand() => _setExpanded(true);
-  void collapse() => _setExpanded(false);
   void toggle() => _setExpanded(!_isExpanded);
 
   void _setExpanded(bool isExpanded) {
