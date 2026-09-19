@@ -1,4 +1,4 @@
-$min_ios_target_version = '14.7'
+$min_ios_target_version = '15.0'
 
 platform :ios, $min_ios_target_version
 
