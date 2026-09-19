@@ -1,0 +1,91 @@
+name: Build Beta
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-beta-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android beta artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: bash scripts/codegen.sh
+
+      - name: Build beta APK
+        run: flutter build apk --release --flavor beta
+
+      - name: Build beta app bundle
+        run: flutter build appbundle --release --flavor beta
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-beta-${{ github.sha }}
+          path: |
+            build/app/outputs/flutter-apk/*beta-release.apk
+            build/app/outputs/bundle/betaRelease/*.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    name: iOS beta no-codesign build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: bash scripts/codegen.sh
+
+      - name: Patch iOS plugins
+        run: bash scripts/patch_ios.sh
+
+      - name: Build iOS beta without signing
+        run: flutter build ios --release --no-codesign --flavor beta
+
+      - name: Archive iOS app
+        run: ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app build/ios/tat-beta-ios.zip
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-beta-${{ github.sha }}
+          path: build/ios/tat-beta-ios.zip
+          if-no-files-found: error
+          retention-days: 14
