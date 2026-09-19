@@ -57,3 +57,8 @@ app.*.map.json
 
 # Test files
 **/test/ischool_plus_connector_test/credential.json
+
+# Reproducible Dart code generation outputs.
+/lib/generated/
+**/*.g.dart
+!/lib/src/config/color_schemes.g.dart
