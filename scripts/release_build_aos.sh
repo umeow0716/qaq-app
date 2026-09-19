@@ -5,6 +5,7 @@ readonly SCRIPTS_DIR="$(dirname "$0")"
 bash "$SCRIPTS_DIR"/format.sh && \
 flutter analyze && \
 flutter build appbundle -v --release --flavor real \
+  --android-skip-build-dependency-validation \
   --deferred-components \
   --validate-deferred-components \
   --null-assertions \
