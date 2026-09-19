@@ -88,10 +88,7 @@ class CourseClassroomResolutionTask {
         final courseId = main.course.id.trim();
         if (courseId.isEmpty || main.classroom.length < 2) continue;
 
-        final target = targets.putIfAbsent(
-          courseId,
-          () => _ClassroomResolutionTarget(courseId: courseId, main: main),
-        );
+        final target = targets.putIfAbsent(courseId, () => _ClassroomResolutionTarget(courseId: courseId, main: main));
         target.slots.add(_ClassroomSlot(day, section));
       }
     }
@@ -99,10 +96,7 @@ class CourseClassroomResolutionTask {
     return targets;
   }
 
-  static Future<void> _refreshTargets(
-    CourseTableJson courseTable,
-    List<_ClassroomResolutionTarget> targets,
-  ) async {
+  static Future<void> _refreshTargets(CourseTableJson courseTable, List<_ClassroomResolutionTarget> targets) async {
     final usageRequests = <String, Future<Map<Day, Map<SectionNumber, Set<String>>>?>>{};
     final storage = LocalStorage.instance;
     var changed = false;
@@ -117,10 +111,7 @@ class CourseClassroomResolutionTask {
       } catch (e, stack) {
         // One malformed classroom/course must not abort resolution for the
         // remaining timetable. Do not touch this target's existing cache.
-        Log.eWithStack(
-          '[CourseClassroomResolutionTask] ${target.courseId}: $e',
-          stack,
-        );
+        Log.eWithStack('[CourseClassroomResolutionTask] ${target.courseId}: $e', stack);
       }
     }
 

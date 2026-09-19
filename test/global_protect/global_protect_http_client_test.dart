@@ -50,11 +50,7 @@ void main() {
     final clientContext = SecurityContext(withTrustedRoots: false)
       ..setTrustedCertificates('test/global_protect/fixtures/localhost-cert.pem');
 
-    final server = await SecureServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-      serverContext,
-    );
+    final server = await SecureServerSocket.bind(InternetAddress.loopbackIPv4, 0, serverContext);
 
     final serverDone = Completer<void>();
     final serverSubscription = server.listen((socket) {
@@ -79,15 +75,12 @@ void main() {
       localAddress: '10.0.0.2',
       securityContext: clientContext,
       resolver: (_) async => InternetAddress.loopbackIPv4,
-      socketDialer: (_, _) async => _SocketBackedVirtualByteSocket(
-        await Socket.connect(InternetAddress.loopbackIPv4, server.port),
-      ),
+      socketDialer: (_, _) async =>
+          _SocketBackedVirtualByteSocket(await Socket.connect(InternetAddress.loopbackIPv4, server.port)),
     );
 
     try {
-      final request = await gpClient.client.getUrl(
-        Uri.parse('https://localhost:${server.port}/'),
-      );
+      final request = await gpClient.client.getUrl(Uri.parse('https://localhost:${server.port}/'));
       final response = await request.close();
       final body = await utf8.decodeStream(response);
 

@@ -333,15 +333,17 @@ void main() {
     expect(syn.syn, isTrue);
     expect(syn.tcpOptions, <int>[2, 4, 0x04, 0xb0]);
 
-    transport.controller.add(Ipv4TcpCodec.encode(
-      sourceAddress: InternetAddressValue.parseIpv4('140.124.13.231'),
-      destinationAddress: InternetAddressValue.parseIpv4('172.24.1.10'),
-      sourcePort: 443,
-      destinationPort: 50000,
-      sequenceNumber: 9000,
-      acknowledgementNumber: (syn.sequenceNumber + 1) & 0xffffffff,
-      flags: TcpFlags.syn | TcpFlags.ack,
-    ));
+    transport.controller.add(
+      Ipv4TcpCodec.encode(
+        sourceAddress: InternetAddressValue.parseIpv4('140.124.13.231'),
+        destinationAddress: InternetAddressValue.parseIpv4('172.24.1.10'),
+        sourcePort: 443,
+        destinationPort: 50000,
+        sequenceNumber: 9000,
+        acknowledgementNumber: (syn.sequenceNumber + 1) & 0xffffffff,
+        flags: TcpFlags.syn | TcpFlags.ack,
+      ),
+    );
 
     final socket = await connectFuture;
     await socket.close(sendFin: false);
@@ -376,10 +378,7 @@ void main() {
 
     final received = <int>[];
     final streamDone = Completer<void>();
-    final subscription = socket.stream.listen(
-      received.addAll,
-      onDone: streamDone.complete,
-    );
+    final subscription = socket.stream.listen(received.addAll, onDone: streamDone.complete);
 
     // The tail arrives first and carries FIN. The socket must remain open while
     // bytes 1001..1003 are still missing.
@@ -421,5 +420,4 @@ void main() {
     await subscription.cancel();
     await transport.close();
   });
-
 }

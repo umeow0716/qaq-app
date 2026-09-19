@@ -21,30 +21,17 @@ void main() {
     expect(CampusNetworkDetector.classifyPublicIp('not-an-ip'), CampusNetworkStatus.unknown);
   });
 
-
   test('off-campus route is blocked while auto VPN is disabled', () {
-    expect(
-      IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: false),
-      IStudyAccessRoute.blocked,
-    );
+    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: false), IStudyAccessRoute.blocked);
   });
 
   test('off-campus route uses VPN while auto VPN is enabled', () {
-    expect(
-      IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: true),
-      IStudyAccessRoute.vpn,
-    );
+    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.offCampus, autoConnectVpn: true), IStudyAccessRoute.vpn);
   });
 
   test('campus and unknown states keep the direct route', () {
-    expect(
-      IStudyAccessGuard.routeFor(CampusNetworkStatus.onCampus, autoConnectVpn: true),
-      IStudyAccessRoute.direct,
-    );
-    expect(
-      IStudyAccessGuard.routeFor(CampusNetworkStatus.unknown, autoConnectVpn: true),
-      IStudyAccessRoute.direct,
-    );
+    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.onCampus, autoConnectVpn: true), IStudyAccessRoute.direct);
+    expect(IStudyAccessGuard.routeFor(CampusNetworkStatus.unknown, autoConnectVpn: true), IStudyAccessRoute.direct);
   });
 
   test('only guards the iStudy host', () {

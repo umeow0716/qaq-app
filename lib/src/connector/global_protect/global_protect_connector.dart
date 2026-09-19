@@ -35,12 +35,9 @@ class GlobalProtectClientCertificateRequiredException implements Exception {
 }
 
 class GlobalProtectConnector {
-  GlobalProtectConnector({
-    Uri? portal,
-    HttpClient? httpClient,
-    this.computerName = 'tat-android',
-  }) : portal = portal ?? Uri.parse('https://vpn.ntut.edu.tw'),
-       _httpClient = httpClient ?? HttpClient() {
+  GlobalProtectConnector({Uri? portal, HttpClient? httpClient, this.computerName = 'tat-android'})
+    : portal = portal ?? Uri.parse('https://vpn.ntut.edu.tw'),
+      _httpClient = httpClient ?? HttpClient() {
     _httpClient.connectionTimeout = const Duration(seconds: 10);
   }
 
@@ -59,11 +56,7 @@ class GlobalProtectConnector {
     final path = gateway ? '/ssl-vpn/prelogin.esp' : '/global-protect/prelogin.esp';
     final uri = target.replace(
       path: path,
-      queryParameters: const {
-        'tmp': 'tmp',
-        'clientVer': clientVersion,
-        'clientos': clientOs,
-      },
+      queryParameters: const {'tmp': 'tmp', 'clientVer': clientVersion, 'clientos': clientOs},
     );
     final xml = await _postForm(uri, const {'cas-support': 'yes'});
     final root = _parseXml(xml).rootElement;
@@ -90,11 +83,7 @@ class GlobalProtectConnector {
   }) async {
     final xml = await _postForm(
       portal.replace(path: '/global-protect/getconfig.esp', query: null),
-      _loginForm(
-        server: portal,
-        username: username,
-        password: password,
-      ),
+      _loginForm(server: portal, username: username, password: password),
     );
     final root = _parseXml(xml).rootElement;
     _throwIfResponseError(root);
@@ -168,11 +157,7 @@ class GlobalProtectConnector {
     GlobalProtectTransportTrace? transportTrace,
   }) async {
     trace?.call('resuming cached GP session -> ${gateway.host}');
-    final config = await getTunnelConfig(
-      gateway: gateway,
-      session: session,
-      appVersion: appVersion,
-    );
+    final config = await getTunnelConfig(gateway: gateway, session: session, appVersion: appVersion);
     trace?.call(
       'cached session accepted; ip=${config.ipAddress ?? '-'} mtu=${config.mtu ?? '-'} '
       'dns=${config.dnsServers.join(',')}',
@@ -185,12 +170,7 @@ class GlobalProtectConnector {
       transportTrace: transportTrace,
     );
 
-    return GlobalProtectConnection(
-      gateway: gateway,
-      session: session,
-      config: config,
-      transport: transport,
-    );
+    return GlobalProtectConnection(gateway: gateway, session: session, config: config, transport: transport);
   }
 
   Future<GlobalProtectConnection> connectWithPassword({
@@ -204,7 +184,9 @@ class GlobalProtectConnector {
     final portalPrelogin = await prelogin();
     trace?.call('portal prelogin ok; saml=${portalPrelogin.requiresSaml}');
     if (portalPrelogin.requiresSaml) {
-      throw UnsupportedError('GlobalProtect portal requires SAML authentication. WebView SAML handoff is not implemented yet.');
+      throw UnsupportedError(
+        'GlobalProtect portal requires SAML authentication. WebView SAML handoff is not implemented yet.',
+      );
     }
 
     trace?.call('portal password authentication');
@@ -229,7 +211,9 @@ class GlobalProtectConnector {
     if (gatewayPrelogin.requiresSaml &&
         portalResult.portalUserAuthCookie == null &&
         portalResult.portalPrelogonUserAuthCookie == null) {
-      throw UnsupportedError('GlobalProtect gateway requires SAML authentication. WebView SAML handoff is not implemented yet.');
+      throw UnsupportedError(
+        'GlobalProtect gateway requires SAML authentication. WebView SAML handoff is not implemented yet.',
+      );
     }
 
     trace?.call('gateway password/cookie authentication');
@@ -243,11 +227,7 @@ class GlobalProtectConnector {
     trace?.call('gateway authentication ok');
 
     trace?.call('requesting tunnel config');
-    final config = await getTunnelConfig(
-      gateway: gateway,
-      session: session,
-      appVersion: portalResult.appVersion,
-    );
+    final config = await getTunnelConfig(gateway: gateway, session: session, appVersion: portalResult.appVersion);
     trace?.call(
       'tunnel config ok; ip=${config.ipAddress ?? '-'} mtu=${config.mtu ?? '-'} '
       'dns=${config.dnsServers.join(',')}',
@@ -260,12 +240,7 @@ class GlobalProtectConnector {
       transportTrace: transportTrace,
     );
 
-    return GlobalProtectConnection(
-      gateway: gateway,
-      session: session,
-      config: config,
-      transport: transport,
-    );
+    return GlobalProtectConnection(gateway: gateway, session: session, config: config, transport: transport);
   }
 
   Future<GlobalProtectTransport> _openEspTransport({
@@ -275,23 +250,15 @@ class GlobalProtectConnector {
     GlobalProtectTransportTrace? transportTrace,
   }) async {
     final ipsec = config.ipsec;
-    if (ipsec == null ||
-        !ipsec.hasCompleteNegotiationMaterial ||
-        ipsec.keyMaterial == null) {
-      throw UnsupportedError(
-        'GlobalProtect gateway did not provide complete ESP-over-UDP negotiation material.',
-      );
+    if (ipsec == null || !ipsec.hasCompleteNegotiationMaterial || ipsec.keyMaterial == null) {
+      throw UnsupportedError('GlobalProtect gateway did not provide complete ESP-over-UDP negotiation material.');
     }
 
     trace?.call(
       'opening ESP data channel; udpPort=${ipsec.udpPort ?? '-'} '
       'enc=${ipsec.encryptionAlgorithm ?? '-'} hmac=${ipsec.authenticationAlgorithm ?? '-'}',
     );
-    final esp = await GlobalProtectEspTransport.connect(
-      gateway: gateway,
-      config: config,
-      trace: transportTrace,
-    );
+    final esp = await GlobalProtectEspTransport.connect(gateway: gateway, config: config, trace: transportTrace);
     trace?.call('ESP data channel connected');
     return esp;
   }
@@ -322,11 +289,7 @@ class GlobalProtectConnector {
     'passwd': password,
   };
 
-  Future<String> _postForm(
-    Uri uri,
-    Map<String, String> form, {
-    bool classifySessionResumeFailure = false,
-  }) async {
+  Future<String> _postForm(Uri uri, Map<String, String> form, {bool classifySessionResumeFailure = false}) async {
     final request = await _httpClient.postUrl(uri);
     request.headers
       ..set(HttpHeaders.userAgentHeader, userAgent)
@@ -350,10 +313,7 @@ class GlobalProtectConnector {
           );
         }
       }
-      throw HttpException(
-        'GlobalProtect request failed with HTTP ${response.statusCode}: $body',
-        uri: uri,
-      );
+      throw HttpException('GlobalProtect request failed with HTTP ${response.statusCode}: $body', uri: uri);
     }
     return body;
   }
@@ -373,20 +333,15 @@ class GlobalProtectConnector {
     }
   }
 
-  void _throwIfResponseError(
-    XmlElement root, {
-    bool classifySessionResumeFailure = false,
-  }) {
+  void _throwIfResponseError(XmlElement root, {bool classifySessionResumeFailure = false}) {
     if (root.name.local != 'response') return;
 
     final status = (root.getAttribute('status') ?? _text(root, 'status'))?.trim();
     final isError = status != null && status.toLowerCase() != 'success';
     if (!isError && root.getAttribute('status') != 'error') return;
 
-    final reason = _text(root, 'error') ??
-        _text(root, 'msg') ??
-        _text(root, 'message') ??
-        'GlobalProtect request failed.';
+    final reason =
+        _text(root, 'error') ?? _text(root, 'msg') ?? _text(root, 'message') ?? 'GlobalProtect request failed.';
 
     if (classifySessionResumeFailure) {
       if (_sessionRejectedReasons.contains(reason)) {
@@ -403,10 +358,7 @@ class GlobalProtectConnector {
   String _sessionFailureReason(String body, {required String fallback}) {
     try {
       final root = _parseXml(body).rootElement;
-      return _text(root, 'error') ??
-          _text(root, 'msg') ??
-          _text(root, 'message') ??
-          fallback;
+      return _text(root, 'error') ?? _text(root, 'msg') ?? _text(root, 'message') ?? fallback;
     } on FormatException {
       final trimmed = body.trim();
       return trimmed.isEmpty ? fallback : trimmed;
@@ -516,12 +468,8 @@ class GlobalProtectConnector {
     final ekeyS2c = keyBytes('ekey-s2c');
     final akeyC2s = keyBytes('akey-c2s');
     final akeyS2c = keyBytes('akey-s2c');
-    final material = c2sSpi != null &&
-            s2cSpi != null &&
-            ekeyC2s != null &&
-            ekeyS2c != null &&
-            akeyC2s != null &&
-            akeyS2c != null
+    final material =
+        c2sSpi != null && s2cSpi != null && ekeyC2s != null && ekeyS2c != null && akeyC2s != null && akeyS2c != null
         ? GlobalProtectIpsecKeyMaterial(
             clientToServerSpi: c2sSpi,
             serverToClientSpi: s2cSpi,

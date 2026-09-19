@@ -48,18 +48,14 @@ class GlobalProtectPortalResult {
 }
 
 class GlobalProtectSession {
-  GlobalProtectSession({
-    required Map<String, String> values,
-  }) : values = UnmodifiableMapView(Map<String, String>.from(values));
+  GlobalProtectSession({required Map<String, String> values})
+    : values = UnmodifiableMapView(Map<String, String>.from(values));
 
   final Map<String, String> values;
 
   String get user => values['user'] ?? '';
   String get authCookie => values['authcookie'] ?? '';
-
-
 }
-
 
 class GlobalProtectIpsecConfig {
   const GlobalProtectIpsecConfig({
@@ -97,11 +93,9 @@ class GlobalProtectIpsecConfig {
 
   bool get hasSpis => hasClientToServerSpi && hasServerToClientSpi;
 
-  bool get hasEncryptionKeys =>
-      hasClientToServerEncryptionKey && hasServerToClientEncryptionKey;
+  bool get hasEncryptionKeys => hasClientToServerEncryptionKey && hasServerToClientEncryptionKey;
 
-  bool get hasAuthenticationKeys =>
-      hasClientToServerAuthenticationKey && hasServerToClientAuthenticationKey;
+  bool get hasAuthenticationKeys => hasClientToServerAuthenticationKey && hasServerToClientAuthenticationKey;
 
   bool get hasCompleteNegotiationMaterial =>
       mode == 'esp-tunnel' &&
@@ -113,7 +107,6 @@ class GlobalProtectIpsecConfig {
       hasAuthenticationKeys;
 }
 
-
 class GlobalProtectIpsecKeyMaterial {
   GlobalProtectIpsecKeyMaterial({
     required this.clientToServerSpi,
@@ -122,10 +115,10 @@ class GlobalProtectIpsecKeyMaterial {
     required Uint8List serverToClientEncryptionKey,
     required Uint8List clientToServerAuthenticationKey,
     required Uint8List serverToClientAuthenticationKey,
-  })  : clientToServerEncryptionKey = Uint8List.fromList(clientToServerEncryptionKey),
-        serverToClientEncryptionKey = Uint8List.fromList(serverToClientEncryptionKey),
-        clientToServerAuthenticationKey = Uint8List.fromList(clientToServerAuthenticationKey),
-        serverToClientAuthenticationKey = Uint8List.fromList(serverToClientAuthenticationKey);
+  }) : clientToServerEncryptionKey = Uint8List.fromList(clientToServerEncryptionKey),
+       serverToClientEncryptionKey = Uint8List.fromList(serverToClientEncryptionKey),
+       clientToServerAuthenticationKey = Uint8List.fromList(clientToServerAuthenticationKey),
+       serverToClientAuthenticationKey = Uint8List.fromList(serverToClientAuthenticationKey);
 
   final int clientToServerSpi;
   final int serverToClientSpi;

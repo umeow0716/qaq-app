@@ -33,24 +33,20 @@ class VirtualTlsSocket {
     Duration bridgeTimeout = const Duration(seconds: 5),
     Duration handshakeTimeout = const Duration(seconds: 15),
   }) async {
-    final bridge = await VirtualTcpLoopbackBridge.attach(
-      virtualSocket,
-      timeout: bridgeTimeout,
-    );
+    final bridge = await VirtualTcpLoopbackBridge.attach(virtualSocket, timeout: bridgeTimeout);
 
     try {
-      final secureSocket = await SecureSocket.secure(
-        bridge.socket,
-        host: host,
-        context: context,
-        onBadCertificate: onBadCertificate,
-        supportedProtocols: supportedProtocols,
-      ).timeout(
-        handshakeTimeout,
-        onTimeout: () => throw TimeoutException(
-          'TLS handshake with $host timed out after $handshakeTimeout.',
-        ),
-      );
+      final secureSocket =
+          await SecureSocket.secure(
+            bridge.socket,
+            host: host,
+            context: context,
+            onBadCertificate: onBadCertificate,
+            supportedProtocols: supportedProtocols,
+          ).timeout(
+            handshakeTimeout,
+            onTimeout: () => throw TimeoutException('TLS handshake with $host timed out after $handshakeTimeout.'),
+          );
       return VirtualTlsSocket._(secureSocket, bridge);
     } catch (_) {
       await bridge.close();

@@ -17,10 +17,10 @@ class SettingJson {
   bool get isEmpty => course.isEmpty && other.isEmpty;
 
   @override
-  String toString() => sprintf(
-    '---------course--------        \n%s \n---------other--------         \n%s \n',
-    [course.toString(), other.toString()],
-  );
+  String toString() => sprintf('---------course--------        \n%s \n---------other--------         \n%s \n', [
+    course.toString(),
+    other.toString(),
+  ]);
 
   factory SettingJson.fromJson(Map<String, dynamic> json) => _$SettingJsonFromJson(json);
   Map<String, dynamic> toJson() => _$SettingJsonToJson(this);
@@ -40,7 +40,6 @@ class CourseSettingJson {
   factory CourseSettingJson.fromJson(Map<String, dynamic> json) => _$CourseSettingJsonFromJson(json);
   Map<String, dynamic> toJson() => _$CourseSettingJsonToJson(this);
 }
-
 
 @JsonSerializable()
 class OtherSettingJson {

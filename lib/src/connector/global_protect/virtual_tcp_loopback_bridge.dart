@@ -31,11 +31,7 @@ class VirtualTcpLoopbackBridge {
     VirtualByteSocket virtualSocket, {
     Duration timeout = const Duration(seconds: 5),
   }) async {
-    final server = await ServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-      shared: false,
-    );
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0, shared: false);
 
     final peerCompleter = Completer<Socket>();
     late final StreamSubscription<Socket> acceptSubscription;
@@ -57,11 +53,7 @@ class VirtualTcpLoopbackBridge {
     Socket? client;
     Socket? peer;
     try {
-      client = await Socket.connect(
-        InternetAddress.loopbackIPv4,
-        server.port,
-        timeout: timeout,
-      );
+      client = await Socket.connect(InternetAddress.loopbackIPv4, server.port, timeout: timeout);
       peer = await peerCompleter.future.timeout(timeout);
       await acceptSubscription.cancel();
       await server.close();

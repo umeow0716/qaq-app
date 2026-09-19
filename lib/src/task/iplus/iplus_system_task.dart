@@ -7,11 +7,8 @@ import 'package:flutter_app/src/task/task.dart';
 import 'package:flutter_app/ui/other/msg_dialog.dart';
 
 class IPlusSystemTask<T> extends NTUTTask<T> {
-  IPlusSystemTask(
-    String name, {
-    this.showNetworkUnavailable = true,
-    this.allowAutoVpn = true,
-  }) : super("IPlusSystemTask $name");
+  IPlusSystemTask(String name, {this.showNetworkUnavailable = true, this.allowAutoVpn = true})
+    : super("IPlusSystemTask $name");
 
   final bool showNetworkUnavailable;
   final bool allowAutoVpn;

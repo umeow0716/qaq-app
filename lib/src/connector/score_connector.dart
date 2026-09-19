@@ -241,5 +241,4 @@ class ScoreConnector {
       rethrow;
     }
   }
-
 }

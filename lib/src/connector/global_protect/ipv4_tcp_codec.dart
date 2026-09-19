@@ -62,8 +62,7 @@ class InternetAddressValue {
   String toString() => bytes.join('.');
 
   @override
-  bool operator ==(Object other) =>
-      other is InternetAddressValue && _bytesEqual(bytes, other.bytes);
+  bool operator ==(Object other) => other is InternetAddressValue && _bytesEqual(bytes, other.bytes);
 
   @override
   int get hashCode => Object.hashAll(bytes);
@@ -99,7 +98,11 @@ class Ipv4TcpCodec {
     final tcpPayload = payload ?? Uint8List(0);
     final options = tcpOptions ?? Uint8List(0);
     if (options.length > 40 || options.length % 4 != 0) {
-      throw ArgumentError.value(options.length, 'tcpOptions.length', 'TCP options must be 0-40 bytes and 32-bit aligned');
+      throw ArgumentError.value(
+        options.length,
+        'tcpOptions.length',
+        'TCP options must be 0-40 bytes and 32-bit aligned',
+      );
     }
     final tcpHeaderLength = _tcpHeaderLength + options.length;
     final tcpLength = tcpHeaderLength + tcpPayload.length;

@@ -23,9 +23,7 @@ class CourseExtraInfoTask extends CourseSystemTask<CourseExtraInfoJson> {
       return TaskStatus.success;
     }
 
-    Log.d(
-      forceRefresh ? '[CourseExtraInfoTask] forced refresh: $id' : '[CourseExtraInfoTask] cache miss: $id',
-    );
+    Log.d(forceRefresh ? '[CourseExtraInfoTask] forced refresh: $id' : '[CourseExtraInfoTask] cache miss: $id');
     final status = await super.execute();
 
     if (status == TaskStatus.success) {

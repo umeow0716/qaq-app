@@ -35,16 +35,11 @@ class IStudyAccessGuard {
     final campus = await CampusNetworkDetector.detect();
     final autoConnectVpn = LocalStorage.instance.getOtherSetting().autoConnectIStudyVpn;
     final result = routeFor(campus, autoConnectVpn: autoConnectVpn);
-    GlobalProtectDebug.log(
-      'iStudy route campus=${campus.name} autoVpn=$autoConnectVpn -> ${result.name}',
-    );
+    GlobalProtectDebug.log('iStudy route campus=${campus.name} autoVpn=$autoConnectVpn -> ${result.name}');
     return result;
   }
 
-  static IStudyAccessRoute routeFor(
-    CampusNetworkStatus campus, {
-    required bool autoConnectVpn,
-  }) {
+  static IStudyAccessRoute routeFor(CampusNetworkStatus campus, {required bool autoConnectVpn}) {
     if (campus != CampusNetworkStatus.offCampus) {
       return IStudyAccessRoute.direct;
     }
@@ -71,7 +66,8 @@ class IStudyAccessGuard {
         '⚠️ 此功能仍在實驗階段，目前測試樣本有限，穩定性可能因網路環境而異。',
   );
 
-  static String _messageHtml(String title, String message) => '''<!doctype html>
+  static String _messageHtml(String title, String message) =>
+      '''<!doctype html>
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">

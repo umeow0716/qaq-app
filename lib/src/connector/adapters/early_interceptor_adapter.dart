@@ -45,8 +45,8 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     HttpClient? httpClient,
     this._closeHttpClient = true,
     this.httpClientProvider,
-  })  : _defaultHttpClient = httpClient ?? HttpClient(),
-        _usesInjectedHttpClient = httpClient != null;
+  }) : _defaultHttpClient = httpClient ?? HttpClient(),
+       _usesInjectedHttpClient = httpClient != null;
 
   final HttpClient _defaultHttpClient;
   final bool _usesInjectedHttpClient;
@@ -78,11 +78,7 @@ class EarlyInterceptorAdapter implements HttpClientAdapter {
     }
 
     final providedHttpClient = await httpClientProvider?.call(options);
-    final httpClient = _configHttpClient(
-      cancelFuture,
-      options.connectTimeout,
-      providedHttpClient: providedHttpClient,
-    );
+    final httpClient = _configHttpClient(cancelFuture, options.connectTimeout, providedHttpClient: providedHttpClient);
     final reqFuture = httpClient.openUrl(options.method, options.uri);
 
     Never throwConnectingTimeout() => throw DioException(

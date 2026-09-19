@@ -2,26 +2,14 @@ import 'dart:async';
 
 import 'global_protect_models.dart';
 
-enum GlobalProtectSessionState {
-  disconnected,
-  connecting,
-  connected,
-  reconnecting,
-  disconnecting,
-  disposed,
-}
+enum GlobalProtectSessionState { disconnected, connecting, connected, reconnecting, disconnecting, disposed }
 
 typedef GlobalProtectConnectCallback = Future<GlobalProtectConnection> Function();
 typedef GlobalProtectDisconnectCallback = Future<void> Function(GlobalProtectConnection connection);
 typedef GlobalProtectConnectionEvents = Stream<void> Function(GlobalProtectConnection connection);
 
 class GlobalProtectSessionSnapshot {
-  const GlobalProtectSessionSnapshot({
-    required this.state,
-    this.connection,
-    this.error,
-    this.stackTrace,
-  });
+  const GlobalProtectSessionSnapshot({required this.state, this.connection, this.error, this.stackTrace});
 
   final GlobalProtectSessionState state;
   final GlobalProtectConnection? connection;
@@ -36,11 +24,7 @@ class GlobalProtectSessionManager {
     required GlobalProtectConnectCallback connect,
     GlobalProtectDisconnectCallback? disconnect,
     GlobalProtectConnectionEvents? connectionEvents,
-  }) => GlobalProtectSessionManager._(
-    connect: connect,
-    disconnect: disconnect,
-    connectionEvents: connectionEvents,
-  );
+  }) => GlobalProtectSessionManager._(connect: connect, disconnect: disconnect, connectionEvents: connectionEvents);
 
   GlobalProtectSessionManager._({
     required this._connect,
@@ -147,12 +131,7 @@ class GlobalProtectSessionManager {
         },
       );
 
-      _setSnapshot(
-        GlobalProtectSessionSnapshot(
-          state: GlobalProtectSessionState.connected,
-          connection: newConnection,
-        ),
-      );
+      _setSnapshot(GlobalProtectSessionSnapshot(state: GlobalProtectSessionState.connected, connection: newConnection));
       return newConnection;
     } catch (error, stackTrace) {
       if (generation == _generation && _snapshot.state != GlobalProtectSessionState.disposed) {
@@ -174,12 +153,7 @@ class GlobalProtectSessionManager {
     _connectionSubscription = null;
 
     if (current != null) {
-      _setSnapshot(
-        GlobalProtectSessionSnapshot(
-          state: GlobalProtectSessionState.disconnecting,
-          connection: current,
-        ),
-      );
+      _setSnapshot(GlobalProtectSessionSnapshot(state: GlobalProtectSessionState.disconnecting, connection: current));
       await _disconnect(current);
     }
 
@@ -188,23 +162,14 @@ class GlobalProtectSessionManager {
     }
   }
 
-  void _handleConnectionEnded(
-    GlobalProtectConnection endedConnection, {
-    Object? error,
-    StackTrace? stackTrace,
-  }) {
-    if (_snapshot.state != GlobalProtectSessionState.connected ||
-        !identical(_snapshot.connection, endedConnection)) {
+  void _handleConnectionEnded(GlobalProtectConnection endedConnection, {Object? error, StackTrace? stackTrace}) {
+    if (_snapshot.state != GlobalProtectSessionState.connected || !identical(_snapshot.connection, endedConnection)) {
       return;
     }
 
     _connectionSubscription = null;
     _setSnapshot(
-      GlobalProtectSessionSnapshot(
-        state: GlobalProtectSessionState.disconnected,
-        error: error,
-        stackTrace: stackTrace,
-      ),
+      GlobalProtectSessionSnapshot(state: GlobalProtectSessionState.disconnected, error: error, stackTrace: stackTrace),
     );
     unawaited(_disconnect(endedConnection).catchError((Object _, StackTrace _) {}));
   }

@@ -102,12 +102,11 @@ Due to the strong drive of [Flutter](https://flutter.dev/), the development of T
   flutter pub get
   ```
 
-Once all dependencies are successfully installed (excluding `tat_core`), you can start doing whatever you want!
-
+Once all dependencies are successfully installed, you can start doing whatever you want!
 
 ## Become contributor
 
-<img src="https://i.imgur.com/7yYwMr1.webp" height="200">
+<img src="https://i.imgur.com/7yYwMr1.webp" height="200" alt="TAT contributors">
 
 If you are inclined to contribute to the improvement of this app, we welcome your participation at all times, regardless
 of the form it may take.
@@ -117,7 +116,6 @@ If your expertise lies in areas such as UI design, animation design, project man
 management, automation, security, server-side, front-end web development, CI/CD, AI, ML, networking, IoT, multilingual
 translation, accounting and finance, advertising, marketing, and promotion, among others, we also highly value your
 involvement.
-
 
 ## Contributors
 

@@ -25,15 +25,12 @@ class CourseClassroomCacheJson {
     Map<String, String>? classroomBySlot,
   }) : classroomBySlot = classroomBySlot ?? <String, String>{};
 
-  static String cacheKey(SemesterJson semester, String courseId) =>
-      '${semester.year}|${semester.semester}|$courseId';
+  static String cacheKey(SemesterJson semester, String courseId) => '${semester.year}|${semester.semester}|$courseId';
 
   static String slotKey(Day day, SectionNumber section) => '${day.name}|${section.name}';
 
   static String classroomSignature(CourseMainInfoJson main) {
-    final candidates = main.classroom
-        .map((classroom) => '${classroom.name.trim()}|${classroom.href.trim()}')
-        .toList()
+    final candidates = main.classroom.map((classroom) => '${classroom.name.trim()}|${classroom.href.trim()}').toList()
       ..sort();
     return jsonEncode(candidates);
   }

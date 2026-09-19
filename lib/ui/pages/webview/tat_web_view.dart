@@ -177,10 +177,7 @@ class _TATWebViewState extends State<TATWebView> {
     await ProxyController.instance().setProxyOverride(
       settings: ProxySettings(
         proxyRules: <ProxyRule>[
-          ProxyRule(
-            schemeFilter: ProxySchemeFilter.MATCH_ALL_SCHEMES,
-            url: 'http://127.0.0.1:$port',
-          ),
+          ProxyRule(schemeFilter: ProxySchemeFilter.MATCH_ALL_SCHEMES, url: 'http://127.0.0.1:$port'),
         ],
         // Newer WebView versions support an allow-list style proxy. Prefer it
         // so only the actual iStudy destination uses the userspace tunnel.
@@ -286,10 +283,7 @@ class _TATWebViewCore extends StatelessWidget {
     URLAuthenticationChallenge challenge,
   )?
   onReceivedTrustAuthReqCallBack;
-  final Future<NavigationActionPolicy?> Function(
-    InAppWebViewController controller,
-    NavigationAction navigationAction,
-  )?
+  final Future<NavigationActionPolicy?> Function(InAppWebViewController controller, NavigationAction navigationAction)?
   shouldOverrideUrlLoading;
 
   @override
@@ -308,8 +302,7 @@ class _TATWebViewCore extends StatelessWidget {
       debugPrint('[WebView] onLoadStop: $url');
 
       if (url != null) {
-        final cookies =
-            await CookieManager.instance().getCookies(url: url);
+        final cookies = await CookieManager.instance().getCookies(url: url);
 
         debugPrint(
           '[WebView] cookies: '

@@ -3,12 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/src/model/course/course_score_json.dart';
 
 class ScoreTile extends StatelessWidget {
-  ScoreTile({
-    super.key,
-    required this.courseName,
-    required this.category,
-    required this.scoreValue,
-  });
+  ScoreTile({super.key, required this.courseName, required this.category, required this.scoreValue});
 
   /// The score value of a course.
   /// Note that we should make the score's type to be a [String] instead of [int] since the score can be a string like "Q".

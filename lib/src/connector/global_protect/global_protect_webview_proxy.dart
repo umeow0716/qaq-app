@@ -112,9 +112,11 @@ class GlobalProtectWebViewProxyBridge {
         if (forwarding) {
           final socket = upstream;
           if (socket != null) {
-            unawaited(socket.write(Uint8List.fromList(data)).catchError((Object error, StackTrace stack) {
-              unawaited(fail(error));
-            }));
+            unawaited(
+              socket.write(Uint8List.fromList(data)).catchError((Object error, StackTrace stack) {
+                unawaited(fail(error));
+              }),
+            );
           }
           return;
         }
@@ -278,12 +280,11 @@ class _ProxyRequest {
     if (absoluteUri != null && absoluteUri.hasScheme && absoluteUri.host.isNotEmpty) {
       host = absoluteUri.host;
       port = absoluteUri.hasPort ? absoluteUri.port : (absoluteUri.scheme == 'https' ? 443 : 80);
-      originTarget = absoluteUri.hasQuery ? '${absoluteUri.path.isEmpty ? '/' : absoluteUri.path}?${absoluteUri.query}' : (absoluteUri.path.isEmpty ? '/' : absoluteUri.path);
+      originTarget = absoluteUri.hasQuery
+          ? '${absoluteUri.path.isEmpty ? '/' : absoluteUri.path}?${absoluteUri.query}'
+          : (absoluteUri.path.isEmpty ? '/' : absoluteUri.path);
     } else {
-      final hostHeader = lines.firstWhere(
-        (line) => line.toLowerCase().startsWith('host:'),
-        orElse: () => '',
-      );
+      final hostHeader = lines.firstWhere((line) => line.toLowerCase().startsWith('host:'), orElse: () => '');
       if (hostHeader.isEmpty) throw const FormatException('HTTP proxy request has no Host header.');
       final authority = _parseAuthority(hostHeader.substring(5).trim(), defaultPort: 80);
       host = authority.$1;

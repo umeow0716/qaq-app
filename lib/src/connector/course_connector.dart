@@ -202,8 +202,7 @@ class CourseConnector {
           }
 
           if (courseIdentifiers.isNotEmpty) {
-            usage.putIfAbsent(dayOrder[dayIndex], () => <SectionNumber, Set<String>>{})[section] =
-                courseIdentifiers;
+            usage.putIfAbsent(dayOrder[dayIndex], () => <SectionNumber, Set<String>>{})[section] = courseIdentifiers;
           }
         }
       }
@@ -220,8 +219,7 @@ class CourseConnector {
     }
   }
 
-  static String _normalizeCourseIdentifier(String value) =>
-      strQ2B(value).replaceAll(RegExp(r'\s'), '').toUpperCase();
+  static String _normalizeCourseIdentifier(String value) => strQ2B(value).replaceAll(RegExp(r'\s'), '').toUpperCase();
 
   static SectionNumber? _sectionNumberFromClassroomLabel(String value) {
     final match = RegExp(r'第\s*([1-9NABCD])\s*節', caseSensitive: false).firstMatch(strQ2B(value));
@@ -340,8 +338,7 @@ class CourseConnector {
       // though ShowSyllabus.jsp is still addressable by course id. Try that
       // endpoint once so enrollment/withdrawal counts can still come from the
       // authoritative syllabus page.
-      if (!_isNumericCourseCount(courseExtra.selectNumber) ||
-          !_isNumericCourseCount(courseExtra.withdrawNumber)) {
+      if (!_isNumericCourseCount(courseExtra.selectNumber) || !_isNumericCourseCount(courseExtra.withdrawNumber)) {
         final syllabus = await getCourseCategory(courseId);
         if (syllabus.courseId.isNotEmpty) {
           if (syllabus.category.isNotEmpty) courseExtra.category = syllabus.category;

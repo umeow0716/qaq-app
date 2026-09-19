@@ -84,9 +84,7 @@ class LocalStorage {
 
   void setAlreadyUse(String key) => _firstRun[key] = false;
 
-
   Future<void> saveUserData() => _save(_userDataJsonKey, _userData);
-
 
   void _loadUserData() {
     final readJson = _readString(_userDataJsonKey);
@@ -182,7 +180,6 @@ class LocalStorage {
   GraduationInformationJson getGraduationInformation() => _courseScoreList.graduationInformation;
 
   CourseScoreCreditJson getCourseScoreCredit() => _courseScoreList;
-
 
   Future<void> setCourseScoreCredit(CourseScoreCreditJson value) {
     _courseScoreList = value;
@@ -432,11 +429,7 @@ class LocalStorage {
     return _courseClassroomCache[CourseClassroomCacheJson.cacheKey(semester, courseId)];
   }
 
-  bool shouldRefreshCourseClassroomCache(
-    SemesterJson semester,
-    CourseMainInfoJson main, {
-    required Duration maxAge,
-  }) {
+  bool shouldRefreshCourseClassroomCache(SemesterJson semester, CourseMainInfoJson main, {required Duration maxAge}) {
     if (main.course.id.isEmpty || main.classroom.length < 2) return false;
 
     final cached = getCourseClassroomCache(semester, main.course.id);
@@ -446,12 +439,7 @@ class LocalStorage {
     return DateTime.now().difference(cached.updatedAt) > maxAge;
   }
 
-  String? getResolvedCourseClassroom(
-    SemesterJson semester,
-    CourseMainInfoJson main,
-    Day day,
-    SectionNumber section,
-  ) {
+  String? getResolvedCourseClassroom(SemesterJson semester, CourseMainInfoJson main, Day day, SectionNumber section) {
     if (main.course.id.isEmpty || main.classroom.length < 2) return null;
 
     final cached = getCourseClassroomCache(semester, main.course.id);
@@ -465,11 +453,7 @@ class LocalStorage {
     return stillCandidate ? classroom : null;
   }
 
-  void setCourseClassroomCache(
-    SemesterJson semester,
-    String courseId,
-    CourseClassroomCacheJson value,
-  ) {
+  void setCourseClassroomCache(SemesterJson semester, String courseId, CourseClassroomCacheJson value) {
     if (semester.isEmpty || courseId.isEmpty) return;
     _courseClassroomCache[CourseClassroomCacheJson.cacheKey(semester, courseId)] = value;
   }
@@ -493,7 +477,6 @@ class LocalStorage {
   void setOtherSetting(OtherSettingJson value) => _setting.other = value;
 
   OtherSettingJson getOtherSetting() => _setting.other;
-
 
   void clearSemesterJsonList() => _courseSemesterList.clear();
 
@@ -559,10 +542,7 @@ class LocalStorage {
     // Runtime/session cleanup is best-effort and intentionally exhaustive: one
     // failed subsystem must not prevent the remaining user state from clearing.
     await cleanup('webview-vpn-runtime', GlobalProtectWebViewRuntime.reset);
-    await cleanup(
-      'global-protect-session',
-      GlobalProtectAppSession.instance.disconnectAndClearCachedSession,
-    );
+    await cleanup('global-protect-session', GlobalProtectAppSession.instance.disconnectAndClearCachedSession);
     await cleanup('dio-cookies', DioConnector.instance.deleteCookies);
     await cleanup('webview-cookies', () => CookieManager.instance().deleteAllCookies());
     await cleanup('network-image-cache', cacheManager.emptyCache);

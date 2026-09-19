@@ -74,5 +74,4 @@ void main() {
     expect(decoded.payload, isEmpty);
     expect(packet[20 + 12] >> 4, 6);
   });
-
 }

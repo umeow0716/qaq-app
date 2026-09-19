@@ -129,11 +129,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     if (cached != null && cachedAt != null) {
       final cachedStudents = cached.classmate
           .map(
-            (student) => CourseStudent(
-              department: student.className,
-              id: student.studentId,
-              name: student.studentName,
-            ),
+            (student) => CourseStudent(department: student.className, id: student.studentId, name: student.studentName),
           )
           .toList();
       if (mounted) {
@@ -204,9 +200,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     final resolvedStudents = students
         .map(
           (student) => CourseStudent(
-            department: student.department.isNotEmpty
-                ? student.department
-                : getDepartment(departmentMap, student.id),
+            department: student.department.isNotEmpty ? student.department : getDepartment(departmentMap, student.id),
             id: student.id,
             name: student.name,
           ),
@@ -220,11 +214,8 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
       CourseExtraInfoJson(
         classmate: resolvedStudents
             .map(
-              (student) => ClassmateJson(
-                className: student.department,
-                studentId: student.id,
-                studentName: student.name,
-              ),
+              (student) =>
+                  ClassmateJson(className: student.department, studentId: student.id, studentName: student.name),
             )
             .toList(),
         classmateUpdatedAt: updatedAt,
@@ -348,10 +339,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
   Widget _buildAnimatedStudentList(List<Widget> rows) {
     final revision = _studentLastUpdated?.microsecondsSinceEpoch ?? 0;
-    return _StudentListEntrance(
-      key: ValueKey('student-list-$revision'),
-      rows: rows,
-    );
+    return _StudentListEntrance(key: ValueKey('student-list-$revision'), rows: rows);
   }
 
   List<Widget> _buildCourseData() {
@@ -368,10 +356,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     final withdrawNumber = courseExtraInfo.course.withdrawNumber.trim();
     courseData.add(
       _buildCourseInfo(
-        sprintf('%s: %s', [
-          R.current.numberOfStudent,
-          _isAuthoritativeCourseCount(selectNumber) ? selectNumber : '',
-        ]),
+        sprintf('%s: %s', [R.current.numberOfStudent, _isAuthoritativeCourseCount(selectNumber) ? selectNumber : '']),
       ),
     );
     courseData.add(
@@ -526,10 +511,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
             const SizedBox(
               width: 36,
               height: 36,
-              child: Padding(
-                padding: EdgeInsets.all(9),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+              child: Padding(padding: EdgeInsets.all(9), child: CircularProgressIndicator(strokeWidth: 2)),
             ),
           ],
           const SizedBox(width: 2),
@@ -620,6 +602,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   @override
   bool get wantKeepAlive => true;
 }
+
 class _StudentListEntrance extends StatefulWidget {
   const _StudentListEntrance({super.key, required this.rows});
 
@@ -690,10 +673,7 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
                 heightFactor: progress,
                 child: Opacity(
                   opacity: progress,
-                  child: Transform.translate(
-                    offset: Offset(0, _verticalOffset * (1 - progress)),
-                    child: child,
-                  ),
+                  child: Transform.translate(offset: Offset(0, _verticalOffset * (1 - progress)), child: child),
                 ),
               ),
             );

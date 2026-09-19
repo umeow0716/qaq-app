@@ -46,9 +46,8 @@ class VirtualTcpSocket implements VirtualByteSocket {
   Stream<Uint8List> get stream => _incoming.stream;
   bool get isConnected => _connected && !_closed;
 
-  Future<VirtualTcpLoopbackBridge> createLoopbackBridge({
-    Duration timeout = const Duration(seconds: 5),
-  }) => VirtualTcpLoopbackBridge.attach(this, timeout: timeout);
+  Future<VirtualTcpLoopbackBridge> createLoopbackBridge({Duration timeout = const Duration(seconds: 5)}) =>
+      VirtualTcpLoopbackBridge.attach(this, timeout: timeout);
 
   static Future<VirtualTcpSocket> connectIp({
     required GlobalProtectTransport transport,
@@ -120,10 +119,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
     // the caller may reuse its buffer before the queued write runs.
     final copy = Uint8List.fromList(data);
     final operation = _writeTail.then((_) => _writeSerialized(copy));
-    _writeTail = operation.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace _) {},
-    );
+    _writeTail = operation.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return operation;
   }
 
@@ -207,14 +203,8 @@ class VirtualTcpSocket implements VirtualByteSocket {
 
     // Duplicate/retransmitted data that is already fully acknowledged.
     if (_sequenceBefore(sequence, _receiveSequence)) {
-      _trace?.call(
-        'RX duplicate/overlap seq=$sequence expected=$_receiveSequence len=${payload.length}',
-      );
-      unawaited(_send(
-        flags: TcpFlags.ack,
-        sequence: _sendSequence,
-        acknowledgement: _receiveSequence,
-      ));
+      _trace?.call('RX duplicate/overlap seq=$sequence expected=$_receiveSequence len=${payload.length}');
+      unawaited(_send(flags: TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence));
       return;
     }
 
@@ -222,25 +212,15 @@ class VirtualTcpSocket implements VirtualByteSocket {
     // a duplicate ACK advertising the next byte we still expect. This is
     // enough for TLS handshakes where certificate data is commonly split over
     // several TCP segments.
-    _trace?.call(
-      'RX out-of-order seq=$sequence expected=$_receiveSequence len=${payload.length}',
-    );
+    _trace?.call('RX out-of-order seq=$sequence expected=$_receiveSequence len=${payload.length}');
     _outOfOrder.putIfAbsent(sequence, () => Uint8List.fromList(payload));
-    unawaited(_send(
-      flags: TcpFlags.ack,
-      sequence: _sendSequence,
-      acknowledgement: _receiveSequence,
-    ));
+    unawaited(_send(flags: TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence));
   }
 
   void _deliverPayload(Uint8List payload) {
     _receiveSequence = _add32(_receiveSequence, payload.length);
     _incoming.add(payload);
-    unawaited(_send(
-      flags: TcpFlags.ack,
-      sequence: _sendSequence,
-      acknowledgement: _receiveSequence,
-    ));
+    unawaited(_send(flags: TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence));
   }
 
   void _drainOutOfOrder() {
@@ -252,7 +232,6 @@ class VirtualTcpSocket implements VirtualByteSocket {
       _deliverPayload(next);
     }
   }
-
 
   void _tryConsumePendingFin() {
     final finSequence = _pendingFinSequence;
@@ -268,18 +247,13 @@ class VirtualTcpSocket implements VirtualByteSocket {
 
   Future<void> _ackRemoteFinAndClose() async {
     try {
-      await _send(
-        flags: TcpFlags.ack,
-        sequence: _sendSequence,
-        acknowledgement: _receiveSequence,
-      );
+      await _send(flags: TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence);
     } finally {
       await close(sendFin: false);
     }
   }
 
-  static bool _sequenceBefore(int a, int b) =>
-      ((a - b) & 0xffffffff) > 0x7fffffff;
+  static bool _sequenceBefore(int a, int b) => ((a - b) & 0xffffffff) > 0x7fffffff;
 
   bool _matches(Ipv4TcpPacket packet) =>
       packet.sourceAddress == remoteAddress &&
@@ -288,18 +262,13 @@ class VirtualTcpSocket implements VirtualByteSocket {
       packet.destinationPort == localPort;
 
   Uint8List _synOptions() => Uint8List.fromList(<int>[
-        2, // MSS option kind
-        4, // MSS option length
-        (maxSegmentPayload >> 8) & 0xff,
-        maxSegmentPayload & 0xff,
-      ]);
+    2, // MSS option kind
+    4, // MSS option length
+    (maxSegmentPayload >> 8) & 0xff,
+    maxSegmentPayload & 0xff,
+  ]);
 
-  Future<void> _send({
-    required int flags,
-    required int sequence,
-    int acknowledgement = 0,
-    Uint8List? payload,
-  }) async {
+  Future<void> _send({required int flags, required int sequence, int acknowledgement = 0, Uint8List? payload}) async {
     final payloadLength = payload?.length ?? 0;
     _trace?.call(
       'TX seq=$sequence ack=$acknowledgement '
@@ -342,11 +311,7 @@ class VirtualTcpSocket implements VirtualByteSocket {
     StackTrace? closeStackTrace;
     try {
       if (sendFin && _connected) {
-        await _send(
-          flags: TcpFlags.fin | TcpFlags.ack,
-          sequence: _sendSequence,
-          acknowledgement: _receiveSequence,
-        );
+        await _send(flags: TcpFlags.fin | TcpFlags.ack, sequence: _sendSequence, acknowledgement: _receiveSequence);
         _sendSequence = _add32(_sendSequence, 1);
       }
     } catch (error, stackTrace) {

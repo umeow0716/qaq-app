@@ -152,5 +152,4 @@ class NTUTConnector {
 
     return imageInfo;
   }
-
 }

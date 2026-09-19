@@ -15,8 +15,7 @@ import 'global_protect_session_cache.dart';
 /// Credentials are never copied into this object. Every connection attempt
 /// reads the account/password already held by [LocalStorage] at that moment.
 class GlobalProtectAppSession {
-  GlobalProtectAppSession._()
-      : _connector = GlobalProtectConnector() {
+  GlobalProtectAppSession._() : _connector = GlobalProtectConnector() {
     _manager = GlobalProtectSessionManager(connect: _connectUsingCachedSessionOrPassword);
   }
 
@@ -39,9 +38,7 @@ class GlobalProtectAppSession {
   Future<GlobalProtectConnection> ensureConnected() async {
     final runtimeGeneration = _runtimeGeneration;
     final account = LocalStorage.instance.getAccount().trim();
-    GlobalProtectDebug.log(
-      'ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}',
-    );
+    GlobalProtectDebug.log('ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}');
     if (account.isEmpty) {
       GlobalProtectDebug.log('account unavailable; refusing GP connection');
       throw const GlobalProtectCredentialsUnavailableException();
@@ -125,9 +122,7 @@ class GlobalProtectAppSession {
     final cached = await _sessionCache.readForAccount(username);
 
     if (cached != null) {
-      GlobalProtectDebug.log(
-        'cached GP session found; validating with gateway ${cached.gateway.host}',
-      );
+      GlobalProtectDebug.log('cached GP session found; validating with gateway ${cached.gateway.host}');
       try {
         final connection = await _connector.resumeWithSession(
           gateway: cached.gateway,
@@ -156,9 +151,7 @@ class GlobalProtectAppSession {
     }
 
     final password = LocalStorage.instance.getPassword();
-    GlobalProtectDebug.log(
-      'starting GP password login; passwordPresent=${password.isNotEmpty}',
-    );
+    GlobalProtectDebug.log('starting GP password login; passwordPresent=${password.isNotEmpty}');
     if (password.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
     }

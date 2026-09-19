@@ -55,9 +55,9 @@ class GlobalProtectHttpClient {
     this._tlsHandshakeTimeout = const Duration(seconds: 15),
     this._maxSegmentPayload = 1200,
     this._tcpTrace,
-  })  : _resolver = resolver ?? _defaultResolver,
-        _securityContext = securityContext,
-        client = HttpClient(context: securityContext) {
+  }) : _resolver = resolver ?? _defaultResolver,
+       _securityContext = securityContext,
+       client = HttpClient(context: securityContext) {
     client.findProxy = (_) => 'DIRECT';
     client.connectionFactory = _createConnection;
   }
@@ -106,11 +106,7 @@ class GlobalProtectHttpClient {
   final HttpClient client;
   bool _closed = false;
 
-  Future<ConnectionTask<Socket>> _createConnection(
-    Uri uri,
-    String? proxyHost,
-    int? proxyPort,
-  ) async {
+  Future<ConnectionTask<Socket>> _createConnection(Uri uri, String? proxyHost, int? proxyPort) async {
     if (_closed) {
       throw StateError('GlobalProtectHttpClient is closed.');
     }
@@ -184,10 +180,7 @@ class GlobalProtectHttpClient {
     client.close(force: force);
     final sockets = _tlsSockets.toList(growable: false);
     _tlsSockets.clear();
-    await Future.wait<void>(
-      sockets.map((socket) => socket.close()),
-      eagerError: false,
-    );
+    await Future.wait<void>(sockets.map((socket) => socket.close()), eagerError: false);
   }
 
   static int _payloadForMtu(int? mtu) {

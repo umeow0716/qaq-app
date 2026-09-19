@@ -15,8 +15,8 @@ class GlobalProtectEspTransport implements GlobalProtectTransport {
     required String probeAddress,
     required this._codec,
     this._trace,
-  })  : _tunnelAddress = InternetAddress(tunnelAddress),
-        _probeAddress = InternetAddress(probeAddress) {
+  }) : _tunnelAddress = InternetAddress(tunnelAddress),
+       _probeAddress = InternetAddress(probeAddress) {
     _subscription = _socket.listen(_onSocketEvent, onError: _onSocketError, onDone: _onSocketDone);
   }
 
@@ -62,7 +62,8 @@ class GlobalProtectEspTransport implements GlobalProtectTransport {
       throw StateError('GlobalProtect ESP UDP port is unavailable.');
     }
 
-    final resolved = InternetAddress.tryParse(gateway.host) ??
+    final resolved =
+        InternetAddress.tryParse(gateway.host) ??
         (await InternetAddress.lookup(gateway.host, type: InternetAddressType.IPv4)).first;
     final probeAddress = config.gatewayAddress ?? resolved.address;
     if (InternetAddress.tryParse(probeAddress)?.type != InternetAddressType.IPv4) {
@@ -121,9 +122,7 @@ class GlobalProtectEspTransport implements GlobalProtectTransport {
       if (idle >= _dpdFailureTimeout) {
         _trace?.call('ESP DPD timed out after ${_dpdFailureTimeout.inSeconds}s');
         _fail(
-          TimeoutException(
-            'GlobalProtect ESP stopped responding for ${_dpdFailureTimeout.inSeconds}s.',
-          ),
+          TimeoutException('GlobalProtect ESP stopped responding for ${_dpdFailureTimeout.inSeconds}s.'),
           StackTrace.current,
         );
         return;
@@ -222,11 +221,7 @@ class GlobalProtectEspTransport implements GlobalProtectTransport {
     data.setUint16(icmpOffset + 4, 0x4747, Endian.big);
     data.setUint16(icmpOffset + 6, sequence, Endian.big);
     packet.setRange(icmpOffset + icmpHeaderLength, packet.length, magic);
-    data.setUint16(
-      icmpOffset + 2,
-      _internetChecksum(Uint8List.sublistView(packet, icmpOffset)),
-      Endian.big,
-    );
+    data.setUint16(icmpOffset + 2, _internetChecksum(Uint8List.sublistView(packet, icmpOffset)), Endian.big);
     return packet;
   }
 

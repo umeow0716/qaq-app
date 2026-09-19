@@ -32,14 +32,8 @@ class GlobalProtectDebug {
       'portal-prelogonuserauthcookie',
       'user',
     ]) {
-      result = result.replaceAll(
-        RegExp('($key=)[^&\\s<]+', caseSensitive: false),
-        r'$1<redacted>',
-      );
-      result = result.replaceAll(
-        RegExp('(<$key>)[^<]*(</$key>)', caseSensitive: false),
-        r'$1<redacted>$2',
-      );
+      result = result.replaceAll(RegExp('($key=)[^&\\s<]+', caseSensitive: false), r'$1<redacted>');
+      result = result.replaceAll(RegExp('(<$key>)[^<]*(</$key>)', caseSensitive: false), r'$1<redacted>$2');
     }
     return result;
   }

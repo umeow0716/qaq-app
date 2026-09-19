@@ -18,12 +18,12 @@ class GlobalProtectCachedSession {
   final DateTime cachedAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'version': 1,
-        'account': account,
-        'gateway': gateway.toString(),
-        'session': session.values,
-        'cachedAt': cachedAt.toUtc().toIso8601String(),
-      };
+    'version': 1,
+    'account': account,
+    'gateway': gateway.toString(),
+    'session': session.values,
+    'cachedAt': cachedAt.toUtc().toIso8601String(),
+  };
 
   static GlobalProtectCachedSession? fromJson(Map<String, dynamic> json) {
     if (json['version'] != 1) return null;
@@ -51,12 +51,7 @@ class GlobalProtectCachedSession {
     final session = GlobalProtectSession(values: values);
     if (session.user.isEmpty || session.authCookie.isEmpty) return null;
 
-    return GlobalProtectCachedSession(
-      account: account.trim(),
-      gateway: gateway,
-      session: session,
-      cachedAt: cachedAt,
-    );
+    return GlobalProtectCachedSession(account: account.trim(), gateway: gateway, session: session, cachedAt: cachedAt);
   }
 }
 
@@ -101,10 +96,7 @@ class GlobalProtectSessionCache {
     }
   }
 
-  Future<void> save({
-    required String account,
-    required GlobalProtectConnection connection,
-  }) async {
+  Future<void> save({required String account, required GlobalProtectConnection connection}) async {
     final normalizedAccount = account.trim();
     if (normalizedAccount.isEmpty) return;
     if (connection.session.user.isEmpty || connection.session.authCookie.isEmpty) return;
