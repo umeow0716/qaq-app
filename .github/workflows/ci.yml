@@ -42,7 +42,7 @@ jobs:
         run: bash scripts/codegen.sh
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed -l 120 lib test
+        run: git ls-files -z '*.dart' | xargs -0 dart format --output=none --set-exit-if-changed -l 120
 
       - name: Analyze
         run: flutter analyze
