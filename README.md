@@ -2,61 +2,47 @@
 
 <h1 align="center">
   <img
-    src="https://is3-ssl.mzstatic.com/image/thumb/Purple112/v4/20/2b/3b/202b3b1c-c977-5445-365d-52593ed795f3/AppIcon-0-1x_U007emarketing-0-7-0-85-220.png/540x540bb.jpg"
-    alt="TAT - 北科生活"
-    style="
-      width: 170px;
-      height: 170px;
-      border-radius: 22%;
-      overflow: hidden;
-      display: inline-block;
-      vertical-align: middle;
-    "
+    src="assets/images/original.png"
+    alt="QAQ"
+    width="170"
+    height="170"
   />
 </h1>
 
 <h1 align="center">
-<b>TAT</b>
-<i><p><small>the Best NTUT Campus life assistant</small></p></i>
+<b>QAQ</b>
+<i><p><small>An independent campus life assistant for NTUT students</small></p></i>
 </h1>
 
 <h6 align="center">
 
-[![CI](https://github.com/NEO-TAT/tat_flutter/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/NEO-TAT/tat_flutter/actions/workflows/build.yml)
+[![CI](https://github.com/umeow0716/tat_umeow/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/umeow0716/tat_umeow/actions/workflows/build.yml)
 
 </h6>
 
 ## Introduction
 
-TAT is a solution that simplifies campus life.
+QAQ is an independently maintained derivative of
+[NEO-TAT/tat_flutter](https://github.com/NEO-TAT/tat_flutter), the GPL-3.0-licensed TAT project for National Taipei
+University of Technology (NTUT) students.
 
-With this app, you can quickly view the course tables, classroom, grades, and calendar for each semester, as well as
-quickly log in to the i-plus website without entering your account information.
+With this app, you can quickly view course tables, classrooms, grades, and calendars for each semester, as well as use
+supported NTUT web services from one place.
 
-Additionally, we offer common functions of i-Plus, such as downloading course files and viewing notifications.
+QAQ supports Android and iOS/iPadOS platforms.
 
-Furthermore, you can view your friends' course tables and see what courses they have chosen.
+> [!IMPORTANT]
+> QAQ is an independent community-maintained project. It is not affiliated with, endorsed by, or an official release
+> of N.P.C. 北科程式設計研究社, NEO-TAT, or National Taipei University of Technology.
 
-The app supports Android and iOS/iPadOS platforms.
+## Project lineage
 
-## Our story
+QAQ is based on the original TAT Flutter codebase maintained at
+[NEO-TAT/tat_flutter](https://github.com/NEO-TAT/tat_flutter). The upstream project was developed by N.P.C. 北科程式設計研究社
+and its contributors.
 
-Not long after the establishment of the **NTUT Programming Club (N.P.C.)**, the founding president created a campus life
-app called TTS (with features similar to TAT), which was launched on the Google Play Store (due to its development in
-Android native, there was no iOS version available).
-
-Approximately 2 to 3 years after TTS was in use, a member of NPC had new ideas. He hoped to achieve the goal of a
-dual-platform launch through the newly-released cross-platform open-source development framework (Flutter) by Google at
-that time. As a result, the founding president of NPC worked with him to complete the initial version of TAT and
-released it on both platforms.
-
-Now, TAT has become a necessary tool for Northeastern students. In fact, this is due to the efforts of the student union
-at that time.
-
-However, what many people do not know is that TAT is a project fully developed by NPC and does not rely on any
-assistance from the school or student union. Therefore, it does not have any obligations to the school or student union.
-This makes every time the backend of the school has changes, all TAT users will immediately be at risk of encountering
-unexpected errors.
+This fork contains substantial modifications maintained separately by `umeow0716` since September 2026. Upstream TAT
+and the current N.P.C. implementation remain separate projects with their own maintainers, branding, and releases.
 
 ## Get started
 
@@ -67,21 +53,18 @@ unexpected errors.
   />
 </a>
 
-Due to the strong drive of [Flutter](https://flutter.dev/), the development of TAT is accomplished with half the effort.
-
-- First, install [mise](https://mise.jdx.dev/) by following the
+- Install [mise](https://mise.jdx.dev/) by following the
   [instructions](https://mise.jdx.dev/getting-started.html). This project uses mise to manage tool versions (Flutter,
   Java, and Ruby).
 
-- Next, install [Android Studio](https://developer.android.com/studio) or
-  [VSCode](https://code.visualstudio.com/) in your development environment, as Flutter and Dart officially recommend the
-  use of these two solutions for development. However, if you believe that other editors/IDEs are a better choice for
-  you, you may try installing them as well.
+- Install [Android Studio](https://developer.android.com/studio) or
+  [VSCode](https://code.visualstudio.com/) in your development environment.
 
-- Clone the code of TAT to your environment through [Git](https://git-scm.com/).
+- Clone QAQ through Git.
 
   ```bash
-  git clone --recurse-submodules git@github.com:NEO-TAT/tat_flutter.git
+  git clone --recurse-submodules git@github.com:umeow0716/tat_umeow.git
+  cd tat_umeow
   ```
 
 - Install all required tools specified in `mise.toml`.
@@ -96,29 +79,26 @@ Due to the strong drive of [Flutter](https://flutter.dev/), the development of T
   flutter doctor -v
   ```
 
-- Install the dependencies in the TAT project.
+- Install project dependencies.
 
   ```bash
   flutter pub get
   ```
 
-Once all dependencies are successfully installed, you can start doing whatever you want!
+## Contributing
 
-## Become contributor
+Contributions to QAQ are welcome. Please keep changes compatible with the project's GPL-3.0 licensing requirements
+and avoid introducing third-party branding or assets without an appropriate license or permission.
 
-<img src="https://i.imgur.com/7yYwMr1.webp" height="200" alt="TAT contributors">
+## License and attribution
 
-If you are inclined to contribute to the improvement of this app, we welcome your participation at all times, regardless
-of the form it may take.
+The original TAT work is copyright its respective N.P.C. 北科程式設計研究社 authors and contributors.
+QAQ modifications are copyright © 2026 `umeow0716` and contributors.
 
-While we certainly welcome more capable developers, contributing to this app does not necessarily require writing code.
-If your expertise lies in areas such as UI design, animation design, project management, DevOps, planning, quality
-management, automation, security, server-side, front-end web development, CI/CD, AI, ML, networking, IoT, multilingual
-translation, accounting and finance, advertising, marketing, and promotion, among others, we also highly value your
-involvement.
+This project is distributed under the **GNU General Public License version 3 (GPL-3.0)**. See [LICENSE](LICENSE) for the
+full license text. Modified versions and binary releases must continue to comply with the GPL-3.0 requirements,
+including providing the corresponding source code and preserving applicable notices.
 
-## Contributors
-
-[![Contributors](https://img.shields.io/github/contributors/NEO-TAT/tat_flutter?color=ee8449&style=flat-square)](https://github.com/NEO-TAT/tat_flutter/graphs/contributors)
-
-_Copyright © 2026 All rights reserved and owned by **N.P.C. 北科程式設計研究社**._
+- Original project: [NEO-TAT/tat_flutter](https://github.com/NEO-TAT/tat_flutter)
+- Original contributors: [NEO-TAT/tat_flutter contributors](https://github.com/NEO-TAT/tat_flutter/graphs/contributors)
+- QAQ contributors: [umeow0716/tat_umeow contributors](https://github.com/umeow0716/tat_umeow/graphs/contributors)

@@ -1,7 +1,7 @@
 // Local dialog implementation inspired by awesome_dialog.
 // Reference: https://github.com/marcos930807/awesomeDialogs
 //
-// This file is an independent Flutter implementation for TAT UMeow and does
+// This file is an independent Flutter implementation for QAQ and does
 // not include or depend on Rive / rive_native.
 
 import 'package:flutter/material.dart';

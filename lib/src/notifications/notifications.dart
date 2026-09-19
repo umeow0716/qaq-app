@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/debug/log/log.dart';
+import 'package:flutter_app/src/config/app_config.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:rxdart/rxdart.dart';
@@ -192,7 +193,7 @@ class Notifications {
 class ReceivedNotification {
   ReceivedNotification({int? id, required String? title, required this.body, required this.payload})
     : id = id ?? Notifications.instance.notificationId,
-      title = title != null ? (title.length > 26 ? "${title.substring(0, 26)}..." : title) : 'TAT';
+      title = title != null ? (title.length > 26 ? "${title.substring(0, 26)}..." : title) : AppConfig.appName;
 
   int id;
   String title;

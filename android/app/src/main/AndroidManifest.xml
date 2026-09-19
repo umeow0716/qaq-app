@@ -14,7 +14,7 @@
         android:icon="@mipmap/ic_launcher"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
-        android:label="TAT">
+        android:label="QAQ">
 
         <activity
             android:name=".MainActivity"
