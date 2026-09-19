@@ -7,4 +7,4 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 dart run intl_utils:generate
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
