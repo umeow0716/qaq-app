@@ -65,7 +65,9 @@ android {
         }
         real {
             dimension = "default"
-            signingConfig = signingConfigs.release
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
 }
