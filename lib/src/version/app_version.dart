@@ -7,8 +7,6 @@ class APPVersion {
     await updateLocalVersion();
   }
 
-  static Future<bool> checkShouldUpdate() => AppUpdate.checkUpdate();
-
   static Future<void> updateLocalVersion() async {
     final current = await AppUpdate.getAppVersion();
     final previous = LocalStorage.instance.getVersion();

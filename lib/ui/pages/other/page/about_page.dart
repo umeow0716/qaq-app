@@ -2,13 +2,12 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/src/r.dart';
-import 'package:flutter_app/src/version/app_version.dart';
 import 'package:flutter_app/src/version/update/app_update.dart';
 import 'package:flutter_app/ui/other/list_view_animator.dart';
 import 'package:flutter_app/ui/other/my_toast.dart';
 import 'package:flutter_app/ui/other/route_utils.dart';
 
-enum OnListViewPress { appUpdate, contribution, privacyPolicy, version, dev }
+enum OnListViewPress { contribution, privacyPolicy, version, dev }
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -31,12 +30,6 @@ class _AboutPageState extends State<AboutPage> {
   void initList() {
     listViewData = [];
     listViewData.addAll([
-      {
-        "icon": EvaIcons.refreshOutline,
-        "title": R.current.checkVersion,
-        "color": Colors.orange,
-        "onPress": OnListViewPress.appUpdate,
-      },
       {
         "icon": EvaIcons.awardOutline,
         "title": R.current.Contribution,
@@ -76,13 +69,6 @@ class _AboutPageState extends State<AboutPage> {
 
   void _onListViewPress(OnListViewPress value) async {
     switch (value) {
-      case OnListViewPress.appUpdate:
-        MyToast.show(R.current.checkingVersion);
-        final result = await APPVersion.checkShouldUpdate();
-        if (!result) {
-          MyToast.show(R.current.isNewVersion);
-        }
-        break;
       case OnListViewPress.contribution:
         RouteUtils.toContributorsPage();
         break;
