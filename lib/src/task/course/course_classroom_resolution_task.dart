@@ -14,6 +14,7 @@ class CourseClassroomResolutionTask {
   static Future<void> _persistQueue = Future<void>.value();
 
   static void _trace(String message) {
+    if (!kDebugMode) return;
     final line = '[CLRDBG] $message';
     debugPrint(line);
     Log.d(line);
