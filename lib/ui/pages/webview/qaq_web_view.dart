@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
@@ -283,9 +284,13 @@ class _QAQWebViewCore extends StatelessWidget {
     onProgressChanged: onProgressChanged,
     shouldOverrideUrlLoading: shouldOverrideUrlLoading,
     onLoadStart: (controller, url) {
-      debugPrint('[WebView] onLoadStart: $url');
+      if (kDebugMode) {
+        debugPrint('[WebView] onLoadStart: $url');
+      }
     },
     onLoadStop: (controller, url) async {
+      if (!kDebugMode) return;
+
       debugPrint('[WebView] onLoadStop: $url');
 
       if (url != null) {

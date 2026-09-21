@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -592,13 +593,15 @@ class _CourseTablePageState extends State<CourseTablePage> {
             SectionNumber.values[section],
           );
     final classroomName = resolvedClassroom ?? courseInfo.main.getClassroomName();
-    final debugLine =
-        '[CLRDBG] toast id=${course.id} href=${course.href} '
-        'slot=${Day.values[day].name}/${SectionNumber.values[section].name} '
-        'rooms=${courseInfo.main.classroom.map((room) => '${room.name}|${room.href}').join(' || ')} '
-        'resolved=${resolvedClassroom ?? '<fallback>'} display=$classroomName';
-    debugPrint(debugLine);
-    Log.d(debugLine);
+    if (kDebugMode) {
+      final debugLine =
+          '[CLRDBG] toast id=${course.id} href=${course.href} '
+          'slot=${Day.values[day].name}/${SectionNumber.values[section].name} '
+          'rooms=${courseInfo.main.classroom.map((room) => '${room.name}|${room.href}').join(' || ')} '
+          'resolved=${resolvedClassroom ?? '<fallback>'} display=$classroomName';
+      debugPrint(debugLine);
+      Log.d(debugLine);
+    }
     final teacherName = courseInfo.main.getTeacherName();
     final studentId = LocalStorage.instance.getCourseSetting().info.studentId;
     setState(() {
@@ -707,11 +710,13 @@ class _CourseTablePageState extends State<CourseTablePage> {
       isLoading = true;
     });
     courseTableControl.set(courseTable); //設定課表顯示狀態
-    final classroomDebugLine =
-        '[CLRDBG] table shown student=${courseTable.studentId} '
-        'semester=${courseTable.courseSemester.year}-${courseTable.courseSemester.semester}';
-    debugPrint(classroomDebugLine);
-    Log.d(classroomDebugLine);
+    if (kDebugMode) {
+      final classroomDebugLine =
+          '[CLRDBG] table shown student=${courseTable.studentId} '
+          'semester=${courseTable.courseSemester.year}-${courseTable.courseSemester.semester}';
+      debugPrint(classroomDebugLine);
+      Log.d(classroomDebugLine);
+    }
     CourseClassroomResolutionTask.refreshInBackground(courseTable);
     await Future.delayed(const Duration(milliseconds: 50));
     setState(() {

@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:qaq_app/ui/pages/logconsole/log_console.dart';
 import 'package:logger/logger.dart';
 
 class MyLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    return true;
+    if (!kReleaseMode) return true;
+    return event.level.index >= Level.warning.index;
   }
 }
 
