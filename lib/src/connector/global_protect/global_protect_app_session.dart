@@ -6,6 +6,7 @@ import 'package:qaq_app/src/store/local_storage.dart';
 import 'global_protect_connector.dart';
 import 'global_protect_debug.dart';
 import 'global_protect_http_client.dart';
+import 'global_protect_idle.dart';
 import 'global_protect_models.dart';
 import 'global_protect_session_manager.dart';
 import 'global_protect_session_cache.dart';
@@ -16,27 +17,35 @@ import 'global_protect_session_cache.dart';
 /// reads the account/password already held by [LocalStorage] at that moment.
 class GlobalProtectAppSession {
   GlobalProtectAppSession._() : _connector = GlobalProtectConnector() {
+    _idleController = GlobalProtectIdleController(timeout: idleTimeout, onIdle: _disconnectForIdle);
     _manager = GlobalProtectSessionManager(connect: _connectUsingCachedSessionOrPassword);
   }
 
+  static const idleTimeout = Duration(minutes: 5);
   static final GlobalProtectAppSession instance = GlobalProtectAppSession._();
 
   final GlobalProtectConnector _connector;
   final GlobalProtectSessionCache _sessionCache = GlobalProtectSessionCache.instance;
+  late final GlobalProtectIdleController _idleController;
   late final GlobalProtectSessionManager _manager;
 
   GlobalProtectHttpClient? _httpClient;
   GlobalProtectConnection? _httpConnection;
   Future<GlobalProtectHttpClient>? _httpInFlight;
+  Future<void>? _disconnectInFlight;
   String? _connectedAccount;
   int _runtimeGeneration = 0;
+  int _activityGeneration = 0;
+  int? _activeActivityGeneration;
 
   GlobalProtectSessionState get state => _manager.state;
   bool get isConnected => _manager.isConnected;
   GlobalProtectConnection? get connection => _manager.connection;
 
   Future<GlobalProtectConnection> ensureConnected() async {
-    final runtimeGeneration = _runtimeGeneration;
+    final disconnecting = _disconnectInFlight;
+    if (disconnecting != null) await disconnecting;
+
     final account = LocalStorage.instance.getAccount().trim();
     GlobalProtectDebug.log('ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}');
     if (account.isEmpty) {
@@ -46,15 +55,21 @@ class GlobalProtectAppSession {
 
     if (_manager.isConnected && _connectedAccount != account) {
       GlobalProtectDebug.log('saved account changed; reconnecting GP session');
-      await _closeHttpClient();
-      await _manager.disconnect();
+      await disconnect();
     }
+
+    // A new request arriving just before the idle deadline must cancel the
+    // pending idle disconnect before any await can yield to the timer.
+    if (_manager.isConnected) _idleController.activity();
+
+    final runtimeGeneration = _runtimeGeneration;
     try {
       final connection = await _manager.ensureConnected();
       if (runtimeGeneration != _runtimeGeneration) {
         throw StateError('GlobalProtect runtime was reset while connecting.');
       }
       _connectedAccount = account;
+      _idleController.activity();
       GlobalProtectDebug.log(
         'session ready gateway=${connection.gateway.host} '
         'transport=esp tunnelIp=${connection.config.ipAddress ?? '-'}',
@@ -135,7 +150,7 @@ class GlobalProtectAppSession {
           throw StateError('GlobalProtect runtime was reset while resuming a cached session.');
         }
         GlobalProtectDebug.log('cached GP session resumed');
-        return connection;
+        return _trackConnectionActivity(connection);
       } on GlobalProtectSessionRejectedException catch (error, stackTrace) {
         GlobalProtectDebug.error('cached GP session rejected', error, stackTrace);
         try {
@@ -174,10 +189,39 @@ class GlobalProtectAppSession {
         GlobalProtectDebug.error('GP cache write', cacheError, cacheStackTrace);
       }
       GlobalProtectDebug.log('GP password login completed');
-      return connection;
+      return _trackConnectionActivity(connection);
     } catch (error, stackTrace) {
       GlobalProtectDebug.error('GP password login', error, stackTrace);
       rethrow;
+    }
+  }
+
+  GlobalProtectConnection _trackConnectionActivity(GlobalProtectConnection connection) {
+    final generation = ++_activityGeneration;
+    _activeActivityGeneration = generation;
+    return GlobalProtectConnection(
+      gateway: connection.gateway,
+      session: connection.session,
+      config: connection.config,
+      transport: GlobalProtectActivityTransport(
+        delegate: connection.transport,
+        onActivity: () => _recordTransportActivity(generation),
+      ),
+    );
+  }
+
+  void _recordTransportActivity(int generation) {
+    if (generation != _activeActivityGeneration) return;
+    _idleController.activity();
+  }
+
+  Future<void> _disconnectForIdle() async {
+    if (!_manager.isConnected) return;
+    GlobalProtectDebug.log('GP idle for ${idleTimeout.inMinutes} minutes; disconnecting live session');
+    try {
+      await disconnect();
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('idle disconnect', error, stackTrace);
     }
   }
 
@@ -216,7 +260,24 @@ class GlobalProtectAppSession {
     }
   }
 
-  Future<void> disconnect() async {
+  Future<void> disconnect() {
+    final inFlight = _disconnectInFlight;
+    if (inFlight != null) return inFlight;
+
+    _idleController.cancel();
+    _activeActivityGeneration = null;
+    final future = _performDisconnect();
+    _disconnectInFlight = future;
+    unawaited(
+      future.then<void>(
+        (_) => _clearDisconnectInFlight(future),
+        onError: (Object _, StackTrace _) => _clearDisconnectInFlight(future),
+      ),
+    );
+    return future;
+  }
+
+  Future<void> _performDisconnect() async {
     _runtimeGeneration++;
     _httpInFlight = null;
     await _closeHttpClient();
@@ -224,6 +285,10 @@ class GlobalProtectAppSession {
     if (_manager.state != GlobalProtectSessionState.disposed) {
       await _manager.disconnect();
     }
+  }
+
+  void _clearDisconnectInFlight(Future<void> future) {
+    if (identical(_disconnectInFlight, future)) _disconnectInFlight = null;
   }
 }
 
