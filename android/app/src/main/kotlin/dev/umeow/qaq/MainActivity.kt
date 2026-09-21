@@ -1,6 +1,7 @@
 package dev.umeow.qaq
 
 import android.content.Intent
+import android.os.Build
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -25,6 +26,14 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                         Log.e(logTag, e.toString())
                     }
+                }
+                "get_feedback_device_info" -> {
+                    result.success(
+                        mapOf(
+                            "model" to Build.MODEL,
+                            "androidRelease" to Build.VERSION.RELEASE,
+                        ),
+                    )
                 }
                 else -> {
                     result.notImplemented()
