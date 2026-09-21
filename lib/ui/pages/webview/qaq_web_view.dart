@@ -201,17 +201,11 @@ class _QAQWebViewState extends State<QAQWebView> {
     await GlobalProtectWebViewRuntime.reset();
   }
 
-  Future<ServerTrustAuthResponse?> _onReceivedTrustAuthReqCallBack(
-    InAppWebViewController controller,
-    URLAuthenticationChallenge challenge,
-  ) async => ServerTrustAuthResponse(action: ServerTrustAuthResponseAction.PROCEED);
-
   Widget _buildQAQWebViewCore(_InitialWebViewContent content) => _QAQWebViewCore(
     initialUrl: content.initialUrl,
     initialData: content.initialData,
     onWebViewCreated: _onWebViewCreated,
     onProgressChanged: (_, progress) => _onProgressChanged(progress),
-    onReceivedTrustAuthReqCallBack: _onReceivedTrustAuthReqCallBack,
     shouldOverrideUrlLoading: _onShouldOverrideUrlLoading,
   );
 
@@ -270,7 +264,6 @@ class _QAQWebViewCore extends StatelessWidget {
     this.initialData,
     this.onWebViewCreated,
     this.onProgressChanged,
-    this.onReceivedTrustAuthReqCallBack,
     this.shouldOverrideUrlLoading,
   });
 
@@ -278,11 +271,6 @@ class _QAQWebViewCore extends StatelessWidget {
   final String? initialData;
   final void Function(InAppWebViewController controller)? onWebViewCreated;
   final void Function(InAppWebViewController controller, int progress)? onProgressChanged;
-  final Future<ServerTrustAuthResponse?> Function(
-    InAppWebViewController controller,
-    URLAuthenticationChallenge challenge,
-  )?
-  onReceivedTrustAuthReqCallBack;
   final Future<NavigationActionPolicy?> Function(InAppWebViewController controller, NavigationAction navigationAction)?
   shouldOverrideUrlLoading;
 
@@ -293,7 +281,6 @@ class _QAQWebViewCore extends StatelessWidget {
     initialSettings: InAppWebViewSettings(useShouldOverrideUrlLoading: true),
     onWebViewCreated: onWebViewCreated,
     onProgressChanged: onProgressChanged,
-    onReceivedServerTrustAuthRequest: onReceivedTrustAuthReqCallBack,
     shouldOverrideUrlLoading: shouldOverrideUrlLoading,
     onLoadStart: (controller, url) {
       debugPrint('[WebView] onLoadStart: $url');
