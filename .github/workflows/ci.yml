@@ -50,6 +50,11 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Android release lint
+        run: |
+          printf 'flutter.sdk=%s\n' "$(dirname "$(dirname "$(command -v flutter)")")" > android/local.properties
+          (cd android && ./gradlew :app:lintRealRelease -PskipDependencyChecks=true)
+
   markdownlint:
     name: Lint Markdown
     runs-on: ubuntu-latest

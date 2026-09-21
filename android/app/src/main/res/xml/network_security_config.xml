@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Reject cleartext traffic by default. -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- The Android WebView GlobalProtect bridge intentionally uses loopback HTTP. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
