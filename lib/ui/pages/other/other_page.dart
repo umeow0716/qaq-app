@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qaq_app/debug/log/log.dart';
-// import 'package:qaq_app/src/config/app_config.dart';
+import 'package:qaq_app/src/config/app_config.dart';
+import 'package:qaq_app/src/config/app_link.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/file_store.dart';
 import 'package:qaq_app/src/r.dart';
@@ -14,8 +18,9 @@ import 'package:qaq_app/ui/other/route_utils.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-enum OnListViewPress { setting, fileViewer, logout, about, login, subSystem }
+enum OnListViewPress { setting, fileViewer, logout, feedback, about, login, subSystem }
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -27,6 +32,8 @@ class OtherPage extends StatefulWidget {
 }
 
 class _OtherPageState extends State<OtherPage> {
+  static const _platform = MethodChannel(AppConfig.methodChannelName);
+
   final List<Map<String, Object?>> optionList = [
     {
       "icon": EvaIcons.settings2Outline,
@@ -55,6 +62,13 @@ class _OtherPageState extends State<OtherPage> {
       },
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
+    if (Platform.isAndroid)
+      {
+        "icon": EvaIcons.messageSquareOutline,
+        "color": Colors.cyan,
+        "title": R.current.feedbackForm,
+        "onPress": OnListViewPress.feedback,
+      },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
@@ -97,6 +111,10 @@ class _OtherPageState extends State<OtherPage> {
           RouteUtils.toFileViewerPage(R.current.fileViewer, filePath);
         });
         break;
+      case OnListViewPress.feedback:
+        final link = await _buildFeedbackUrl();
+        await launchUrl(link, mode: LaunchMode.externalApplication);
+        break;
       case OnListViewPress.about:
         RouteUtils.toAboutPage();
         break;
@@ -104,6 +122,22 @@ class _OtherPageState extends State<OtherPage> {
         RouteUtils.toSettingPage(widget.pageController);
         break;
     }
+  }
+
+  Future<Uri> _buildFeedbackUrl() async {
+    try {
+      final deviceInfo = await _platform.invokeMapMethod<String, dynamic>('get_feedback_device_info');
+      final model = deviceInfo?['model']?.toString().trim();
+      final androidRelease = deviceInfo?['androidRelease']?.toString().trim();
+      if (model != null && model.isNotEmpty && androidRelease != null && androidRelease.isNotEmpty) {
+        return AppLink.feedbackFormUrl(deviceModel: model, androidRelease: androidRelease);
+      }
+    } on PlatformException catch (error, stackTrace) {
+      Log.eWithStack(error, stackTrace);
+    } on MissingPluginException catch (error, stackTrace) {
+      Log.eWithStack(error, stackTrace);
+    }
+    return AppLink.feedbackFormBaseUrl;
   }
 
   @override
