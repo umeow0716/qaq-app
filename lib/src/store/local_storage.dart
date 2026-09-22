@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
 import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
@@ -572,6 +573,7 @@ class LocalStorage {
 
     // Runtime/session cleanup is best-effort and intentionally exhaustive: one
     // failed subsystem must not prevent the remaining user state from clearing.
+    await cleanup('webview-download-relay', GlobalProtectDownloadRelay.instance.close);
     await cleanup('webview-vpn-runtime', GlobalProtectWebViewRuntime.reset);
     await cleanup('global-protect-session', GlobalProtectAppSession.instance.disconnectAndClearCachedSession);
     await cleanup('dio-cookies', DioConnector.instance.deleteCookies);

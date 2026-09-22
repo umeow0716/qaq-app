@@ -48,6 +48,12 @@ class WebViewCookieStore {
     );
   }
 
+  static Future<String?> cookieHeaderFor(Uri url) async {
+    final cookies = await _manager.getCookies(domain: url);
+    if (cookies.isEmpty) return null;
+    return cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
+  }
+
   static Future<List<String>> debugLabels(Uri url) async {
     final cookies = await _manager.getCookies(domain: url);
     return cookies.map((cookie) => '${cookie.name}@${cookie.domain}${cookie.path}').toList(growable: false);
