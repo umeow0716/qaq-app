@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart' as legacy_webvie
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
@@ -171,40 +172,16 @@ class _QAQWebViewState extends State<QAQWebView> {
       throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
     }
 
-    GlobalProtectDebug.log('checking Android WebView ProxyOverride support');
-    final supported = await legacy_webview.WebViewFeature.isFeatureSupported(
-      legacy_webview.WebViewFeature.PROXY_OVERRIDE,
-    );
-    if (!supported) {
-      throw UnsupportedError('Android WebView ProxyOverride is not supported on this device.');
-    }
-
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted();
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
     }
     GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
-    final reverseBypassSupported = await legacy_webview.WebViewFeature.isFeatureSupported(
-      legacy_webview.WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS,
+    final reverseBypassSupported = await GlobalProtectWebViewProxyController.setProxyOverride(
+      port: port,
+      host: IStudyAccessGuard.iStudyHost,
     );
-    GlobalProtectDebug.log('applying WebView ProxyOverride reverseBypass=$reverseBypassSupported');
-    await legacy_webview.ProxyController.instance().setProxyOverride(
-      settings: legacy_webview.ProxySettings(
-        proxyRules: <legacy_webview.ProxyRule>[
-          legacy_webview.ProxyRule(
-            schemeFilter: legacy_webview.ProxySchemeFilter.MATCH_ALL_SCHEMES,
-            url: 'http://127.0.0.1:$port',
-          ),
-        ],
-        // Newer WebView versions support an allow-list style proxy. Prefer it
-        // so only the actual iStudy destination uses the userspace tunnel.
-        // Older WebViews temporarily proxy all HTTP(S) traffic in this page.
-        bypassRules: reverseBypassSupported
-            ? const <String>[IStudyAccessGuard.iStudyHost]
-            : const <String>['127.0.0.1', 'localhost'],
-        reverseBypassEnabled: reverseBypassSupported,
-      ),
-    );
+    GlobalProtectDebug.log('WebView ProxyOverride applied reverseBypass=$reverseBypassSupported');
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       await GlobalProtectWebViewRuntime.reset();
       throw StateError('WebView GlobalProtect runtime was reset during ProxyOverride setup.');
