@@ -12,7 +12,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "dev.umeow.qaq"
     compileSdk = 37
-    ndkVersion = "29.0.14206865"
+    ndkVersion = "30.0.16248370"
 
     compileOptions {
         coreLibraryDesugaringEnabled = true
@@ -79,4 +79,5 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    implementation 'androidx.webkit:webkit:1.17.0'
 }

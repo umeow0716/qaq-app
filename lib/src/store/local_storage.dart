@@ -8,6 +8,7 @@ import 'package:qaq_app/src/connector/core/dio_connector.dart';
 import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
+import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
@@ -17,7 +18,6 @@ import 'package:qaq_app/src/model/userdata/user_data_json.dart';
 import 'package:qaq_app/src/store/user_session_artifacts.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -575,7 +575,7 @@ class LocalStorage {
     await cleanup('webview-vpn-runtime', GlobalProtectWebViewRuntime.reset);
     await cleanup('global-protect-session', GlobalProtectAppSession.instance.disconnectAndClearCachedSession);
     await cleanup('dio-cookies', DioConnector.instance.deleteCookies);
-    await cleanup('webview-cookies', () => CookieManager.instance().deleteAllCookies());
+    await cleanup('webview-cookies', WebViewCookieStore.clearAll);
     await cleanup('network-image-cache', cacheManager.emptyCache);
     await cleanup('generated-user-artifacts', UserSessionArtifacts.clear);
 

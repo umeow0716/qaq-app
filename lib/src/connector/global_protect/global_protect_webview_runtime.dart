@@ -1,9 +1,6 @@
-import 'dart:io';
-
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
 import 'global_protect_debug.dart';
 import 'global_protect_webview_proxy.dart';
+import 'global_protect_webview_proxy_controller.dart';
 
 /// Owns process-wide Android WebView proxy cleanup for GlobalProtect.
 ///
@@ -20,16 +17,11 @@ class GlobalProtectWebViewRuntime {
 
   static Future<void> reset() async {
     _generation++;
-    if (Platform.isAndroid) {
-      try {
-        final supported = await WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE);
-        if (supported) {
-          await ProxyController.instance().clearProxyOverride();
-          GlobalProtectDebug.log('WebView ProxyOverride cleared');
-        }
-      } catch (error, stackTrace) {
-        GlobalProtectDebug.error('WebView ProxyOverride cleanup', error, stackTrace);
-      }
+    try {
+      await GlobalProtectWebViewProxyController.clearProxyOverride();
+      GlobalProtectDebug.log('WebView ProxyOverride cleared');
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView ProxyOverride cleanup', error, stackTrace);
     }
 
     try {
