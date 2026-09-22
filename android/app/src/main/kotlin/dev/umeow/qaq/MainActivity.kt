@@ -2,14 +2,20 @@ package dev.umeow.qaq
 
 import android.content.Intent
 import android.os.Build
+import android.webkit.CookieManager
 import androidx.annotation.NonNull
 import androidx.webkit.ProxyConfig
 import androidx.webkit.ProxyController
 import androidx.webkit.WebViewFeature
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.Log
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.Executor
 
 class MainActivity : FlutterActivity() {
@@ -50,6 +56,7 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "clear_webview_proxy_override" -> clearWebViewProxyOverride(result)
+                "set_webview_cookie" -> setWebViewCookie(call, result)
                 else -> {
                     result.notImplemented()
                 }
@@ -110,4 +117,62 @@ class MainActivity : FlutterActivity() {
             result.error("WEBVIEW_PROXY_ERROR", e.message, null)
         }
     }
+
+    private fun setWebViewCookie(call: MethodCall, result: MethodChannel.Result) {
+        val url = call.argument<String>("url")
+        val name = call.argument<String>("name")
+        val value = call.argument<String>("value")
+        val path = call.argument<String>("path") ?: "/"
+
+        if (url.isNullOrBlank() || name.isNullOrEmpty() || value == null) {
+            result.error("INVALID_COOKIE_ARGUMENTS", "A cookie URL, name and value are required.", null)
+            return
+        }
+
+        try {
+            val domain = call.argument<String>("domain")
+            val expiresDate = call.argument<Number>("expiresDate")?.toLong()
+            val maxAge = call.argument<Number>("maxAge")?.toLong()
+            val isSecure = call.argument<Boolean>("isSecure") == true
+            val isHttpOnly = call.argument<Boolean>("isHttpOnly") == true
+
+            val cookieValue = buildString {
+                append(name)
+                append("=")
+                append(value)
+                append("; Path=")
+                append(path)
+                if (!domain.isNullOrBlank()) {
+                    append("; Domain=")
+                    append(domain)
+                }
+                if (expiresDate != null) {
+                    append("; Expires=")
+                    append(formatCookieExpirationDate(expiresDate))
+                }
+                if (maxAge != null) {
+                    append("; Max-Age=")
+                    append(maxAge)
+                }
+                if (isSecure) append("; Secure")
+                if (isHttpOnly) append("; HttpOnly")
+                append(";")
+            }
+
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.setCookie(url, cookieValue) { successful ->
+                cookieManager.flush()
+                result.success(successful)
+            }
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to set WebView cookie", e)
+            result.error("WEBVIEW_COOKIE_ERROR", e.message, null)
+        }
+    }
+
+    private fun formatCookieExpirationDate(timestamp: Long): String =
+        SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT")
+        }.format(Date(timestamp))
+
 }

@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart' as legacy_webview;
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
@@ -25,7 +25,6 @@ class QAQWebView extends StatefulWidget {
 }
 
 class _QAQWebViewState extends State<QAQWebView> {
-  final cookieManager = legacy_webview.CookieManager.instance();
   final cookieJar = DioConnector.instance.cookiesManager;
   late final WebViewController _controller;
   late final Future<void> _initialLoadFuture;
@@ -97,7 +96,7 @@ class _QAQWebViewState extends State<QAQWebView> {
   }
 
   Future<void> setInitialCookies() async {
-    await cookieManager.deleteAllCookies();
+    await WebViewCookieStore.clearAll();
 
     final portalUrl = Uri.parse(NTUTConnector.host);
 
@@ -110,20 +109,8 @@ class _QAQWebViewState extends State<QAQWebView> {
 
   Future<void> _setCookiesForUri(Uri uri) async {
     final cookies = await cookieJar.loadForRequest(uri);
-    final webUri = legacy_webview.WebUri(uri.toString());
-
     for (final cookie in cookies) {
-      await cookieManager.setCookie(
-        url: webUri,
-        name: cookie.name,
-        value: cookie.value,
-        domain: cookie.domain,
-        path: cookie.path ?? '/',
-        expiresDate: cookie.expires?.millisecondsSinceEpoch,
-        maxAge: cookie.maxAge,
-        isSecure: cookie.secure,
-        isHttpOnly: cookie.httpOnly,
-      );
+      await WebViewCookieStore.setCookie(url: uri, cookie: cookie);
     }
   }
 
@@ -206,11 +193,9 @@ class _QAQWebViewState extends State<QAQWebView> {
 
     debugPrint('[WebView] onPageFinished: $url');
 
-    final cookies = await cookieManager.getCookies(url: legacy_webview.WebUri(url));
-    debugPrint(
-      '[WebView] cookies: '
-      '${cookies.map((c) => '${c.name}@${c.domain}${c.path}').toList()}',
-    );
+    final uri = Uri.tryParse(url);
+    final cookieLabels = uri == null ? const <String>[] : await WebViewCookieStore.debugLabels(uri);
+    debugPrint('[WebView] cookies: $cookieLabels');
 
     final title = await _controller.getTitle();
     debugPrint('[WebView] title: $title');
