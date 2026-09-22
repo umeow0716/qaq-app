@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' as legacy_webview;
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
@@ -10,7 +11,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runt
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class QAQWebView extends StatefulWidget {
   const QAQWebView({super.key, required this.initialUrl, this.title});
@@ -23,10 +24,10 @@ class QAQWebView extends StatefulWidget {
 }
 
 class _QAQWebViewState extends State<QAQWebView> {
-  final cookieManager = CookieManager.instance();
+  final cookieManager = legacy_webview.CookieManager.instance();
   final cookieJar = DioConnector.instance.cookiesManager;
-  InAppWebViewController? _controller;
-  late final Future<_InitialWebViewContent> _initialContentFuture;
+  late final WebViewController _controller;
+  late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
 
   final progress = ValueNotifier(0.0);
@@ -34,7 +35,17 @@ class _QAQWebViewState extends State<QAQWebView> {
   @override
   void initState() {
     super.initState();
-    _initialContentFuture = _prepareInitialContent();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: _onProgressChanged,
+          onNavigationRequest: _onNavigationRequest,
+          onPageStarted: _onPageStarted,
+          onPageFinished: (url) => unawaited(_onPageFinished(url)),
+        ),
+      );
+    _initialLoadFuture = _prepareAndLoadInitialContent();
   }
 
   @override
@@ -46,13 +57,22 @@ class _QAQWebViewState extends State<QAQWebView> {
     super.dispose();
   }
 
+  Future<void> _prepareAndLoadInitialContent() async {
+    final content = await _prepareInitialContent();
+    final initialUrl = content.initialUrl;
+    if (initialUrl != null) {
+      await _controller.loadRequest(initialUrl);
+      return;
+    }
+
+    await _controller.loadHtmlString(content.initialData ?? '');
+  }
+
   Future<_InitialWebViewContent> _prepareInitialContent() async {
     await setInitialCookies();
 
-    // shouldOverrideUrlLoading is not called for the initial WebView load, so
-    // direct iStudy URLs need one preflight. SSO/portal entry URLs are allowed
-    // normally; if they later redirect to iStudy, the navigation callback
-    // below handles that actual destination.
+    // Direct iStudy URLs still need a routing preflight before their first load.
+    // SSO/portal redirects are handled by _onNavigationRequest.
     if (!IStudyAccessGuard.isIStudyUri(widget.initialUrl)) {
       return _InitialWebViewContent.url(widget.initialUrl);
     }
@@ -89,7 +109,7 @@ class _QAQWebViewState extends State<QAQWebView> {
 
   Future<void> _setCookiesForUri(Uri uri) async {
     final cookies = await cookieJar.loadForRequest(uri);
-    final webUri = WebUri(uri.toString());
+    final webUri = legacy_webview.WebUri(uri.toString());
 
     for (final cookie in cookies) {
       await cookieManager.setCookie(
@@ -106,50 +126,41 @@ class _QAQWebViewState extends State<QAQWebView> {
     }
   }
 
-  void _onWebViewCreated(InAppWebViewController controller) {
-    _controller = controller;
-  }
-
   void _onProgressChanged(int webViewProgress) {
     progress.value = webViewProgress / 100.0;
   }
 
-  Future<NavigationActionPolicy?> _onShouldOverrideUrlLoading(
-    InAppWebViewController controller,
-    NavigationAction navigationAction,
-  ) async {
-    if (!navigationAction.isForMainFrame) return NavigationActionPolicy.ALLOW;
+  Future<NavigationDecision> _onNavigationRequest(NavigationRequest request) async {
+    if (!request.isMainFrame) return NavigationDecision.navigate;
 
-    final rawUrl = navigationAction.request.url?.rawValue;
-    if (rawUrl == null) return NavigationActionPolicy.ALLOW;
-    final uri = Uri.tryParse(rawUrl);
+    final uri = Uri.tryParse(request.url);
     if (uri == null || !IStudyAccessGuard.isIStudyUri(uri)) {
-      return NavigationActionPolicy.ALLOW;
+      return NavigationDecision.navigate;
     }
 
     final route = await IStudyAccessGuard.route();
     GlobalProtectDebug.log('WebView redirect reached iStudy; route=${route.name}');
     switch (route) {
       case IStudyAccessRoute.direct:
-        return NavigationActionPolicy.ALLOW;
+        return NavigationDecision.navigate;
       case IStudyAccessRoute.blocked:
-        await controller.loadData(data: IStudyAccessGuard.blockedHtml);
-        return NavigationActionPolicy.CANCEL;
+        await _controller.loadHtmlString(IStudyAccessGuard.blockedHtml);
+        return NavigationDecision.prevent;
       case IStudyAccessRoute.vpn:
-        if (_vpnProxyEnabled) return NavigationActionPolicy.ALLOW;
+        if (_vpnProxyEnabled) return NavigationDecision.navigate;
         try {
           GlobalProtectDebug.log('enabling GP proxy before retrying iStudy redirect');
           await _enableWebViewProxy();
-          // The navigation that revealed the iStudy redirect was created before
-          // the proxy override existed. Cancel it and retry the exact request
-          // after ProxyController confirms the override is active.
+          // webview_flutter exposes the redirect URL but not the complete native
+          // request object. iStudy SSO redirects are expected to be GET requests,
+          // so retry the same URL after ProxyOverride is active.
           GlobalProtectDebug.log('GP proxy active; retrying iStudy navigation');
-          await controller.loadUrl(urlRequest: navigationAction.request);
+          await _controller.loadRequest(uri);
         } catch (error, stackTrace) {
           GlobalProtectDebug.error('redirect WebView GP setup', error, stackTrace);
-          await controller.loadData(data: IStudyAccessGuard.vpnFailedHtml(error));
+          await _controller.loadHtmlString(IStudyAccessGuard.vpnFailedHtml(error));
         }
-        return NavigationActionPolicy.CANCEL;
+        return NavigationDecision.prevent;
     }
   }
 
@@ -161,7 +172,9 @@ class _QAQWebViewState extends State<QAQWebView> {
     }
 
     GlobalProtectDebug.log('checking Android WebView ProxyOverride support');
-    final supported = await WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE);
+    final supported = await legacy_webview.WebViewFeature.isFeatureSupported(
+      legacy_webview.WebViewFeature.PROXY_OVERRIDE,
+    );
     if (!supported) {
       throw UnsupportedError('Android WebView ProxyOverride is not supported on this device.');
     }
@@ -171,14 +184,17 @@ class _QAQWebViewState extends State<QAQWebView> {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
     }
     GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
-    final reverseBypassSupported = await WebViewFeature.isFeatureSupported(
-      WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS,
+    final reverseBypassSupported = await legacy_webview.WebViewFeature.isFeatureSupported(
+      legacy_webview.WebViewFeature.PROXY_OVERRIDE_REVERSE_BYPASS,
     );
     GlobalProtectDebug.log('applying WebView ProxyOverride reverseBypass=$reverseBypassSupported');
-    await ProxyController.instance().setProxyOverride(
-      settings: ProxySettings(
-        proxyRules: <ProxyRule>[
-          ProxyRule(schemeFilter: ProxySchemeFilter.MATCH_ALL_SCHEMES, url: 'http://127.0.0.1:$port'),
+    await legacy_webview.ProxyController.instance().setProxyOverride(
+      settings: legacy_webview.ProxySettings(
+        proxyRules: <legacy_webview.ProxyRule>[
+          legacy_webview.ProxyRule(
+            schemeFilter: legacy_webview.ProxySchemeFilter.MATCH_ALL_SCHEMES,
+            url: 'http://127.0.0.1:$port',
+          ),
         ],
         // Newer WebView versions support an allow-list style proxy. Prefer it
         // so only the actual iStudy destination uses the userspace tunnel.
@@ -202,18 +218,36 @@ class _QAQWebViewState extends State<QAQWebView> {
     await GlobalProtectWebViewRuntime.reset();
   }
 
-  Widget _buildQAQWebViewCore(_InitialWebViewContent content) => _QAQWebViewCore(
-    initialUrl: content.initialUrl,
-    initialData: content.initialData,
-    onWebViewCreated: _onWebViewCreated,
-    onProgressChanged: (_, progress) => _onProgressChanged(progress),
-    shouldOverrideUrlLoading: _onShouldOverrideUrlLoading,
-  );
+  void _onPageStarted(String url) {
+    if (kDebugMode) {
+      debugPrint('[WebView] onPageStarted: $url');
+    }
+  }
+
+  Future<void> _onPageFinished(String url) async {
+    if (!kDebugMode) return;
+
+    debugPrint('[WebView] onPageFinished: $url');
+
+    final cookies = await cookieManager.getCookies(url: legacy_webview.WebUri(url));
+    debugPrint(
+      '[WebView] cookies: '
+      '${cookies.map((c) => '${c.name}@${c.domain}${c.path}').toList()}',
+    );
+
+    final title = await _controller.getTitle();
+    debugPrint('[WebView] title: $title');
+
+    final bodyText = await _controller.runJavaScriptReturningResult(
+      "document.body?.innerText?.substring(0, 500) ?? ''",
+    );
+    debugPrint('[WebView] body: $bodyText');
+  }
 
   Widget _buildButtonBar() => WebViewButtonBar(
-    onBackPressed: () => _controller?.goBack(),
-    onForwardPressed: () => _controller?.goForward(),
-    onRefreshPressed: () => _controller?.reload(),
+    onBackPressed: () => _controller.goBack(),
+    onForwardPressed: () => _controller.goForward(),
+    onRefreshPressed: () => _controller.reload(),
   );
 
   Widget _buildProgressBar() => ValueListenableBuilder<double>(
@@ -233,12 +267,13 @@ class _QAQWebViewState extends State<QAQWebView> {
         children: [
           _buildProgressBar(),
           Expanded(
-            child: FutureBuilder<_InitialWebViewContent>(
-              future: _initialContentFuture,
+            child: FutureBuilder<void>(
+              future: _initialLoadFuture,
               builder: (context, snapshot) {
-                final content = snapshot.data;
-                if (content == null) return const Center(child: CircularProgressIndicator());
-                return _buildQAQWebViewCore(content);
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return WebViewWidget(controller: _controller);
               },
             ),
           ),
@@ -257,61 +292,4 @@ class _InitialWebViewContent {
 
   final Uri? initialUrl;
   final String? initialData;
-}
-
-class _QAQWebViewCore extends StatelessWidget {
-  const _QAQWebViewCore({
-    this.initialUrl,
-    this.initialData,
-    this.onWebViewCreated,
-    this.onProgressChanged,
-    this.shouldOverrideUrlLoading,
-  });
-
-  final Uri? initialUrl;
-  final String? initialData;
-  final void Function(InAppWebViewController controller)? onWebViewCreated;
-  final void Function(InAppWebViewController controller, int progress)? onProgressChanged;
-  final Future<NavigationActionPolicy?> Function(InAppWebViewController controller, NavigationAction navigationAction)?
-  shouldOverrideUrlLoading;
-
-  @override
-  Widget build(BuildContext context) => InAppWebView(
-    initialUrlRequest: initialUrl == null ? null : URLRequest(url: WebUri(initialUrl.toString())),
-    initialData: initialData == null ? null : InAppWebViewInitialData(data: initialData!),
-    initialSettings: InAppWebViewSettings(useShouldOverrideUrlLoading: true),
-    onWebViewCreated: onWebViewCreated,
-    onProgressChanged: onProgressChanged,
-    shouldOverrideUrlLoading: shouldOverrideUrlLoading,
-    onLoadStart: (controller, url) {
-      if (kDebugMode) {
-        debugPrint('[WebView] onLoadStart: $url');
-      }
-    },
-    onLoadStop: (controller, url) async {
-      if (!kDebugMode) return;
-
-      debugPrint('[WebView] onLoadStop: $url');
-
-      if (url != null) {
-        final cookies = await CookieManager.instance().getCookies(url: url);
-
-        debugPrint(
-          '[WebView] cookies: '
-          '${cookies.map((c) => '${c.name}@${c.domain}${c.path}').toList()}',
-        );
-      }
-
-      final title = await controller.getTitle();
-      debugPrint('[WebView] title: $title');
-
-      final bodyText = await controller.evaluateJavascript(
-        source: '''
-          document.body?.innerText?.substring(0, 500) ?? ''
-        ''',
-      );
-
-      debugPrint('[WebView] body: $bodyText');
-    },
-  );
 }
