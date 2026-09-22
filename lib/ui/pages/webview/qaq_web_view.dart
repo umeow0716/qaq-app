@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
@@ -11,8 +12,11 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
+import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class QAQWebView extends StatefulWidget {
   const QAQWebView({super.key, required this.initialUrl, this.title});
@@ -37,14 +41,7 @@ class _QAQWebViewState extends State<QAQWebView> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: _onProgressChanged,
-          onNavigationRequest: _onNavigationRequest,
-          onPageStarted: _onPageStarted,
-          onPageFinished: (url) => unawaited(_onPageFinished(url)),
-        ),
-      );
+      ..setNavigationDelegate(_createNavigationDelegate());
     _initialLoadFuture = _prepareAndLoadInitialContent();
   }
 
@@ -58,6 +55,7 @@ class _QAQWebViewState extends State<QAQWebView> {
   }
 
   Future<void> _prepareAndLoadInitialContent() async {
+    await _configurePlatformFilePicker();
     final content = await _prepareInitialContent();
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
@@ -116,6 +114,112 @@ class _QAQWebViewState extends State<QAQWebView> {
 
   void _onProgressChanged(int webViewProgress) {
     progress.value = webViewProgress / 100.0;
+  }
+
+  NavigationDelegate _createNavigationDelegate() {
+    if (Platform.isAndroid) {
+      return NavigationDelegate.fromPlatform(
+        QAQAndroidNavigationDelegate(
+          onDownloadStart: (url, userAgent, contentDisposition, mimeType, contentLength) {
+            unawaited(
+              _handleDownload(
+                url: url,
+                userAgent: userAgent,
+                contentDisposition: contentDisposition,
+                mimeType: mimeType,
+                contentLength: contentLength,
+              ),
+            );
+          },
+        ),
+        onProgress: _onProgressChanged,
+        onNavigationRequest: _onNavigationRequest,
+        onPageStarted: _onPageStarted,
+        onPageFinished: (url) => unawaited(_onPageFinished(url)),
+      );
+    }
+
+    return NavigationDelegate(
+      onProgress: _onProgressChanged,
+      onNavigationRequest: _onNavigationRequest,
+      onPageStarted: _onPageStarted,
+      onPageFinished: (url) => unawaited(_onPageFinished(url)),
+    );
+  }
+
+  Future<void> _configurePlatformFilePicker() async {
+    if (!Platform.isAndroid) return;
+    final platformController = _controller.platform;
+    if (platformController is! AndroidWebViewController) return;
+
+    await platformController.setOnShowFileSelector(
+      (params) => WebViewFileTransfer.pickSystemFiles(
+        acceptTypes: params.acceptTypes,
+        mode: params.mode.name,
+        capture: params.isCaptureEnabled,
+        filenameHint: params.filenameHint,
+      ),
+    );
+  }
+
+  Future<void> _handleDownload({
+    required String url,
+    required String userAgent,
+    required String contentDisposition,
+    required String mimeType,
+    required int contentLength,
+  }) async {
+    if (!Platform.isAndroid) return;
+    final sourceUri = Uri.tryParse(url);
+    if (sourceUri == null || (sourceUri.scheme != 'http' && sourceUri.scheme != 'https')) {
+      GlobalProtectDebug.log('ignoring unsupported WebView download URL: $url');
+      return;
+    }
+
+    try {
+      final cookieHeader = await WebViewCookieStore.cookieHeaderFor(sourceUri);
+      final referer = await _controller.currentUrl();
+      var requestUri = sourceUri;
+      var keepAlive = false;
+
+      if (IStudyAccessGuard.isIStudyUri(sourceUri)) {
+        final route = await IStudyAccessGuard.route();
+        GlobalProtectDebug.log('iStudy download route=${route.name}');
+        switch (route) {
+          case IStudyAccessRoute.direct:
+            break;
+          case IStudyAccessRoute.blocked:
+            GlobalProtectDebug.log('iStudy download blocked by access settings');
+            return;
+          case IStudyAccessRoute.vpn:
+            requestUri = await GlobalProtectDownloadRelay.instance.createDownloadUri(
+              target: sourceUri,
+              allowedHost: IStudyAccessGuard.iStudyHost,
+              cookieHeader: cookieHeader,
+              userAgent: userAgent,
+              referer: referer,
+            );
+            keepAlive = true;
+        }
+      }
+
+      final downloadId = await WebViewFileTransfer.enqueueSystemDownload(
+        requestUrl: requestUri,
+        sourceUrl: sourceUri,
+        contentDisposition: contentDisposition,
+        mimeType: mimeType,
+        userAgent: userAgent,
+        cookie: keepAlive ? null : cookieHeader,
+        referer: referer,
+        keepAlive: keepAlive,
+      );
+      GlobalProtectDebug.log(
+        'WebView download enqueued id=$downloadId bytes=$contentLength '
+        'relay=$keepAlive source=${sourceUri.host}',
+      );
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView download', error, stackTrace);
+    }
   }
 
   Future<NavigationDecision> _onNavigationRequest(NavigationRequest request) async {
