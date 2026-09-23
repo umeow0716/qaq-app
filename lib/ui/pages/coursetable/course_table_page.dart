@@ -262,15 +262,22 @@ class _CourseTablePageState extends State<CourseTablePage> {
   void _onPopupMenuSelect(int value) {
     switch (value) {
       case 0:
+        final setting = LocalStorage.instance.getOtherSetting();
+        setState(() {
+          setting.useConnectedCourseTableLayout = !setting.useConnectedCourseTableLayout;
+        });
+        LocalStorage.instance.saveOtherSetting();
+        break;
+      case 1:
         final credit = courseTableData?.getTotalCredit().toString();
         if (credit != null) {
           MyToast.show(sprintf("%s:%s", [R.current.credit, credit]));
         }
         break;
-      case 1:
+      case 2:
         _loadFavorite();
         break;
-      case 2:
+      case 3:
         screenshot();
         break;
       default:
@@ -400,11 +407,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
             ),
           ),
           PopupMenuButton<int>(
-            onSelected: (result) => setState(() => _onPopupMenuSelect(result)),
+            onSelected: _onPopupMenuSelect,
             itemBuilder: (context) => [
-              PopupMenuItem(value: 0, child: Text(R.current.searchCredit)),
-              PopupMenuItem(value: 1, child: Text(R.current.loadFavorite)),
-              if (Platform.isAndroid) PopupMenuItem(value: 2, child: Text(R.current.setAsAndroidWeight)),
+              PopupMenuItem(value: 0, child: Text(R.current.switchCourseTableLayout)),
+              PopupMenuItem(value: 1, child: Text(R.current.searchCredit)),
+              PopupMenuItem(value: 2, child: Text(R.current.loadFavorite)),
+              if (Platform.isAndroid) PopupMenuItem(value: 3, child: Text(R.current.setAsAndroidWeight)),
             ],
           ),
         ],
@@ -483,6 +491,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
                   ),
                 ],
               )
+            : LocalStorage.instance.getOtherSetting().useConnectedCourseTableLayout
+            ? Column(children: [_buildDay(), _buildConnectedCourseTable()])
             : Column(
                 children: List.generate(1 + courseTableControl.getSectionIntList.length, (index) {
                   final widget = (index == 0) ? _buildDay() : _buildCourseTable(index - 1);
@@ -577,6 +587,201 @@ class _CourseTablePageState extends State<CourseTablePage> {
       height: courseHeight,
       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: widgetList),
     );
+  }
+
+  Widget _buildConnectedCourseTable() {
+    final sections = courseTableControl.getSectionIntList;
+    final days = courseTableControl.getDayIntList;
+    final totalHeight = sections.length * courseHeight;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (days.isEmpty || sections.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final dayWidth = (constraints.maxWidth - sectionWidth) / days.length;
+        final children = <Widget>[];
+
+        for (var rowIndex = 0; rowIndex < sections.length; rowIndex++) {
+          final rowColor = rowIndex % 2 == 1
+              ? Theme.of(context).colorScheme.surface
+              : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(courseTableWithAlpha);
+
+          children.add(
+            Positioned(
+              left: 0,
+              right: 0,
+              top: rowIndex * courseHeight,
+              height: courseHeight,
+              child: ColoredBox(color: rowColor),
+            ),
+          );
+          children.add(
+            Positioned(
+              left: 0,
+              top: rowIndex * courseHeight,
+              width: sectionWidth,
+              height: courseHeight,
+              child: Center(
+                child: Text(courseTableControl.getSectionString(sections[rowIndex]), textAlign: TextAlign.center),
+              ),
+            ),
+          );
+        }
+
+        for (var dayIndex = 0; dayIndex < days.length; dayIndex++) {
+          final day = days[dayIndex];
+          var rowIndex = 0;
+
+          while (rowIndex < sections.length) {
+            final firstSection = sections[rowIndex];
+            final courseInfo = courseTableControl.getCourseInfo(day, firstSection);
+            if (courseInfo == null || courseInfo.isEmpty) {
+              rowIndex++;
+              continue;
+            }
+
+            var endRow = rowIndex + 1;
+            while (endRow < sections.length) {
+              final previousSection = sections[endRow - 1];
+              final nextSection = sections[endRow];
+
+              // A hidden period still represents a real time gap. Only merge
+              // truly adjacent periods from the original section sequence.
+              if (nextSection != previousSection + 1) break;
+
+              final nextCourseInfo = courseTableControl.getCourseInfo(day, nextSection);
+              if (!_isSameConnectedCourse(courseInfo, nextCourseInfo)) break;
+              endRow++;
+            }
+
+            final blockSections = sections.sublist(rowIndex, endRow);
+            children.add(
+              Positioned(
+                left: sectionWidth + dayIndex * dayWidth + 2,
+                top: rowIndex * courseHeight + 2,
+                width: dayWidth - 5,
+                height: (endRow - rowIndex) * courseHeight - (days.length > 5 ? 5 : 6),
+                child: AnimationConfiguration.staggeredList(
+                  position: dayIndex,
+                  duration: const Duration(milliseconds: 375),
+                  child: ScaleAnimation(
+                    child: FadeInAnimation(child: _buildConnectedCourseCard(day, blockSections, courseInfo)),
+                  ),
+                ),
+              ),
+            );
+
+            rowIndex = endRow;
+          }
+        }
+
+        return SizedBox(
+          height: totalHeight,
+          child: Stack(children: children),
+        );
+      },
+    );
+  }
+
+  bool _isSameConnectedCourse(CourseInfoJson courseInfo, CourseInfoJson? other) {
+    if (other == null || other.isEmpty) return false;
+
+    final course = courseInfo.main.course;
+    final otherCourse = other.main.course;
+    final courseId = course.id.trim();
+    final otherCourseId = otherCourse.id.trim();
+
+    if (courseId.isNotEmpty && otherCourseId.isNotEmpty) {
+      return courseId == otherCourseId;
+    }
+
+    return course.name.trim().isNotEmpty && course.name.trim() == otherCourse.name.trim();
+  }
+
+  Widget _buildConnectedCourseCard(int day, List<int> sections, CourseInfoJson courseInfo) {
+    final color = courseTableControl.getCourseInfoColor(day, sections.first);
+    final isDarkMode = Get.isDarkMode;
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      child: Container(
+        decoration: BoxDecoration(borderRadius: const BorderRadius.all(Radius.circular(5)), color: color),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: const BorderRadius.all(Radius.circular(5)),
+            highlightColor: isDarkMode ? Colors.white : Colors.black12,
+            onTap: () => _showCourseDetail(courseInfo),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: AutoSizeText(
+                      courseInfo.main.course.name,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      minFontSize: 6,
+                      maxLines: 3,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  ValueListenableBuilder<int>(
+                    valueListenable: CourseClassroomResolutionTask.classroomRevision,
+                    builder: (context, revision, child) {
+                      final classroom = _connectedClassroomLabel(day, sections, courseInfo);
+                      if (classroom.isEmpty) return const SizedBox.shrink();
+
+                      return AutoSizeText(
+                        classroom,
+                        style: const TextStyle(color: Colors.black54, fontSize: 10, overflow: TextOverflow.ellipsis),
+                        minFontSize: 7,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _connectedClassroomLabel(int day, List<int> sections, CourseInfoJson courseInfo) {
+    final table = courseTableData;
+    final resolved = <String>[];
+
+    if (table != null) {
+      for (final section in sections) {
+        final classroom = LocalStorage.instance.getResolvedCourseClassroom(
+          table.courseSemester,
+          courseInfo.main,
+          Day.values[day],
+          SectionNumber.values[section],
+        );
+        if (classroom != null && classroom.trim().isNotEmpty && !resolved.contains(classroom.trim())) {
+          resolved.add(classroom.trim());
+        }
+      }
+    }
+
+    if (resolved.isNotEmpty) {
+      return resolved.join(' / ');
+    }
+
+    return courseInfo.main.getClassroomName().trim();
   }
 
   //顯示課程對話框

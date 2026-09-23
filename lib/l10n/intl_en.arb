@@ -192,6 +192,7 @@
   "aduit": "Aduit",
   "autoConnectIStudyVpn": "Automatically connect VPN for iStudy (Experimental)",
   "autoConnectIStudyVpnHint": "When using iStudy off campus, the app will try to establish a VPN connection automatically. This feature is still experimental and may be unstable on some networks.",
+  "switchCourseTableLayout": "Switch layout",
   "iStudyNetworkUnavailableTitle": "Unable to connect to iStudy",
   "iStudyNetworkUnavailableMessage": "You do not appear to be on the campus network (140.*), and automatic VPN is disabled.\n\nTo use iStudy off campus, go to:\nOther → Settings → Automatically connect VPN for iStudy (Experimental)\n\n⚠️ This feature is still experimental, has limited real-world testing, and may be unstable depending on your network."
 }
