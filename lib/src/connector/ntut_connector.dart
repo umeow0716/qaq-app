@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/src/connector/core/connector.dart';
 import 'package:qaq_app/src/connector/core/connector_parameter.dart';
@@ -19,8 +21,10 @@ class NTUTConnector {
   static const _checkSessionUrl = "${host}myPortal.do";
   static const _portalApiUserAgent = "Direk android App";
   static const _getPictureUrl = "${host}photoView.do";
+  static const _uploadPictureUrl = "${host}photoUpload.do";
   static const _getTreeUrl = "${host}aptreeList.do";
   static const _getCalendarUrl = "${host}calModeApp.do";
+  static const maxAvatarUploadBytes = 20 * 1024 * 1024;
 
   static Future<SimpleLoginResult> login(String account, String password) async {
     final parameter = ConnectorParameter(_loginUrl)
@@ -140,6 +144,31 @@ class NTUTConnector {
     }
   }
 
+  static Future<Uint8List> getUserImageBytes() async {
+    final userPhoto = LocalStorage.instance.getUserInfo().userPhoto;
+    final parameter = ConnectorParameter(_getPictureUrl)
+      ..userAgent = _portalApiUserAgent
+      ..referer = "${host}index.do"
+      ..data = {'realname': userPhoto};
+
+    final response = await Connector.getBytesByGetResponse(parameter);
+    if (response.statusCode != HttpStatus.ok) {
+      throw StateError('Avatar download failed with HTTP ${response.statusCode}.');
+    }
+
+    final contentType = response.headers.value(HttpHeaders.contentTypeHeader) ?? '';
+    if (!contentType.toLowerCase().startsWith('image/')) {
+      throw FormatException('Avatar response is not an image: Content-Type=$contentType');
+    }
+
+    final bytes = response.data;
+    if (bytes == null || bytes.isEmpty) {
+      throw const FormatException('Avatar response is empty.');
+    }
+
+    return Uint8List.fromList(bytes);
+  }
+
   static Future<Map<String, Map<String, String>>> getUserImageRequestInfo() async {
     final imageInfo = <String, Map<String, String>>{};
     final userPhoto = LocalStorage.instance.getUserInfo().userPhoto;
@@ -151,5 +180,35 @@ class NTUTConnector {
     imageInfo['header'] = await Connector.getLoginHeaders(url) ?? <String, String>{};
 
     return imageInfo;
+  }
+
+  static Future<String> uploadUserImage(Uint8List imageBytes) async {
+    if (imageBytes.isEmpty) {
+      throw const FormatException('Avatar image is empty.');
+    }
+    if (imageBytes.length > maxAvatarUploadBytes) {
+      throw StateError('Avatar image exceeds the 20 MB upload limit.');
+    }
+
+    final oldFilename = LocalStorage.instance.getUserInfo().userPhoto;
+    final uploadUri = Uri.parse(_uploadPictureUrl)
+        .replace(queryParameters: {'uploadQuota': '20', 'ldapPhoto': oldFilename});
+    final parameter = ConnectorParameter(uploadUri.toString())
+      ..userAgent = _portalApiUserAgent
+      ..referer = "${host}index.do"
+      ..contentType = Headers.multipartFormDataContentType
+      ..data = FormData.fromMap({'file[]': MultipartFile.fromBytes(imageBytes, filename: 'avatar.jpg')});
+
+    final response = await Connector.getDataByPostResponse(parameter);
+    if (response.statusCode != HttpStatus.ok) {
+      throw StateError('Avatar upload failed with HTTP ${response.statusCode}.');
+    }
+
+    final responseJson = _decodeJsonMap(response.data);
+    final newFilename = responseJson?['ldapPhoto']?.toString().trim() ?? '';
+    if (newFilename.isEmpty) {
+      throw const FormatException('Avatar upload response does not contain ldapPhoto.');
+    }
+    return newFilename;
   }
 }

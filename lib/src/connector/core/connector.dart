@@ -39,6 +39,15 @@ class Connector {
     }
   }
 
+  static Future<Response<List<int>>> getBytesByGetResponse(ConnectorParameter parameter) async {
+    await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
+    try {
+      return await DioConnector.instance.getBytesByGetResponse(parameter);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   static Future<Response> getDataByPostResponse(ConnectorParameter parameter) async {
     await IStudyAccessGuard.ensureUrlAllowed(parameter.url);
     Response result;
@@ -56,7 +65,11 @@ class Connector {
       final headers = Map<String, String>.from(DioConnector.instance.headers);
       final cookies = await cookieJar.loadForRequest(Uri.parse(url));
 
-      headers[HttpHeaders.cookieHeader] = cookies.first.toString();
+      if (cookies.isNotEmpty) {
+        headers[HttpHeaders.cookieHeader] = cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
+      } else {
+        headers.remove(HttpHeaders.cookieHeader);
+      }
       headers.remove(HttpHeaders.contentTypeHeader);
 
       return headers;

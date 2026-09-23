@@ -1,9 +1,10 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 import 'package:qaq_app/src/config/app_link.dart';
@@ -14,6 +15,7 @@ import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/other/route_utils.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -34,6 +36,10 @@ class OtherPage extends StatefulWidget {
 class _OtherPageState extends State<OtherPage> {
   static const _platform = MethodChannel(AppConfig.methodChannelName);
 
+  final ImagePicker _imagePicker = ImagePicker();
+  Future<Uint8List?>? _avatarFuture;
+  Uint8List? _lastAvatarBytes;
+  bool _isUpdatingAvatar = false;
   final List<Map<String, Object?>> optionList = [
     {
       "icon": EvaIcons.settings2Outline,
@@ -80,6 +86,141 @@ class _OtherPageState extends State<OtherPage> {
   @override
   void initState() {
     super.initState();
+    _avatarFuture = _loadAvatar();
+    Future.microtask(_recoverLostAvatar);
+  }
+
+  Future<Uint8List?> _loadAvatar() async {
+    try {
+      final taskFlow = TaskFlow();
+      final task = NTUTTask("ImageTask");
+      task.openLoadingDialog = false;
+      taskFlow.addTask(task);
+      if (!await taskFlow.start()) return _lastAvatarBytes;
+
+      final bytes = await NTUTConnector.getUserImageBytes();
+
+      ui.Codec? codec;
+      ui.FrameInfo? frameInfo;
+      try {
+        codec = await ui.instantiateImageCodec(bytes, targetWidth: 64);
+        frameInfo = await codec.getNextFrame();
+      } finally {
+        frameInfo?.image.dispose();
+        codec?.dispose();
+      }
+
+      _lastAvatarBytes = bytes;
+      return bytes;
+    } catch (error, stackTrace) {
+      Log.eWithStack('Avatar load failed: $error', stackTrace);
+      return _lastAvatarBytes;
+    }
+  }
+
+  void _reloadAvatar() {
+    _avatarFuture = _loadAvatar();
+  }
+
+  Future<void> _recoverLostAvatar() async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      final response = await _imagePicker.retrieveLostData();
+      if (response.isEmpty) return;
+
+      final files = response.files;
+      if (files != null && files.isNotEmpty) {
+        await _uploadAvatarFile(files.first);
+      } else if (response.exception != null) {
+        Log.e(response.exception.toString());
+      }
+    } catch (error, stackTrace) {
+      Log.eWithStack(error.toString(), stackTrace);
+    }
+  }
+
+  void _showAvatarSourceSheet() {
+    if (_isUpdatingAvatar) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(R.current.chooseAvatarFromPhotos),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _pickAvatar(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: Text(R.current.takeAvatarPhoto),
+              onTap: () async {
+                Navigator.of(sheetContext).pop();
+                await _pickAvatar(ImageSource.camera);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAvatar(ImageSource source) async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+        requestFullMetadata: false,
+        preferredCameraDevice: CameraDevice.front,
+      );
+      if (image == null) return;
+      await _uploadAvatarFile(image);
+    } catch (error, stackTrace) {
+      Log.eWithStack(error.toString(), stackTrace);
+      MyToast.show(R.current.avatarUpdateFailed);
+    }
+  }
+
+  Future<void> _uploadAvatarFile(XFile image) async {
+    if (_isUpdatingAvatar) return;
+    setState(() => _isUpdatingAvatar = true);
+
+    try {
+      final imageBytes = await image.readAsBytes();
+      final taskFlow = TaskFlow();
+      final loginTask = NTUTTask("AvatarUpload");
+      loginTask.openLoadingDialog = false;
+      taskFlow.addTask(loginTask);
+      if (!await taskFlow.start()) return;
+
+      final newFilename = await NTUTConnector.uploadUserImage(imageBytes);
+      LocalStorage.instance.getUserInfo().userPhoto = newFilename;
+      await LocalStorage.instance.saveUserData();
+      await LocalStorage.instance.cacheManager.emptyCache();
+
+      if (!mounted) return;
+      setState(() {
+        _reloadAvatar();
+      });
+      MyToast.show(R.current.avatarUpdated);
+    } catch (error, stackTrace) {
+      Log.eWithStack(error.toString(), stackTrace);
+      MyToast.show(R.current.avatarUpdateFailed);
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingAvatar = false);
+      }
+    }
   }
 
   void _onListViewPress(OnListViewPress value) async {
@@ -146,16 +287,7 @@ class _OtherPageState extends State<OtherPage> {
       appBar: AppBar(title: Text(R.current.titleOther)),
       body: Column(
         children: <Widget>[
-          if (LocalStorage.instance.getAccount().isNotEmpty)
-            SizedBox(
-              child: FutureBuilder<Map<String, Map<String, String>>>(
-                future: NTUTConnector.getUserImageRequestInfo(),
-                builder: (_, snapshot) {
-                  final data = snapshot.data;
-                  return data != null ? _buildHeader(data) : const SizedBox.shrink();
-                },
-              ),
-            ),
+          if (LocalStorage.instance.getAccount().isNotEmpty) SizedBox(child: _buildHeader()),
           const SizedBox(height: 16),
           Expanded(
             child: AnimationLimiter(
@@ -174,22 +306,10 @@ class _OtherPageState extends State<OtherPage> {
     );
   }
 
-  Widget _buildHeader(Map<String, Map<String, String>> userImageInfo) {
+  Widget _buildHeader() {
     final userInfo = LocalStorage.instance.getUserInfo();
     String givenName = userInfo.givenName;
     String userMail = userInfo.userMail;
-    final userImage = CachedNetworkImage(
-      cacheManager: LocalStorage.instance.cacheManager,
-      imageUrl: userImageInfo["url"]?["value"] ?? "",
-      httpHeaders: userImageInfo["header"] ?? const <String, String>{},
-      imageBuilder: (context, imageProvider) => CircleAvatar(radius: 40.0, backgroundImage: imageProvider),
-      useOldImageOnUrlChange: true,
-      placeholder: (context, url) => const SpinKitRotatingCircle(color: Colors.white),
-      errorWidget: (context, url, error) {
-        Log.e(error.toString());
-        return const Icon(Icons.error);
-      },
-    );
     final columnItem = <Widget>[];
     final data = MediaQuery.of(context);
     if (givenName.isNotEmpty) {
@@ -206,10 +326,6 @@ class _OtherPageState extends State<OtherPage> {
       givenName = (givenName.isEmpty) ? R.current.pleaseLogin : givenName;
       userMail = (userMail.isEmpty) ? "" : userMail;
     }
-    final taskFlow = TaskFlow();
-    final task = NTUTTask("ImageTask");
-    task.openLoadingDialog = false;
-    taskFlow.addTask(task);
     return Container(
       padding: const EdgeInsets.only(top: 24.0, left: 24.0, right: 24.0, bottom: 24.0),
       child: Row(
@@ -219,18 +335,39 @@ class _OtherPageState extends State<OtherPage> {
             width: 60,
             height: 60,
             child: InkWell(
-              child: FutureBuilder<bool>(
-                future: taskFlow.start(),
+              onTap: _showAvatarSourceSheet,
+              child: FutureBuilder<Uint8List?>(
+                future: _avatarFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done && snapshot.data == true) {
-                    return userImage;
+                  if (_isUpdatingAvatar) {
+                    return SpinKitRotatingCircle(color: Theme.of(context).colorScheme.secondary);
                   }
-                  return SpinKitRotatingCircle(color: Theme.of(context).colorScheme.secondary);
+                  final bytes = snapshot.data ?? _lastAvatarBytes;
+                  if (bytes != null) {
+                    return ClipOval(
+                      child: Image.memory(
+                        bytes,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (context, error, stackTrace) {
+                          if (stackTrace != null) {
+                            Log.eWithStack('Avatar decode failed: $error', stackTrace);
+                          } else {
+                            Log.e('Avatar decode failed: $error');
+                          }
+                          return const Icon(Icons.person_outline);
+                        },
+                      ),
+                    );
+                  }
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return CircularProgressIndicator(color: Theme.of(context).colorScheme.secondary);
+                  }
+                  return const Icon(Icons.person_outline);
                 },
               ),
-              onTap: () {
-                LocalStorage.instance.cacheManager.emptyCache(); //清除圖片暫存
-              },
             ),
           ),
           const SizedBox(width: 16.0),
