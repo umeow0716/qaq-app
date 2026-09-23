@@ -10,6 +10,7 @@ class ConnectorParameter {
   String charsetName = presetCharsetName;
   String userAgent = presetComputerUserAgent;
   String? referer;
+  Duration? timeout;
 
   ConnectorParameter(this.url);
 }

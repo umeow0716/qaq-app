@@ -125,7 +125,10 @@ class DioConnector {
   }
 
   Future<Map<String, List<String>>> getHeadersByGet(ConnectorParameter parameter) async {
-    final response = await dio.get<ResponseBody>(parameter.url, options: Options(responseType: ResponseType.stream));
+    final response = await dio.get<ResponseBody>(
+      parameter.url,
+      options: _requestOptions(parameter, responseType: ResponseType.stream),
+    );
 
     if (response.statusCode == HttpStatus.ok) {
       return response.headers.map;
@@ -137,35 +140,30 @@ class DioConnector {
   Future<Response> getDataByGetResponse(ConnectorParameter parameter) async {
     final url = parameter.url;
     final data = parameter.data;
-    _handleCharsetName(parameter.charsetName);
-    _handleHeaders(parameter);
-    return await dio.get(url, queryParameters: data);
+    return await dio.get(url, queryParameters: data, options: _requestOptions(parameter));
   }
 
   Future<Response> getDataByPostResponse(ConnectorParameter parameter) async {
     final url = parameter.url;
-    _handleCharsetName(parameter.charsetName);
-    _handleHeaders(parameter);
-    return await dio.post(url, data: parameter.data);
+    return await dio.post(url, data: parameter.data, options: _requestOptions(parameter));
   }
 
-  void _handleHeaders(ConnectorParameter parameter) {
-    dio.options.headers[HttpHeaders.userAgentHeader] = parameter.userAgent;
-    if (parameter.referer != null) {
-      dio.options.headers[HttpHeaders.refererHeader] = parameter.referer;
-    } else {
-      dio.options.headers.remove(HttpHeaders.refererHeader);
+  Options _requestOptions(ConnectorParameter parameter, {ResponseType? responseType}) {
+    final headers = <String, dynamic>{HttpHeaders.userAgentHeader: parameter.userAgent};
+    final referer = parameter.referer;
+    if (referer != null) {
+      headers[HttpHeaders.refererHeader] = referer;
     }
-  }
 
-  void _handleCharsetName(String charsetName) {
-    if (charsetName == presetCharsetName) {
-      dio.options.responseDecoder = null;
-    } else if (charsetName == 'big5') {
-      dio.options.responseDecoder = _big5Decoder;
-    } else {
-      dio.options.responseDecoder = null;
-    }
+    final timeout = parameter.timeout;
+    return Options(
+      headers: headers,
+      responseType: responseType,
+      connectTimeout: timeout,
+      receiveTimeout: timeout,
+      sendTimeout: timeout,
+      responseDecoder: parameter.charsetName == 'big5' ? _big5Decoder : null,
+    );
   }
 
   Future<void> download(

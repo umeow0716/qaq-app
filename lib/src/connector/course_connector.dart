@@ -145,10 +145,10 @@ class CourseConnector {
     }
   }
 
-  static Future<Map<Day, Map<SectionNumber, Set<String>>>?> getClassroomUsage(String url) async {
+  static Future<Map<Day, Map<SectionNumber, Set<String>>>?> getClassroomUsage(String url, {Duration? timeout}) async {
     try {
       final classroomUsageUrl = url.replaceFirst('/course/en/', '/course/tw/');
-      final parameter = ConnectorParameter(classroomUsageUrl);
+      final parameter = ConnectorParameter(classroomUsageUrl)..timeout = timeout;
       final result = await Connector.getDataByGet(parameter);
       final document = parse(result);
       final tables = document.getElementsByTagName('table');
@@ -257,10 +257,10 @@ class CourseConnector {
     }
   }
 
-  static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId) async {
+  static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId, {Duration? timeout}) async {
     try {
       Map<String, String> data = {"code": courseId, "format": "-1"};
-      var parameter = ConnectorParameter(_postCourseCNUrl);
+      var parameter = ConnectorParameter(_postCourseCNUrl)..timeout = timeout;
       parameter.data = data;
       var result = await Connector.getDataByPost(parameter);
       var tagNode = parse(result);
@@ -316,7 +316,7 @@ class CourseConnector {
           classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes.containsKey("href")) {
         courseExtra.href =
             _courseCNHost + (classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes["href"] ?? "");
-        parameter = ConnectorParameter(courseExtra.href);
+        parameter = ConnectorParameter(courseExtra.href)..timeout = timeout;
         result = await Connector.getDataByPost(parameter);
         tagNode = parse(result);
         nodes = tagNode.getElementsByTagName("tr");
@@ -339,7 +339,7 @@ class CourseConnector {
       // endpoint once so enrollment/withdrawal counts can still come from the
       // authoritative syllabus page.
       if (!_isNumericCourseCount(courseExtra.selectNumber) || !_isNumericCourseCount(courseExtra.withdrawNumber)) {
-        final syllabus = await getCourseCategory(courseId);
+        final syllabus = await getCourseCategory(courseId, timeout: timeout);
         if (syllabus.courseId.isNotEmpty) {
           if (syllabus.category.isNotEmpty) courseExtra.category = syllabus.category;
           if (syllabus.className.isNotEmpty) courseExtra.openClass = syllabus.className;
@@ -358,10 +358,10 @@ class CourseConnector {
 
   static bool _isNumericCourseCount(String value) => int.tryParse(value.trim()) != null;
 
-  static Future<CourseSyllabusJson> getCourseCategory(String courseId) async {
+  static Future<CourseSyllabusJson> getCourseCategory(String courseId, {Duration? timeout}) async {
     try {
       Map<String, String> data = {"snum": courseId};
-      ConnectorParameter parameter = ConnectorParameter(_getSyllabusCNUrl);
+      ConnectorParameter parameter = ConnectorParameter(_getSyllabusCNUrl)..timeout = timeout;
       parameter.data = data;
       String result = await Connector.getDataByGet(parameter);
       Document tagNode = parse(result);
