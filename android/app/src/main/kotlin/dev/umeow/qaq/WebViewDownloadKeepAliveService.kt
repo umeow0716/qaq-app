@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import androidx.core.content.ContextCompat
 
 class WebViewDownloadKeepAliveService : Service() {
     companion object {
@@ -41,21 +42,25 @@ class WebViewDownloadKeepAliveService : Service() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-            if (id < 0 || activeDownloads.remove(id) == null) return
-            updateOrFinish()
+            if (id < 0 || !activeDownloads.containsKey(id)) return
+
+            // ACTION_DOWNLOAD_COMPLETE is an external/system broadcast. Do not
+            // trust the supplied ID as proof of completion; verify against
+            // DownloadManager before removing the active relay download.
+            reconcileActiveDownloads()
         }
     }
 
-    @Suppress("DEPRECATION")
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(downloadReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            downloadReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED,
+        )
         receiverRegistered = true
     }
 
