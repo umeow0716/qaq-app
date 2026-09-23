@@ -57,7 +57,7 @@ class IStudyAccessGuard {
 
   static String vpnFailedHtml([Object? error]) => _messageHtml(
     'VPN 連線失敗',
-    '目前無法透過實驗性 VPN 連線至 i 學員。\n\n'
+    '目前無法透過實驗性 VPN 連線至 i 學園。\n\n'
         '請確認帳號密碼仍可登入校務系統，或稍後重試。\n\n'
         '⚠️ 此功能仍在實驗階段，目前測試樣本有限，穩定性可能因網路環境而異。',
   );
