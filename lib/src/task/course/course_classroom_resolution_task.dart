@@ -13,6 +13,7 @@ class CourseClassroomResolutionTask {
   static const cacheMaxAge = Duration(days: 7);
   static final Set<String> _inFlight = <String>{};
   static Future<void> _persistQueue = Future<void>.value();
+  static final ValueNotifier<int> classroomRevision = ValueNotifier<int>(0);
 
   static void _trace(String message) {
     if (!kDebugMode) return;
@@ -125,6 +126,7 @@ class CourseClassroomResolutionTask {
         if (cache == null) continue;
 
         storage.setCourseClassroomCache(courseTable.courseSemester, target.courseId, cache);
+        classroomRevision.value++;
         changed = true;
       } catch (e, stack) {
         // One malformed classroom/course must not abort resolution for the

@@ -192,6 +192,7 @@
   "aduit": "隨班附讀",
   "autoConnectIStudyVpn": "自動連線 VPN 以使用 i 學園（實驗性）",
   "autoConnectIStudyVpnHint": "從校外使用 i 學園時，將嘗試自動建立 VPN 連線。此功能仍在測試階段，穩定性可能因網路環境而異。",
+  "switchCourseTableLayout": "切換版面",
   "iStudyNetworkUnavailableTitle": "目前無法連線至 i 學園",
   "iStudyNetworkUnavailableMessage": "看起來目前不在校內網路（140.*），且尚未啟用自動 VPN。\n\n若要從校外使用，可前往：\n「其他」→「設定」→「自動連線 VPN 以使用 i 學園（實驗性）」\n\n⚠️ 此功能仍在實驗階段，目前測試樣本有限，穩定性可能因網路環境而異。"
 }

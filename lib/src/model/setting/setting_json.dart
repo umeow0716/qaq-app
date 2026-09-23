@@ -47,12 +47,15 @@ class OtherSettingJson {
   bool useExternalVideoPlayer;
   bool checkIPlusNew;
   bool autoConnectIStudyVpn;
+  @JsonKey(defaultValue: false)
+  bool useConnectedCourseTableLayout;
 
   OtherSettingJson({
     String? lang,
     this.useExternalVideoPlayer = false,
     this.checkIPlusNew = true,
     this.autoConnectIStudyVpn = false,
+    this.useConnectedCourseTableLayout = false,
   }) : lang = JsonInit.stringInit(lang);
 
   bool get isEmpty => lang.isEmpty;
