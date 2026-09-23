@@ -30,6 +30,10 @@
 	<string>13.0.0</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>QAQ needs camera access to take a new NTUT Portal profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>QAQ needs photo library access to choose a new NTUT Portal profile photo.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>

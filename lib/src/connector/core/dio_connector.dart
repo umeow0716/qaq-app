@@ -143,6 +143,14 @@ class DioConnector {
     return await dio.get(url, queryParameters: data, options: _requestOptions(parameter));
   }
 
+  Future<Response<List<int>>> getBytesByGetResponse(ConnectorParameter parameter) async {
+    return await dio.get<List<int>>(
+      parameter.url,
+      queryParameters: parameter.data,
+      options: _requestOptions(parameter, responseType: ResponseType.bytes),
+    );
+  }
+
   Future<Response> getDataByPostResponse(ConnectorParameter parameter) async {
     final url = parameter.url;
     return await dio.post(url, data: parameter.data, options: _requestOptions(parameter));
@@ -158,6 +166,7 @@ class DioConnector {
     final timeout = parameter.timeout;
     return Options(
       headers: headers,
+      contentType: parameter.contentType,
       responseType: responseType,
       connectTimeout: timeout,
       receiveTimeout: timeout,
