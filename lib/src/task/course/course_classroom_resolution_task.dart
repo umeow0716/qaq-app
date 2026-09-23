@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/core/network_request_pool.dart';
 import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
@@ -98,13 +99,29 @@ class CourseClassroomResolutionTask {
   }
 
   static Future<void> _refreshTargets(CourseTableJson courseTable, List<_ClassroomResolutionTarget> targets) async {
-    final usageRequests = <String, Future<Map<Day, Map<SectionNumber, Set<String>>>?>>{};
+    final classroomHrefs = targets
+        .expand((target) => target.main.classroom)
+        .map((classroom) => classroom.href.trim())
+        .where((href) => href.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    final usageResults = await NetworkRequestPool.shared.run<Map<Day, Map<SectionNumber, Set<String>>>>(
+      classroomHrefs.map(
+        (href) =>
+            (timeout) => CourseConnector.getClassroomUsage(href, timeout: timeout),
+      ),
+    );
+    final usageByHref = <String, Map<Day, Map<SectionNumber, Set<String>>>?>{
+      for (var index = 0; index < classroomHrefs.length; index++) classroomHrefs[index]: usageResults[index],
+    };
+
     final storage = LocalStorage.instance;
     var changed = false;
 
     for (final target in targets) {
       try {
-        final cache = await _resolveTarget(courseTable, target, usageRequests);
+        final cache = _resolveTarget(courseTable, target, usageByHref);
         if (cache == null) continue;
 
         storage.setCourseClassroomCache(courseTable.courseSemester, target.courseId, cache);
@@ -121,11 +138,11 @@ class CourseClassroomResolutionTask {
     }
   }
 
-  static Future<CourseClassroomCacheJson?> _resolveTarget(
+  static CourseClassroomCacheJson? _resolveTarget(
     CourseTableJson courseTable,
     _ClassroomResolutionTarget target,
-    Map<String, Future<Map<Day, Map<SectionNumber, Set<String>>>?>> usageRequests,
-  ) async {
+    Map<String, Map<Day, Map<SectionNumber, Set<String>>>?> usageByHref,
+  ) {
     final resolved = <String, String>{};
     final ambiguousSlots = <String>{};
     final targetIdentifiers = _courseIdentifiers(target.main);
@@ -150,7 +167,7 @@ class CourseClassroomResolutionTask {
       }
 
       _trace('fetch classroom=${classroom.name} url=$href');
-      final usage = await usageRequests.putIfAbsent(href, () => CourseConnector.getClassroomUsage(href));
+      final usage = usageByHref[href];
       if (usage == null) {
         _trace('abort id=${target.courseId}: usage=null room=${classroom.name} url=$href');
         // Network/parse failures must not replace a usable stale cache.

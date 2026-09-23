@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/src/config/app_colors.dart';
+import 'package:qaq_app/src/connector/core/network_request_pool.dart';
+import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
@@ -8,8 +10,9 @@ import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
 import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
-import 'package:qaq_app/src/task/course/course_category_task.dart';
+import 'package:qaq_app/src/task/course/course_system_task.dart';
 import 'package:qaq_app/src/task/score/score_rank_task.dart';
+import 'package:qaq_app/src/task/task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/app_expansion_tile.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
@@ -206,13 +209,8 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
 
     if (!mounted) return;
 
-    final taskFlow = TaskFlow();
-    for (final courseId in missingCourseIds) {
-      final task = CourseCategoryTask(courseId)..openLoadingDialog = false;
-      taskFlow.addTask(task);
-    }
-
-    final total = taskFlow.length;
+    final courseIds = missingCourseIds.toList(growable: false);
+    final total = courseIds.length;
     int rate = 0;
     final progressRateDialog = ProgressRateDialog(context);
 
@@ -223,36 +221,49 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     );
     await progressRateDialog.show();
 
-    taskFlow.callback = (task) {
-      rate++;
-      progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
+    // Authenticate once before parallelizing course-system requests. Running
+    // CourseSystemTask.execute() concurrently would race its shared login state
+    // and could start multiple SSO logins at once.
+    final sessionTask = CourseSystemTask<void>('CourseCategoryBatch')..openLoadingDialog = false;
+    final sessionStatus = await sessionTask.execute();
+    if (sessionStatus != TaskStatus.success) {
+      await progressRateDialog.hide();
+      return;
+    }
 
-      if (task is! CourseCategoryTask) return;
-      final result = task.result;
-      if (result is! CourseSyllabusJson || result.category.isEmpty) return;
+    await NetworkRequestPool.shared.run<CourseSyllabusJson>(
+      courseIds.map(
+        (courseId) =>
+            (timeout) => CourseConnector.getCourseCategory(courseId, timeout: timeout),
+      ),
+      shouldRetry: (result) => result == null || result.courseId.isEmpty || result.category.isEmpty,
+      onComplete: (index, result) {
+        rate++;
+        progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
 
-      _applyCourseCategory(task.code, category: result.category, openClass: result.className);
-      storage.setCourseExtraInfoCache(
-        task.code,
-        CourseExtraInfoJson(
-          courseExtraUpdatedAt: DateTime.now(),
-          courseSemester: SemesterJson(
-            year: result.year > 0 ? result.year.toString() : null,
-            semester: result.semester > 0 ? result.semester.toString() : null,
+        if (result == null || result.category.isEmpty) return;
+        final courseId = courseIds[index];
+        _applyCourseCategory(courseId, category: result.category, openClass: result.className);
+        storage.setCourseExtraInfoCache(
+          courseId,
+          CourseExtraInfoJson(
+            courseExtraUpdatedAt: DateTime.now(),
+            courseSemester: SemesterJson(
+              year: result.year > 0 ? result.year.toString() : null,
+              semester: result.semester > 0 ? result.semester.toString() : null,
+            ),
+            course: CourseExtraJson(
+              id: result.courseId.isNotEmpty ? result.courseId : courseId,
+              name: result.courseName,
+              category: result.category,
+              openClass: result.className,
+              selectNumber: result.applyStudentCount.toString(),
+              withdrawNumber: result.withdrawStudentCount.toString(),
+            ),
           ),
-          course: CourseExtraJson(
-            id: result.courseId.isNotEmpty ? result.courseId : task.code,
-            name: result.courseName,
-            category: result.category,
-            openClass: result.className,
-            selectNumber: result.applyStudentCount.toString(),
-            withdrawNumber: result.withdrawStudentCount.toString(),
-          ),
-        ),
-      );
-    };
-
-    await taskFlow.start();
+        );
+      },
+    );
     await storage.saveCourseExtraInfoCache();
     await progressRateDialog.hide();
   }
