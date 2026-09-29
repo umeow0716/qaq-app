@@ -1559,7 +1559,7 @@ packages:
     description:
       path: webview_all
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1568,7 +1568,7 @@ packages:
     description:
       path: webview_all_android
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1577,7 +1577,7 @@ packages:
     description:
       path: webview_all_linux
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1586,7 +1586,7 @@ packages:
     description:
       path: webview_all_ohos
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1595,7 +1595,7 @@ packages:
     description:
       path: webview_all_web
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1604,7 +1604,7 @@ packages:
     description:
       path: webview_all_windows
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1613,7 +1613,7 @@ packages:
     description:
       path: webview_all_wkwebview
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
@@ -1622,7 +1622,7 @@ packages:
     description:
       path: webview_platform_interface
       ref: HEAD
-      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      resolved-ref: "474cc96b8d92564d2a894a27ece86fbbb60cfde2"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
     version: "1.4.3"
