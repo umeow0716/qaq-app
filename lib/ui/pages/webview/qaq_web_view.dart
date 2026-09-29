@@ -76,7 +76,7 @@ class _QAQWebViewState extends State<QAQWebView> {
   }
 
   Future<_InitialWebViewContent> _prepareInitialContent() async {
-    final preflightRoute = await _prepareWindowsVpnProxyBeforeWebViewEnvironment();
+    final preflightRoute = await _prepareDesktopVpnProxyBeforeWebViewEnvironment();
     await setInitialCookies();
 
     // Direct iStudy URLs still need a routing preflight before their first load.
@@ -110,15 +110,15 @@ class _QAQWebViewState extends State<QAQWebView> {
     }
   }
 
-  Future<IStudyAccessRoute?> _prepareWindowsVpnProxyBeforeWebViewEnvironment() async {
-    if (!Platform.isWindows) return null;
+  Future<IStudyAccessRoute?> _prepareDesktopVpnProxyBeforeWebViewEnvironment() async {
+    if (!Platform.isWindows && !Platform.isLinux) return null;
 
     final route = await IStudyAccessGuard.route();
-    GlobalProtectDebug.log('Windows WebView preflight iStudy route=${route.name}');
+    GlobalProtectDebug.log('${Platform.operatingSystem} WebView preflight iStudy route=${route.name}');
     if (route == IStudyAccessRoute.vpn) {
-      // WebView2 proxy arguments must be installed before the first Windows
-      // WebView controller is created. Do this even when the initial URL is the
-      // campus portal because the later SSO redirect may land on iStudy.
+      // Desktop WebViews should receive their process-wide proxy before the
+      // first controller request. Windows installs WebView2 arguments; Linux
+      // applies WebKitGTK network proxy settings through webview_all.
       await _enableWebViewProxy();
     }
     return route;
@@ -260,8 +260,8 @@ class _QAQWebViewState extends State<QAQWebView> {
   Future<void> _enableWebViewProxy() async {
     if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    if (!Platform.isAndroid && !Platform.isWindows) {
-      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android and Windows only.');
+    if (!Platform.isAndroid && !Platform.isWindows && !Platform.isLinux) {
+      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android, Windows, and Linux only.');
     }
 
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted();

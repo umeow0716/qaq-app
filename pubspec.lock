@@ -1454,10 +1454,10 @@ packages:
     dependency: transitive
     description:
       name: vector_math
-      sha256: "1d774bbdf6b72a0b12122fc1560c9c2d2a67db5a4a4cc2bd8a5c990ab20e3188"
+      sha256: "92b9910f66ed1057fd4da7b040ae7c74cafacf885bdc81be496928d5049b032d"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.0"
+    version: "2.4.3"
   video_player:
     dependency: "direct main"
     description:
@@ -1557,66 +1557,74 @@ packages:
   webview_all:
     dependency: "direct main"
     description:
-      name: webview_all
-      sha256: "7c4f930efdbdc3ca6096e85b30721243d5f933ab646e2f4465fd90ebbed99bb2"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_android:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
-      name: webview_all_android
-      sha256: "82a70c621f57a1c0df935cd5eb127213a4f5b55938632bf0788b94f768969c57"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_android
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_linux:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_all_linux
-      sha256: eda45984ae6fcf0aef1eeb08953d7123b9cae8369953a7dc7eef7a7c6dca2265
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_linux
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_ohos:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_all_ohos
-      sha256: "0a5571f960e61a18764dd2cab2b88e57b5c498a1dd0528df127f747519e5293b"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_ohos
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_web:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_all_web
-      sha256: "4d7ea8b47be8174c9d2dda98990b9fb0211c38c155e612e1c5dfb380c87cc1fd"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_web
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_windows:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
-      name: webview_all_windows
-      sha256: "59d63edb0003bae9b5dc54ead66e5840050f6a8c224533dfe53c553f2a950de3"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_windows
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_all_wkwebview:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_all_wkwebview
-      sha256: "40982c5ebad44d6e21ee32d8d57b0475fe1d1005e6800d577d7e2cd5235e5e6f"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_all_wkwebview
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   webview_platform_interface:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
-      name: webview_platform_interface
-      sha256: "911a68b1116680e117d1010fac21b0ae6e20c21e9276a014aef87b9d97089b14"
-      url: "https://pub.dev"
-    source: hosted
+      path: webview_platform_interface
+      ref: HEAD
+      resolved-ref: "6a82bc5b3439e22c6636bfecd765109c14e99565"
+      url: "https://github.com/umeow0716/webview_all.git"
+    source: git
     version: "1.4.3"
   win32:
     dependency: transitive
