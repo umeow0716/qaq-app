@@ -1,9 +1,10 @@
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-// webview_flutter_android does not expose DownloadListener metadata publicly.
-// Pinning 4.14.1 keeps this isolated bridge stable until the upstream API does.
+import 'package:webview_all_android/webview_all_android.dart';
+// webview_all_android does not expose DownloadListener metadata publicly.
+// Keep this isolated bridge small so desktop migration can use webview_all
+// without spreading Android internals across the shared WebView page.
 // ignore: implementation_imports
-import 'package:webview_flutter_android/src/android_webkit.g.dart' as android_webview;
-import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
+import 'package:webview_all_android/src/android_webkit.g.dart' as android_webview;
+import 'package:webview_platform_interface/webview_platform_interface.dart';
 
 typedef QAQWebViewDownloadCallback = void Function(
   String url,
@@ -13,8 +14,8 @@ typedef QAQWebViewDownloadCallback = void Function(
   int contentLength,
 );
 
-class QAQAndroidNavigationDelegate extends AndroidNavigationDelegate {
-  QAQAndroidNavigationDelegate({required QAQWebViewDownloadCallback onDownloadStart})
+class AndroidDownloadNavigationDelegate extends AndroidNavigationDelegate {
+  AndroidDownloadNavigationDelegate({required QAQWebViewDownloadCallback onDownloadStart})
     : _qaqDownloadListener = android_webview.DownloadListener(
         onDownloadStart: (_, url, userAgent, contentDisposition, mimeType, contentLength) {
           onDownloadStart(url, userAgent, contentDisposition, mimeType, contentLength);

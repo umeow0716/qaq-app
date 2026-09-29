@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_all/webview_all.dart';
 
 /// Cookie bridge shared by QAQ's WebViews.
 ///
-/// webview_flutter intentionally exposes only name/value/domain/path when
+/// The common WebView cookie API exposes only name/value/domain/path when
 /// setting a cookie. Android and iOS use a small native channel so the session
 /// cookies copied from Dio also retain Secure, HttpOnly, Expires and Max-Age.
 class WebViewCookieStore {

@@ -13,10 +13,9 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runt
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
-import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
+import 'package:qaq_app/ui/pages/webview/platform/qaq_webview_platform_adapter.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_all/webview_all.dart';
 
 class QAQWebView extends StatefulWidget {
   const QAQWebView({super.key, required this.initialUrl, this.title});
@@ -83,6 +82,13 @@ class _QAQWebViewState extends State<QAQWebView> {
       case IStudyAccessRoute.blocked:
         return _InitialWebViewContent.html(IStudyAccessGuard.blockedHtml);
       case IStudyAccessRoute.vpn:
+        if (!Platform.isAndroid) {
+          // Desktop WebView proxy support is intentionally not hidden behind a
+          // fallback page yet. Let the unsupported path fail loudly so the next
+          // desktop bridge task starts from the real runtime error.
+          await _enableWebViewProxy();
+          return _InitialWebViewContent.url(widget.initialUrl);
+        }
         try {
           await _enableWebViewProxy();
           return _InitialWebViewContent.url(widget.initialUrl);
@@ -116,51 +122,15 @@ class _QAQWebViewState extends State<QAQWebView> {
     progress.value = webViewProgress / 100.0;
   }
 
-  NavigationDelegate _createNavigationDelegate() {
-    if (Platform.isAndroid) {
-      return NavigationDelegate.fromPlatform(
-        QAQAndroidNavigationDelegate(
-          onDownloadStart: (url, userAgent, contentDisposition, mimeType, contentLength) {
-            unawaited(
-              _handleDownload(
-                url: url,
-                userAgent: userAgent,
-                contentDisposition: contentDisposition,
-                mimeType: mimeType,
-                contentLength: contentLength,
-              ),
-            );
-          },
-        ),
-        onProgress: _onProgressChanged,
-        onNavigationRequest: _onNavigationRequest,
-        onPageStarted: _onPageStarted,
-        onPageFinished: (url) => unawaited(_onPageFinished(url)),
-      );
-    }
+  NavigationDelegate _createNavigationDelegate() => QAQWebViewPlatformAdapter.createNavigationDelegate(
+    onProgress: _onProgressChanged,
+    onNavigationRequest: _onNavigationRequest,
+    onPageStarted: _onPageStarted,
+    onPageFinished: (url) => unawaited(_onPageFinished(url)),
+    onDownloadStart: _handleDownload,
+  );
 
-    return NavigationDelegate(
-      onProgress: _onProgressChanged,
-      onNavigationRequest: _onNavigationRequest,
-      onPageStarted: _onPageStarted,
-      onPageFinished: (url) => unawaited(_onPageFinished(url)),
-    );
-  }
-
-  Future<void> _configurePlatformFilePicker() async {
-    if (!Platform.isAndroid) return;
-    final platformController = _controller.platform;
-    if (platformController is! AndroidWebViewController) return;
-
-    await platformController.setOnShowFileSelector(
-      (params) => WebViewFileTransfer.pickSystemFiles(
-        acceptTypes: params.acceptTypes,
-        mode: params.mode.name,
-        capture: params.isCaptureEnabled,
-        filenameHint: params.filenameHint,
-      ),
-    );
-  }
+  Future<void> _configurePlatformFilePicker() => QAQWebViewPlatformAdapter.configureFilePicker(_controller);
 
   Future<void> _handleDownload({
     required String url,
@@ -240,10 +210,15 @@ class _QAQWebViewState extends State<QAQWebView> {
         return NavigationDecision.prevent;
       case IStudyAccessRoute.vpn:
         if (_vpnProxyEnabled) return NavigationDecision.navigate;
+        if (!Platform.isAndroid) {
+          GlobalProtectDebug.log('desktop GP WebView bridge is not implemented; surfacing failure');
+          await _enableWebViewProxy();
+          return NavigationDecision.prevent;
+        }
         try {
           GlobalProtectDebug.log('enabling GP proxy before retrying iStudy redirect');
           await _enableWebViewProxy();
-          // webview_flutter exposes the redirect URL but not the complete native
+          // The common WebView API exposes the redirect URL but not the complete native
           // request object. iStudy SSO redirects are expected to be GET requests,
           // so retry the same URL after ProxyOverride is active.
           GlobalProtectDebug.log('GP proxy active; retrying iStudy navigation');

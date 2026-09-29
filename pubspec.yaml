@@ -37,9 +37,11 @@ dependencies:
   crypto: ^3.0.7
   pointycastle: ^4.0.0
   github: ^9.26.0
-  webview_flutter: ^4.14.1
-  webview_flutter_android: 4.14.1
-  webview_flutter_platform_interface: 2.15.1
+  webview_all: ^1.4.2
+  # Needed only because QAQ still uses Android-specific WebView hooks for
+  # DownloadListener metadata and <input type=file> handoff.
+  webview_all_android: ^1.3.8
+  webview_platform_interface: ^1.4.0
   eva_icons_flutter: ^4.0.0
   lucide_icons_flutter: ^3.1.18
   json_annotation: ^4.12.0
