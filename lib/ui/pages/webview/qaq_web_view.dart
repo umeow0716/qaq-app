@@ -29,7 +29,7 @@ class QAQWebView extends StatefulWidget {
 
 class _QAQWebViewState extends State<QAQWebView> {
   final cookieJar = DioConnector.instance.cookiesManager;
-  late final WebViewController _controller;
+  WebViewController? _controller;
   late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
 
@@ -38,10 +38,7 @@ class _QAQWebViewState extends State<QAQWebView> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(_createNavigationDelegate());
-    _initialLoadFuture = _prepareAndLoadInitialContent();
+    _initialLoadFuture = _prepareControllerAndLoadInitialContent();
   }
 
   @override
@@ -53,19 +50,33 @@ class _QAQWebViewState extends State<QAQWebView> {
     super.dispose();
   }
 
-  Future<void> _prepareAndLoadInitialContent() async {
-    await _configurePlatformFilePicker();
+  WebViewController get _requiredController {
+    final controller = _controller;
+    if (controller == null) {
+      throw StateError('WebViewController was used before desktop WebView preparation completed.');
+    }
+    return controller;
+  }
+
+  Future<void> _prepareControllerAndLoadInitialContent() async {
     final content = await _prepareInitialContent();
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(_createNavigationDelegate());
+    _controller = controller;
+    await _configurePlatformFilePicker(controller);
+
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
-      await _controller.loadRequest(initialUrl);
+      await controller.loadRequest(initialUrl);
       return;
     }
 
-    await _controller.loadHtmlString(content.initialData ?? '');
+    await controller.loadHtmlString(content.initialData ?? '');
   }
 
   Future<_InitialWebViewContent> _prepareInitialContent() async {
+    final preflightRoute = await _prepareWindowsVpnProxyBeforeWebViewEnvironment();
     await setInitialCookies();
 
     // Direct iStudy URLs still need a routing preflight before their first load.
@@ -74,7 +85,7 @@ class _QAQWebViewState extends State<QAQWebView> {
       return _InitialWebViewContent.url(widget.initialUrl);
     }
 
-    final route = await IStudyAccessGuard.route();
+    final route = preflightRoute ?? await IStudyAccessGuard.route();
     GlobalProtectDebug.log('direct iStudy initial URL route=${route.name}');
     switch (route) {
       case IStudyAccessRoute.direct:
@@ -97,6 +108,20 @@ class _QAQWebViewState extends State<QAQWebView> {
           return _InitialWebViewContent.html(IStudyAccessGuard.vpnFailedHtml(error));
         }
     }
+  }
+
+  Future<IStudyAccessRoute?> _prepareWindowsVpnProxyBeforeWebViewEnvironment() async {
+    if (!Platform.isWindows) return null;
+
+    final route = await IStudyAccessGuard.route();
+    GlobalProtectDebug.log('Windows WebView preflight iStudy route=${route.name}');
+    if (route == IStudyAccessRoute.vpn) {
+      // WebView2 proxy arguments must be installed before the first Windows
+      // WebView controller is created. Do this even when the initial URL is the
+      // campus portal because the later SSO redirect may land on iStudy.
+      await _enableWebViewProxy();
+    }
+    return route;
   }
 
   Future<void> setInitialCookies() async {
@@ -130,7 +155,8 @@ class _QAQWebViewState extends State<QAQWebView> {
     onDownloadStart: _handleDownload,
   );
 
-  Future<void> _configurePlatformFilePicker() => QAQWebViewPlatformAdapter.configureFilePicker(_controller);
+  Future<void> _configurePlatformFilePicker(WebViewController controller) =>
+      QAQWebViewPlatformAdapter.configureFilePicker(controller);
 
   Future<void> _handleDownload({
     required String url,
@@ -148,7 +174,7 @@ class _QAQWebViewState extends State<QAQWebView> {
 
     try {
       final cookieHeader = await WebViewCookieStore.cookieHeaderFor(sourceUri);
-      final referer = await _controller.currentUrl();
+      final referer = await _requiredController.currentUrl();
       var requestUri = sourceUri;
       var keepAlive = false;
 
@@ -206,7 +232,7 @@ class _QAQWebViewState extends State<QAQWebView> {
       case IStudyAccessRoute.direct:
         return NavigationDecision.navigate;
       case IStudyAccessRoute.blocked:
-        await _controller.loadHtmlString(IStudyAccessGuard.blockedHtml);
+        await _requiredController.loadHtmlString(IStudyAccessGuard.blockedHtml);
         return NavigationDecision.prevent;
       case IStudyAccessRoute.vpn:
         if (_vpnProxyEnabled) return NavigationDecision.navigate;
@@ -222,10 +248,10 @@ class _QAQWebViewState extends State<QAQWebView> {
           // request object. iStudy SSO redirects are expected to be GET requests,
           // so retry the same URL after ProxyOverride is active.
           GlobalProtectDebug.log('GP proxy active; retrying iStudy navigation');
-          await _controller.loadRequest(uri);
+          await _requiredController.loadRequest(uri);
         } catch (error, stackTrace) {
           GlobalProtectDebug.error('redirect WebView GP setup', error, stackTrace);
-          await _controller.loadHtmlString(IStudyAccessGuard.vpnFailedHtml(error));
+          await _requiredController.loadHtmlString(IStudyAccessGuard.vpnFailedHtml(error));
         }
         return NavigationDecision.prevent;
     }
@@ -234,8 +260,8 @@ class _QAQWebViewState extends State<QAQWebView> {
   Future<void> _enableWebViewProxy() async {
     if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    if (!Platform.isAndroid) {
-      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
+    if (!Platform.isAndroid && !Platform.isWindows) {
+      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android and Windows only.');
     }
 
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted();
@@ -276,19 +302,28 @@ class _QAQWebViewState extends State<QAQWebView> {
     final cookieLabels = uri == null ? const <String>[] : await WebViewCookieStore.debugLabels(uri);
     debugPrint('[WebView] cookies: $cookieLabels');
 
-    final title = await _controller.getTitle();
+    final title = await _requiredController.getTitle();
     debugPrint('[WebView] title: $title');
 
-    final bodyText = await _controller.runJavaScriptReturningResult(
+    final bodyText = await _requiredController.runJavaScriptReturningResult(
       "document.body?.innerText?.substring(0, 500) ?? ''",
     );
     debugPrint('[WebView] body: $bodyText');
   }
 
   Widget _buildButtonBar() => WebViewButtonBar(
-    onBackPressed: () => _controller.goBack(),
-    onForwardPressed: () => _controller.goForward(),
-    onRefreshPressed: () => _controller.reload(),
+    onBackPressed: () {
+      final controller = _controller;
+      if (controller != null) unawaited(controller.goBack());
+    },
+    onForwardPressed: () {
+      final controller = _controller;
+      if (controller != null) unawaited(controller.goForward());
+    },
+    onRefreshPressed: () {
+      final controller = _controller;
+      if (controller != null) unawaited(controller.reload());
+    },
   );
 
   Widget _buildProgressBar() => ValueListenableBuilder<double>(
@@ -314,7 +349,10 @@ class _QAQWebViewState extends State<QAQWebView> {
                 if (snapshot.connectionState != ConnectionState.done) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                return WebViewWidget(controller: _controller);
+                if (snapshot.hasError) {
+                  Error.throwWithStackTrace(snapshot.error!, snapshot.stackTrace ?? StackTrace.current);
+                }
+                return WebViewWidget(controller: _requiredController);
               },
             ),
           ),

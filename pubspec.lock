@@ -1595,7 +1595,7 @@ packages:
     source: hosted
     version: "1.4.3"
   webview_all_windows:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: webview_all_windows
       sha256: "59d63edb0003bae9b5dc54ead66e5840050f6a8c224533dfe53c553f2a950de3"
