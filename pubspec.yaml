@@ -29,6 +29,7 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_secure_storage: ^11.2.0
   flutter_cache_manager: ^3.4.2
+  file_selector: ^1.0.3
   dio: ^5.11.1
   dio_cookie_manager: ^3.5.0
   cookie_jar: ^4.0.9
