@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
@@ -160,65 +159,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
 
     await platformController.setDownloadsEnabled(true);
-    await platformController.setOnShowFileSelector(_pickLinuxUploadFiles);
+    // Let WebKitGTK handle <input type=file> with its native GTK file chooser.
+    // Ubuntu 24.04/GNOME can crash when the custom Dart file selector callback
+    // is bridged through WebKitGTK; the native chooser keeps upload testing in
+    // the app WebView without crossing into that unstable callback path.
     platformController.setOnDownloadStart((request) {
       unawaited(_handleLinuxDownload(request));
     });
-    GlobalProtectDebug.log('Linux WebView upload/download callbacks attached');
-  }
-
-  Future<List<String>> _pickLinuxUploadFiles(
-    linux_webview.LinuxFileSelectorParams params,
-  ) async {
-    try {
-      final acceptedTypeGroups = _linuxAcceptedTypeGroups(params.acceptTypes);
-      final paths = <String>[];
-      switch (params.mode) {
-        case linux_webview.LinuxFileSelectorMode.open:
-          final file = await openFile(acceptedTypeGroups: acceptedTypeGroups);
-          if (file != null && file.path.isNotEmpty) paths.add(file.path);
-          break;
-        case linux_webview.LinuxFileSelectorMode.openMultiple:
-          final files = await openFiles(acceptedTypeGroups: acceptedTypeGroups);
-          paths.addAll(files.map((file) => file.path).where((value) => value.isNotEmpty));
-          break;
-      }
-      GlobalProtectDebug.log('Linux WebView file selector selected ${paths.length} file(s)');
-      return paths;
-    } catch (error, stackTrace) {
-      GlobalProtectDebug.error('Linux WebView file selector', error, stackTrace);
-      return const <String>[];
-    }
-  }
-
-  List<XTypeGroup> _linuxAcceptedTypeGroups(List<String> acceptTypes) {
-    final mimeTypes = <String>{};
-    final extensions = <String>{};
-
-    for (final rawValue in acceptTypes.expand((value) => value.split(','))) {
-      final value = rawValue.trim().toLowerCase();
-      if (value.isEmpty || value == '*/*') {
-        continue;
-      }
-      if (value.startsWith('.')) {
-        extensions.add(value.substring(1));
-        continue;
-      }
-      if (value.contains('/')) {
-        mimeTypes.add(value);
-        continue;
-      }
-      extensions.add(value);
-    }
-
-    if (mimeTypes.isEmpty && extensions.isEmpty) return const <XTypeGroup>[];
-    return <XTypeGroup>[
-      XTypeGroup(
-        label: 'Accepted files',
-        mimeTypes: mimeTypes.toList(growable: false),
-        extensions: extensions.toList(growable: false),
-      ),
-    ];
+    GlobalProtectDebug.log('Linux WebView download callback attached; upload uses native file chooser');
   }
 
   Future<void> _handleLinuxDownload(
