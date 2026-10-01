@@ -78,15 +78,17 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<_InitialWebViewContent> _prepareInitialContent() async {
-    final preflightRoute = await _prepareDesktopVpnProxyBeforeWebViewEnvironment();
     await setInitialCookies();
 
-    // Direct iStudy URLs still need a routing preflight before their first load.
-    // SSO/portal redirects are handled by _onNavigationRequest.
+    // Only direct iStudy URLs need a desktop proxy preflight before their first
+    // load. Non-iStudy pages such as debug Google Forms must not inherit the
+    // process-wide WebView proxy; if they later redirect to iStudy,
+    // _onNavigationRequest enables the bridge and retries that navigation.
     if (!IStudyAccessGuard.isIStudyUri(widget.initialUrl)) {
       return _InitialWebViewContent.url(widget.initialUrl);
     }
 
+    final preflightRoute = await _prepareDesktopVpnProxyBeforeWebViewEnvironment();
     final route = preflightRoute ?? await IStudyAccessGuard.route();
     GlobalProtectDebug.log('direct iStudy initial URL route=${route.name}');
     switch (route) {
