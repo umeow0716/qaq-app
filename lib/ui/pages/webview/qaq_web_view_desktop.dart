@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -36,6 +37,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   WebViewController? _controller;
   late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
+  var _linuxDownloadOverlaySequence = 0;
 
   final progress = ValueNotifier(0.0);
 
@@ -182,10 +184,19 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       return;
     }
 
+    int? overlayId;
+
     try {
       final downloadsDirectory = await _linuxDownloadsDirectory();
       final filename = _linuxDownloadFilename(request, sourceUri);
       final destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
+      overlayId = ++_linuxDownloadOverlaySequence;
+      await _showLinuxDownloadOverlayItem(
+        id: overlayId,
+        filename: path.basename(destination.path),
+        filePath: destination.path,
+      );
+
       final referer = await _requiredController.currentUrl();
       final cookieHeader = await WebViewCookieStore.cookieHeaderFor(sourceUri);
       final userAgent = DioConnector.instance.headers[HttpHeaders.userAgentHeader];
@@ -195,14 +206,46 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
         if (cookieHeader != null && cookieHeader.isNotEmpty) HttpHeaders.cookieHeader: cookieHeader,
       };
 
+      var lastOverlayPercent = -1;
+      var showedUnknownOverlayProgress = false;
+
       GlobalProtectDebug.log('Linux WebView download saving ${sourceUri.host} to ${destination.path}');
       await _downloadLinuxWebViewFile(
         sourceUri: sourceUri,
         destination: destination,
         headers: headers,
+        onProgress: (received, total) {
+          final currentOverlayId = overlayId;
+          if (currentOverlayId == null) return;
+          if (total > 0) {
+            final percent = ((received / total) * 100).clamp(0, 100).floor();
+            if (percent == lastOverlayPercent && percent < 100) return;
+            lastOverlayPercent = percent;
+          } else {
+            if (showedUnknownOverlayProgress) return;
+            showedUnknownOverlayProgress = true;
+          }
+          _updateLinuxDownloadOverlayProgress(
+            id: currentOverlayId,
+            received: received,
+            total: total,
+          );
+        },
+      );
+      await _finishLinuxDownloadOverlayItem(
+        id: overlayId!,
+        status: _LinuxDownloadOverlayStatus.completed,
       );
       GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
     } catch (error, stackTrace) {
+      final currentOverlayId = overlayId;
+      if (currentOverlayId != null) {
+        await _finishLinuxDownloadOverlayItem(
+          id: currentOverlayId,
+          status: _LinuxDownloadOverlayStatus.failed,
+          message: error.toString(),
+        );
+      }
       GlobalProtectDebug.error('Linux WebView download', error, stackTrace);
     }
   }
@@ -211,6 +254,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     required Uri sourceUri,
     required File destination,
     required Map<String, dynamic> headers,
+    required void Function(int received, int total) onProgress,
   }) async {
     final dio = Dio(DioConnector.dioOptions)
       ..httpClientAdapter = EarlyInterceptorAdapter(
@@ -241,6 +285,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
           headers: headers,
         ),
         onReceiveProgress: (received, total) {
+          onProgress(received, total);
           if (total > 0 && received == total) {
             GlobalProtectDebug.log('Linux WebView download received $received bytes');
           }
@@ -251,6 +296,268 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       dio.close(force: true);
     }
   }
+
+  Future<void> _showLinuxDownloadOverlayItem({
+    required int id,
+    required String filename,
+    required String filePath,
+  }) async {
+    await _runLinuxDownloadOverlayScript(
+      _linuxDownloadOverlayBootstrapScript() +
+          _linuxDownloadOverlayCallScript(
+            method: 'show',
+            payload: {
+              'id': id,
+              'filename': filename,
+              'path': filePath,
+              'percent': 0,
+              'status': 'downloading',
+              'statusText': '準備下載',
+            },
+          ),
+    );
+  }
+
+  void _updateLinuxDownloadOverlayProgress({
+    required int id,
+    required int received,
+    required int total,
+  }) {
+    final percent = total > 0 ? ((received / total) * 100).clamp(0, 100).floor() : null;
+    unawaited(
+      _runLinuxDownloadOverlayScript(
+        _linuxDownloadOverlayCallScript(
+          method: 'update',
+          payload: {
+            'id': id,
+            'percent': percent,
+            'status': 'downloading',
+            'statusText': percent == null ? '下載中' : '下載中 $percent%',
+            'received': received,
+            'total': total,
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _finishLinuxDownloadOverlayItem({
+    required int id,
+    required _LinuxDownloadOverlayStatus status,
+    String? message,
+  }) async {
+    await _runLinuxDownloadOverlayScript(
+      _linuxDownloadOverlayCallScript(
+        method: 'finish',
+        payload: {
+          'id': id,
+          'percent': status == _LinuxDownloadOverlayStatus.completed ? 100 : null,
+          'status': status.name,
+          'statusText': switch (status) {
+            _LinuxDownloadOverlayStatus.completed => '下載完成',
+            _LinuxDownloadOverlayStatus.failed => '下載失敗',
+          },
+          if (message != null) 'message': message,
+        },
+      ),
+    );
+  }
+
+  Future<void> _runLinuxDownloadOverlayScript(String script) async {
+    try {
+      await _requiredController.runJavaScript(script);
+    } catch (error, stackTrace) {
+      // The page may be navigating or may have already been disposed. Download
+      // should continue even if the visual overlay cannot be updated.
+      GlobalProtectDebug.error('Linux WebView download overlay', error, stackTrace);
+    }
+  }
+
+  String _linuxDownloadOverlayCallScript({
+    required String method,
+    required Map<String, Object?> payload,
+  }) {
+    final encodedPayload = jsonEncode(payload);
+    return 'window.__qaqDownloadPanel?.$method($encodedPayload);';
+  }
+
+  String _linuxDownloadOverlayBootstrapScript() => r'''
+(function () {
+  if (window.__qaqDownloadPanel) return;
+
+  const rootId = 'qaq-download-panel-root';
+  const styleId = 'qaq-download-panel-style';
+
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      #${rootId} {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        width: min(380px, calc(100vw - 36px));
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 2147483647;
+        pointer-events: none;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #${rootId} .qaq-download-card {
+        pointer-events: auto;
+        overflow: hidden;
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.92));
+        color: #f8fafc;
+        box-shadow: 0 18px 45px rgba(2, 6, 23, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        backdrop-filter: blur(18px);
+        animation: qaqDownloadSlideIn 180ms ease-out;
+      }
+      #${rootId} .qaq-download-card-inner { padding: 14px 14px 13px; }
+      #${rootId} .qaq-download-head { display: flex; align-items: center; gap: 10px; }
+      #${rootId} .qaq-download-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #60a5fa;
+        box-shadow: 0 0 18px rgba(96, 165, 250, 0.72);
+        flex: none;
+      }
+      #${rootId} .qaq-download-card[data-status="completed"] .qaq-download-dot { background: #34d399; box-shadow: 0 0 18px rgba(52, 211, 153, 0.72); }
+      #${rootId} .qaq-download-card[data-status="failed"] .qaq-download-dot { background: #fb7185; box-shadow: 0 0 18px rgba(251, 113, 133, 0.72); }
+      #${rootId} .qaq-download-title { min-width: 0; flex: 1; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+      #${rootId} .qaq-download-status { color: #cbd5e1; font-size: 12px; font-weight: 600; }
+      #${rootId} .qaq-download-close {
+        flex: none;
+        border: 0;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        color: #cbd5e1;
+        background: rgba(148, 163, 184, 0.14);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #${rootId} .qaq-download-close:hover { color: #ffffff; background: rgba(148, 163, 184, 0.24); }
+      #${rootId} .qaq-download-file { margin-top: 10px; font-size: 14px; font-weight: 700; color: #ffffff; word-break: break-all; }
+      #${rootId} .qaq-download-path {
+        margin-top: 5px;
+        color: #cbd5e1;
+        font-size: 11px;
+        line-height: 1.35;
+        word-break: break-all;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+      #${rootId} .qaq-download-message { margin-top: 7px; color: #fecdd3; font-size: 11px; line-height: 1.35; word-break: break-word; }
+      #${rootId} .qaq-download-progress-row { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+      #${rootId} .qaq-download-track {
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.20);
+      }
+      #${rootId} .qaq-download-bar {
+        height: 100%;
+        width: 0%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #38bdf8, #22c55e);
+        transition: width 180ms ease;
+      }
+      #${rootId} .qaq-download-card[data-status="failed"] .qaq-download-bar { background: linear-gradient(90deg, #fb7185, #ef4444); }
+      #${rootId} .qaq-download-card[data-status="completed"] .qaq-download-bar { background: linear-gradient(90deg, #34d399, #22c55e); }
+      #${rootId} .qaq-download-percent { width: 46px; text-align: right; color: #e2e8f0; font-size: 12px; font-weight: 800; }
+      @keyframes qaqDownloadSlideIn { from { transform: translate3d(16px, 8px, 0); opacity: 0; } to { transform: translate3d(0, 0, 0); opacity: 1; } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  let root = document.getElementById(rootId);
+  if (!root) {
+    root = document.createElement('div');
+    root.id = rootId;
+    document.documentElement.appendChild(root);
+  }
+
+  const text = (value) => value == null ? '' : String(value);
+  const boundedPercent = (value) => {
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue)) return null;
+    return Math.max(0, Math.min(100, Math.round(numberValue)));
+  };
+
+  function ensureCard(data) {
+    const id = text(data.id);
+    let card = Array.from(root.children).find((child) => child.dataset.qaqDownloadId === id);
+    if (card) return card;
+
+    card = document.createElement('section');
+    card.className = 'qaq-download-card';
+    card.dataset.qaqDownloadId = id;
+    card.dataset.status = 'downloading';
+    card.innerHTML = `
+      <div class="qaq-download-card-inner">
+        <div class="qaq-download-head">
+          <span class="qaq-download-dot"></span>
+          <div class="qaq-download-title">下載中</div>
+          <div class="qaq-download-status">準備下載</div>
+          <button class="qaq-download-close" type="button" aria-label="關閉下載通知">×</button>
+        </div>
+        <div class="qaq-download-file"></div>
+        <div class="qaq-download-path"></div>
+        <div class="qaq-download-message" hidden></div>
+        <div class="qaq-download-progress-row">
+          <div class="qaq-download-track"><div class="qaq-download-bar"></div></div>
+          <div class="qaq-download-percent">0%</div>
+        </div>
+      </div>
+    `;
+    card.querySelector('.qaq-download-close').addEventListener('click', () => card.remove());
+    root.appendChild(card);
+    return card;
+  }
+
+  function paint(card, data) {
+    const percent = boundedPercent(data.percent);
+    const status = text(data.status) || 'downloading';
+    const statusText = text(data.statusText) || (status === 'completed' ? '下載完成' : '下載中');
+    card.dataset.status = status;
+    card.querySelector('.qaq-download-title').textContent = status === 'completed' ? '下載完成' : status === 'failed' ? '下載失敗' : '下載中';
+    card.querySelector('.qaq-download-status').textContent = statusText;
+    if (data.filename != null) card.querySelector('.qaq-download-file').textContent = text(data.filename);
+    if (data.path != null) card.querySelector('.qaq-download-path').textContent = text(data.path);
+
+    const message = card.querySelector('.qaq-download-message');
+    if (data.message) {
+      message.hidden = false;
+      message.textContent = text(data.message);
+    }
+
+    const bar = card.querySelector('.qaq-download-bar');
+    const percentLabel = card.querySelector('.qaq-download-percent');
+    if (percent == null) {
+      bar.style.width = status === 'completed' ? '100%' : '16%';
+      percentLabel.textContent = status === 'completed' ? '100%' : '…';
+    } else {
+      bar.style.width = `${percent}%`;
+      percentLabel.textContent = `${percent}%`;
+    }
+  }
+
+  window.__qaqDownloadPanel = {
+    show(data) { paint(ensureCard(data), data); },
+    update(data) { paint(ensureCard(data), data); },
+    finish(data) { paint(ensureCard(data), data); },
+  };
+})();
+''';
 
   Future<Directory> _linuxDownloadsDirectory() async {
     final desktopDownloadsDirectory = await getDownloadsDirectory();
@@ -274,12 +581,20 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   ) {
     final suggested = request.suggestedFilename?.trim();
     if (suggested != null && suggested.isNotEmpty) {
-      return _sanitizeLinuxFilename(suggested);
+      return _sanitizeLinuxFilename(_decodeLinuxFilename(suggested));
     }
 
     final lastSegment = sourceUri.pathSegments.isEmpty ? '' : sourceUri.pathSegments.last;
-    final decoded = lastSegment.isEmpty ? 'download' : Uri.decodeComponent(lastSegment);
+    final decoded = lastSegment.isEmpty ? 'download' : _decodeLinuxFilename(lastSegment);
     return _sanitizeLinuxFilename(decoded);
+  }
+
+  String _decodeLinuxFilename(String value) {
+    try {
+      return Uri.decodeComponent(value);
+    } on FormatException {
+      return value;
+    }
   }
 
   String _sanitizeLinuxFilename(String value) {
@@ -453,6 +768,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     ),
   );
 }
+
+enum _LinuxDownloadOverlayStatus { completed, failed }
 
 class _InitialWebViewContent {
   const _InitialWebViewContent._({this.initialUrl, this.initialData});
