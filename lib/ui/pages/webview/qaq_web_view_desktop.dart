@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
@@ -13,6 +15,10 @@ import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_all/webview_all.dart';
+// ignore: depend_on_referenced_packages
+import 'package:webview_all_linux/webview_all_linux.dart' as linux_webview;
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 class QAQWebViewDesktop extends StatefulWidget {
   const QAQWebViewDesktop({super.key, required this.initialUrl, this.title});
@@ -60,6 +66,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(_createNavigationDelegate());
+    await _configureLinuxFileTransfer(controller);
     _controller = controller;
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
@@ -138,6 +145,181 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     onPageStarted: _onPageStarted,
     onPageFinished: (url) => unawaited(_onPageFinished(url)),
   );
+
+  Future<void> _configureLinuxFileTransfer(WebViewController controller) async {
+    if (!Platform.isLinux) return;
+
+    final platformController = controller.platform;
+    if (platformController is! linux_webview.LinuxWebViewController) {
+      GlobalProtectDebug.log(
+        'Linux WebView file transfer unavailable: ${platformController.runtimeType}',
+      );
+      return;
+    }
+
+    await platformController.setDownloadsEnabled(true);
+    await platformController.setOnShowFileSelector(_pickLinuxUploadFiles);
+    platformController.setOnDownloadStart((request) {
+      unawaited(_handleLinuxDownload(request));
+    });
+    GlobalProtectDebug.log('Linux WebView upload/download callbacks attached');
+  }
+
+  Future<List<String>> _pickLinuxUploadFiles(
+    linux_webview.LinuxFileSelectorParams params,
+  ) async {
+    try {
+      final acceptedTypeGroups = _linuxAcceptedTypeGroups(params.acceptTypes);
+      final paths = <String>[];
+      switch (params.mode) {
+        case linux_webview.LinuxFileSelectorMode.open:
+          final file = await openFile(acceptedTypeGroups: acceptedTypeGroups);
+          if (file != null && file.path.isNotEmpty) paths.add(file.path);
+          break;
+        case linux_webview.LinuxFileSelectorMode.openMultiple:
+          final files = await openFiles(acceptedTypeGroups: acceptedTypeGroups);
+          paths.addAll(files.map((file) => file.path).where((value) => value.isNotEmpty));
+          break;
+      }
+      GlobalProtectDebug.log('Linux WebView file selector selected ${paths.length} file(s)');
+      return paths;
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('Linux WebView file selector', error, stackTrace);
+      return const <String>[];
+    }
+  }
+
+  List<XTypeGroup> _linuxAcceptedTypeGroups(List<String> acceptTypes) {
+    final mimeTypes = <String>{};
+    final extensions = <String>{};
+
+    for (final rawValue in acceptTypes.expand((value) => value.split(','))) {
+      final value = rawValue.trim().toLowerCase();
+      if (value.isEmpty || value == '*/*') {
+        continue;
+      }
+      if (value.startsWith('.')) {
+        extensions.add(value.substring(1));
+        continue;
+      }
+      if (value.contains('/')) {
+        mimeTypes.add(value);
+        continue;
+      }
+      extensions.add(value);
+    }
+
+    if (mimeTypes.isEmpty && extensions.isEmpty) return const <XTypeGroup>[];
+    return <XTypeGroup>[
+      XTypeGroup(
+        label: 'Accepted files',
+        mimeTypes: mimeTypes.toList(growable: false),
+        extensions: extensions.toList(growable: false),
+      ),
+    ];
+  }
+
+  Future<void> _handleLinuxDownload(
+    linux_webview.LinuxDownloadStartRequest request,
+  ) async {
+    final sourceUri = Uri.tryParse(request.url);
+    if (sourceUri == null || (sourceUri.scheme != 'http' && sourceUri.scheme != 'https')) {
+      GlobalProtectDebug.log('ignoring unsupported Linux WebView download URL: ${request.url}');
+      return;
+    }
+
+    try {
+      final downloadsDirectory = await _linuxDownloadsDirectory();
+      final filename = _linuxDownloadFilename(request, sourceUri);
+      final destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
+      final referer = await _requiredController.currentUrl();
+      final cookieHeader = await WebViewCookieStore.cookieHeaderFor(sourceUri);
+      final userAgent = DioConnector.instance.headers[HttpHeaders.userAgentHeader];
+      final headers = <String, dynamic>{
+        if (userAgent != null && userAgent.isNotEmpty) HttpHeaders.userAgentHeader: userAgent,
+        if (referer != null && referer.isNotEmpty) HttpHeaders.refererHeader: referer,
+        if (cookieHeader != null && cookieHeader.isNotEmpty) HttpHeaders.cookieHeader: cookieHeader,
+      };
+
+      GlobalProtectDebug.log('Linux WebView download saving ${sourceUri.host} to ${destination.path}');
+      await DioConnector.instance.download(
+        sourceUri.toString(),
+        (_) => destination.path,
+        progressCallback: (received, total) {
+          if (total > 0 && received == total) {
+            GlobalProtectDebug.log('Linux WebView download received $received bytes');
+          }
+        },
+        cancelToken: CancelToken(),
+        header: headers,
+      );
+      GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('Linux WebView download', error, stackTrace);
+    }
+  }
+
+  Future<Directory> _linuxDownloadsDirectory() async {
+    final desktopDownloadsDirectory = await getDownloadsDirectory();
+    if (desktopDownloadsDirectory != null) {
+      await desktopDownloadsDirectory.create(recursive: true);
+      return desktopDownloadsDirectory;
+    }
+
+    final home = Platform.environment['HOME'];
+    if (home == null || home.isEmpty) {
+      throw StateError('Unable to resolve HOME for Linux downloads.');
+    }
+    final fallback = Directory(path.join(home, 'Downloads'));
+    await fallback.create(recursive: true);
+    return fallback;
+  }
+
+  String _linuxDownloadFilename(
+    linux_webview.LinuxDownloadStartRequest request,
+    Uri sourceUri,
+  ) {
+    final suggested = request.suggestedFilename?.trim();
+    if (suggested != null && suggested.isNotEmpty) {
+      return _sanitizeLinuxFilename(suggested);
+    }
+
+    final lastSegment = sourceUri.pathSegments.isEmpty ? '' : sourceUri.pathSegments.last;
+    final decoded = lastSegment.isEmpty ? 'download' : Uri.decodeComponent(lastSegment);
+    return _sanitizeLinuxFilename(decoded);
+  }
+
+  String _sanitizeLinuxFilename(String value) {
+    final buffer = StringBuffer();
+    for (final codeUnit in value.codeUnits) {
+      if (codeUnit < 0x20 || codeUnit == 0x2f || codeUnit == 0x5c) {
+        buffer.write('_');
+      } else {
+        buffer.writeCharCode(codeUnit);
+      }
+    }
+
+    final sanitized = buffer
+        .toString()
+        .trim()
+        .replaceAll(RegExp(r'^[. ]+'), '')
+        .replaceAll(RegExp(r'[. ]+$'), '');
+    return sanitized.isEmpty ? 'download' : sanitized;
+  }
+
+  Future<File> _nextAvailableDownloadFile(Directory directory, String filename) async {
+    final baseName = path.basenameWithoutExtension(filename);
+    final extension = path.extension(filename);
+    var candidate = File(path.join(directory.path, filename));
+    if (!await candidate.exists()) return candidate;
+
+    for (var index = 1; index < 1000; index++) {
+      candidate = File(path.join(directory.path, '$baseName ($index)$extension'));
+      if (!await candidate.exists()) return candidate;
+    }
+
+    throw StateError('Unable to find an available filename for $filename.');
+  }
 
   Future<NavigationDecision> _onNavigationRequest(NavigationRequest request) async {
     if (!request.isMainFrame) return NavigationDecision.navigate;

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,12 +18,13 @@ import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/other/route_utils.dart';
+import 'package:qaq_app/ui/pages/webview/qaq_web_view.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum OnListViewPress { setting, fileViewer, logout, feedback, about, login, subSystem }
+enum OnListViewPress { setting, fileViewer, logout, feedback, feedbackUploadTest, about, login, subSystem }
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -68,19 +70,25 @@ class _OtherPageState extends State<OtherPage> {
       },
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
-    if (Platform.isAndroid)
-      {
+    {
         "icon": EvaIcons.messageSquareOutline,
         "color": Colors.cyan,
         "title": R.current.feedbackForm,
         "onPress": OnListViewPress.feedback,
-      },
+    },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
       "title": R.current.about,
       "onPress": OnListViewPress.about,
     },
+    if (kDebugMode)
+      {
+        "icon": EvaIcons.uploadOutline,
+        "color": Colors.deepPurpleAccent,
+        "title": "測試上傳表單",
+        "onPress": OnListViewPress.feedbackUploadTest,
+      },
   ];
 
   @override
@@ -261,6 +269,10 @@ class _OtherPageState extends State<OtherPage> {
         break;
       case OnListViewPress.setting:
         RouteUtils.toSettingPage(widget.pageController);
+        break;
+      case OnListViewPress.feedbackUploadTest:
+        final link = await _buildFeedbackUrl();
+        await Get.to(() => QAQWebView(initialUrl: link, title: "測試上傳表單"));
         break;
     }
   }
