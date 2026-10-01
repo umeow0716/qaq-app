@@ -817,18 +817,18 @@ packages:
     dependency: transitive
     description:
       name: jni
-      sha256: f038e58b4dc2c9037f50e233175086337e0b305e356d28211bf55f21c504cbd3
+      sha256: "6b9ca0602fef0230e83149afbe3f9f8227e94f2bbe84a1da4f14d699742f402d"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.3"
+    version: "1.1.0"
   jni_flutter:
     dependency: transitive
     description:
       name: jni_flutter
-      sha256: b2310cdd4c18c65c081ab141a41efa94aa26c65431803703ece51996f174f351
+      sha256: c399ad579bfba12eb20c924f7a23160a42902f3023a871e1cad40a8a679656a4
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.3"
+    version: "1.0.4"
   jni_util:
     dependency: transitive
     description:
@@ -905,10 +905,10 @@ packages:
     dependency: "direct main"
     description:
       name: lucide_icons_flutter
-      sha256: "50a21003cfe094e33b87e780d62ed5be84c32273dec1ba04547aab7df3cba00c"
+      sha256: "41329b0493e799d481a59e704f5d950d0382414596c57ccf4bb620faec345c97"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.20"
+    version: "3.1.21"
   markdown:
     dependency: transitive
     description:
@@ -977,10 +977,10 @@ packages:
     dependency: transitive
     description:
       name: objective_c
-      sha256: ad56fd53a78ff6b1472fa59ff2a4e8b8ccabafc586fc263a1dfad0b99b5553e3
+      sha256: "5c80c2ad6e2c0397de5db38c6d653e69616a3397e13aa7633bf39eb668f2041b"
       url: "https://pub.dev"
     source: hosted
-    version: "9.6.0"
+    version: "9.6.2"
   octo_image:
     dependency: transitive
     description:
@@ -1366,10 +1366,10 @@ packages:
     dependency: "direct main"
     description:
       name: table_calendar
-      sha256: f276347cad425ef837a41e8d9ad43f3ee7d59227aa4c36d7430607a5a18fa3b3
+      sha256: c46a7b6e853154bde099cc6b9d151268a721b16c24e6cacc5c9ee8dfe6a55243
       url: "https://pub.dev"
     source: hosted
-    version: "3.2.1"
+    version: "3.3.0"
   term_glyph:
     dependency: transitive
     description:
@@ -1591,64 +1591,64 @@ packages:
     description:
       path: webview_all
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_android:
     dependency: "direct overridden"
     description:
       path: webview_all_android
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_linux:
     dependency: "direct overridden"
     description:
       path: webview_all_linux
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_ohos:
     dependency: "direct overridden"
     description:
       path: webview_all_ohos
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_web:
     dependency: "direct overridden"
     description:
       path: webview_all_web
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_windows:
     dependency: "direct overridden"
     description:
       path: webview_all_windows
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_all_wkwebview:
     dependency: "direct overridden"
     description:
       path: webview_all_wkwebview
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   webview_flutter:
     dependency: "direct main"
     description:
@@ -1686,10 +1686,10 @@ packages:
     description:
       path: webview_platform_interface
       ref: HEAD
-      resolved-ref: b026866b90f08397cd2711d40b7ca8ccaf1b1756
+      resolved-ref: "2356ca7b316af3b7833147940d3cdf27da0c5578"
       url: "https://github.com/umeow0716/webview_all.git"
     source: git
-    version: "1.4.3"
+    version: "1.4.4"
   win32:
     dependency: transitive
     description:
