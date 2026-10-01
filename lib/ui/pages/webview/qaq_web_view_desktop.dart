@@ -36,7 +36,13 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   final cookieJar = DioConnector.instance.cookiesManager;
   WebViewController? _controller;
   late final Future<void> _initialLoadFuture;
+  static const _linuxNativeWebViewMountDelay = Duration(milliseconds: 220);
+  static const _linuxNativeWebViewDetachDelay = Duration(milliseconds: 32);
+
   bool _vpnProxyEnabled = false;
+  bool _showNativeWebView = !Platform.isLinux;
+  bool _allowNextLinuxPop = false;
+  bool _linuxNativeWebViewDetachedForPop = false;
   var _linuxDownloadOverlaySequence = 0;
 
   final progress = ValueNotifier(0.0);
@@ -45,6 +51,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   void initState() {
     super.initState();
     _initialLoadFuture = _prepareControllerAndLoadInitialContent();
+    if (Platform.isLinux) {
+      unawaited(_showLinuxNativeWebViewAfterRouteTransition());
+    }
   }
 
   @override
@@ -62,6 +71,43 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       throw StateError('WebViewController was used before desktop WebView preparation completed.');
     }
     return controller;
+  }
+
+  Future<void> _showLinuxNativeWebViewAfterRouteTransition() async {
+    await Future<void>.delayed(_linuxNativeWebViewMountDelay);
+    if (!mounted || _linuxNativeWebViewDetachedForPop) return;
+
+    setState(() {
+      _showNativeWebView = true;
+    });
+  }
+
+  Future<bool> _handleRouteWillPop() async {
+    if (!Platform.isLinux) return true;
+    if (_allowNextLinuxPop) return true;
+
+    unawaited(_popAfterDetachingLinuxNativeWebView());
+    return false;
+  }
+
+  Future<void> _popAfterDetachingLinuxNativeWebView() async {
+    if (!mounted) return;
+
+    _allowNextLinuxPop = true;
+    if (!_linuxNativeWebViewDetachedForPop) {
+      _linuxNativeWebViewDetachedForPop = true;
+      if (_showNativeWebView) {
+        setState(() {
+          _showNativeWebView = false;
+        });
+        await Future<void>.delayed(_linuxNativeWebViewDetachDelay);
+      } else {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    if (!mounted) return;
+    await Navigator.of(context).maybePop();
   }
 
   Future<void> _prepareControllerAndLoadInitialContent() async {
@@ -741,29 +787,85 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     ),
   );
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title ?? '')),
-    body: SafeArea(
-      child: Column(
-        children: [
-          _buildProgressBar(),
-          Expanded(
-            child: FutureBuilder<void>(
-              future: _initialLoadFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  Error.throwWithStackTrace(snapshot.error!, snapshot.stackTrace ?? StackTrace.current);
-                }
-                return WebViewWidget(controller: _requiredController);
-              },
-            ),
-          ),
-          _buildButtonBar(),
+  Widget _buildWebViewContent(AsyncSnapshot<void> snapshot) {
+    if (snapshot.connectionState != ConnectionState.done) {
+      return _buildLinuxNativeWebViewCover('準備開啟瀏覽器');
+    }
+
+    if (snapshot.hasError) {
+      Error.throwWithStackTrace(snapshot.error!, snapshot.stackTrace ?? StackTrace.current);
+    }
+
+    if (Platform.isLinux && !_showNativeWebView) {
+      return _buildLinuxNativeWebViewCover(
+        _linuxNativeWebViewDetachedForPop ? '正在關閉瀏覽器' : '正在開啟瀏覽器',
+      );
+    }
+
+    return WebViewWidget(controller: _requiredController);
+  }
+
+  Widget _buildLinuxNativeWebViewCover(String label) => DecoratedBox(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF0F172A),
+          Color(0xFF111827),
+          Color(0xFF020617),
         ],
+      ),
+    ),
+    child: Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.10)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => WillPopScope(
+    onWillPop: _handleRouteWillPop,
+    child: Scaffold(
+      appBar: AppBar(title: Text(widget.title ?? '')),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildProgressBar(),
+            Expanded(
+              child: FutureBuilder<void>(
+                future: _initialLoadFuture,
+                builder: (context, snapshot) => _buildWebViewContent(snapshot),
+              ),
+            ),
+            _buildButtonBar(),
+          ],
+        ),
       ),
     ),
   );
