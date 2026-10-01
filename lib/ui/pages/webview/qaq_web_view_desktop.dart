@@ -279,7 +279,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
         },
       );
       await _finishLinuxDownloadOverlayItem(
-        id: overlayId!,
+        id: overlayId,
         status: _LinuxDownloadOverlayStatus.completed,
       );
       GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
