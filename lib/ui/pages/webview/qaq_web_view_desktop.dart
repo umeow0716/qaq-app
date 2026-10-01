@@ -119,7 +119,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     _controller = controller;
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
-      await controller.loadRequest(initialUrl);
+      final initialHeaders = await _initialRequestHeadersForUri(initialUrl);
+      await controller.loadRequest(initialUrl, headers: initialHeaders);
       return;
     }
 
@@ -180,6 +181,32 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   bool _canCopyCookiesForUri(Uri uri) => uri.scheme == 'http' || uri.scheme == 'https';
+
+  Future<Map<String, String>> _initialRequestHeadersForUri(Uri uri) async {
+    if (!Platform.isWindows || !_canCopyCookiesForUri(uri)) {
+      return const <String, String>{};
+    }
+
+    final headers = <String, String>{};
+
+    if (uri.host == Uri.parse(NTUTConnector.host).host) {
+      final cookies = await cookieJar.loadForRequest(uri);
+      if (cookies.isNotEmpty) {
+        headers[HttpHeaders.cookieHeader] = cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
+        GlobalProtectDebug.log(
+          '[WebViewCookieSync] Windows initial request Cookie header for ${uri.host}${uri.path}: '
+          '${cookies.map((cookie) => cookie.name).join(',')}',
+        );
+      } else {
+        GlobalProtectDebug.log('[WebViewCookieSync] Windows initial request has no Dio cookies for ${uri.host}${uri.path}');
+      }
+    }
+
+    if (headers.isNotEmpty) {
+      GlobalProtectDebug.log('[WebViewCookieSync] Windows initial request headers=${headers.keys.join(',')}');
+    }
+    return headers;
+  }
 
   Future<void> _setCookiesForUri(Uri uri) async {
     final cookies = await cookieJar.loadForRequest(uri);
@@ -403,7 +430,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
             _LinuxDownloadOverlayStatus.completed => '下載完成',
             _LinuxDownloadOverlayStatus.failed => '下載失敗',
           },
-          if (message != null) 'message': message,
+          'message': ?message,
         },
       ),
     );
@@ -821,9 +848,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.10)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
