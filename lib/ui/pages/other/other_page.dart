@@ -24,7 +24,17 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum OnListViewPress { setting, fileViewer, logout, feedback, feedbackUploadTest, about, login, subSystem }
+enum OnListViewPress {
+  setting,
+  fileViewer,
+  logout,
+  feedback,
+  feedbackUploadTest,
+  localUploadHtmlTest,
+  about,
+  login,
+  subSystem,
+}
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -82,13 +92,20 @@ class _OtherPageState extends State<OtherPage> {
       "title": R.current.about,
       "onPress": OnListViewPress.about,
     },
-    if (kDebugMode)
+    if (kDebugMode) ...[
       {
         "icon": EvaIcons.uploadOutline,
         "color": Colors.deepPurpleAccent,
         "title": "測試上傳表單",
         "onPress": OnListViewPress.feedbackUploadTest,
       },
+      {
+        "icon": EvaIcons.fileAddOutline,
+        "color": Colors.indigoAccent,
+        "title": "測試本機上傳 HTML",
+        "onPress": OnListViewPress.localUploadHtmlTest,
+      },
+    ],
   ];
 
   @override
@@ -274,8 +291,64 @@ class _OtherPageState extends State<OtherPage> {
         final link = await _buildFeedbackUrl();
         await Get.to(() => QAQWebView(initialUrl: link, title: "測試上傳表單"));
         break;
+      case OnListViewPress.localUploadHtmlTest:
+        final link = await _writeLocalUploadDebugHtml();
+        await Get.to(() => QAQWebView(initialUrl: link, title: "測試本機上傳 HTML"));
+        break;
     }
   }
+
+
+  Future<Uri> _writeLocalUploadDebugHtml() async {
+    final directory = await Directory.systemTemp.createTemp('qaq_upload_debug_');
+    final file = File('${directory.path}/index.html');
+    await file.writeAsString(_localUploadDebugHtml);
+    return file.uri;
+  }
+
+  static const String _localUploadDebugHtml = r'''
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QAQ Linux Upload Debug</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; line-height: 1.5; }
+    label { display: block; margin: 18px 0 8px; font-weight: 700; }
+    input { display: block; margin: 8px 0 16px; }
+    pre { white-space: pre-wrap; padding: 12px; border: 1px solid #bbb; border-radius: 8px; }
+    .hint { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>QAQ Linux Upload Debug</h1>
+  <p class="hint">這個頁面是本機 HTML，只測 WebKitGTK 的 file input / native file chooser，不會連 Google Forms。</p>
+
+  <label for="single">單檔</label>
+  <input id="single" type="file">
+
+  <label for="multiple">多檔</label>
+  <input id="multiple" type="file" multiple>
+
+  <label for="image">圖片 accept=image/*</label>
+  <input id="image" type="file" accept="image/*">
+
+  <h2>選檔結果</h2>
+  <pre id="result">尚未選檔</pre>
+
+  <script>
+    const result = document.getElementById('result');
+    for (const input of document.querySelectorAll('input[type=file]')) {
+      input.addEventListener('change', () => {
+        const names = Array.from(input.files || []).map((file) => file.name + ' (' + file.size + ' bytes)');
+        result.textContent = input.id + ':\n' + (names.length ? names.join('\n') : '未選檔');
+      });
+    }
+  </script>
+</body>
+</html>
+''';
 
   Future<Uri> _buildFeedbackUrl() async {
     try {

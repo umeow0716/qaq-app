@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:qaq_app/src/connector/adapters/early_interceptor_adapter.dart';
 import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
@@ -124,10 +126,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     await _setCookiesForUri(portalUrl);
 
-    if (widget.initialUrl.host != portalUrl.host) {
+    if (_canCopyCookiesForUri(widget.initialUrl) && widget.initialUrl.host != portalUrl.host) {
       await _setCookiesForUri(widget.initialUrl);
     }
   }
+
+  bool _canCopyCookiesForUri(Uri uri) => uri.scheme == 'http' || uri.scheme == 'https';
 
   Future<void> _setCookiesForUri(Uri uri) async {
     final cookies = await cookieJar.loadForRequest(uri);
@@ -192,20 +196,59 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       };
 
       GlobalProtectDebug.log('Linux WebView download saving ${sourceUri.host} to ${destination.path}');
-      await DioConnector.instance.download(
-        sourceUri.toString(),
-        (_) => destination.path,
-        progressCallback: (received, total) {
+      await _downloadLinuxWebViewFile(
+        sourceUri: sourceUri,
+        destination: destination,
+        headers: headers,
+      );
+      GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('Linux WebView download', error, stackTrace);
+    }
+  }
+
+  Future<void> _downloadLinuxWebViewFile({
+    required Uri sourceUri,
+    required File destination,
+    required Map<String, dynamic> headers,
+  }) async {
+    final dio = Dio(DioConnector.dioOptions)
+      ..httpClientAdapter = EarlyInterceptorAdapter(
+        headerDecorators: DioConnector.headerDecorators,
+        httpClientProvider: (options) async {
+          if (!IStudyAccessGuard.isIStudyUri(options.uri)) return null;
+
+          final route = await IStudyAccessGuard.route();
+          GlobalProtectDebug.log('Linux WebView download iStudy route=${route.name}');
+          switch (route) {
+            case IStudyAccessRoute.direct:
+              return null;
+            case IStudyAccessRoute.blocked:
+              throw const IStudyAccessBlockedException();
+            case IStudyAccessRoute.vpn:
+              GlobalProtectDebug.log('Linux WebView download requesting GP-backed HttpClient');
+              return (await GlobalProtectAppSession.instance.ensureHttpClient()).client;
+          }
+        },
+      );
+
+    try {
+      await dio.downloadUri(
+        sourceUri,
+        destination.path,
+        options: Options(
+          receiveTimeout: Duration.zero,
+          headers: headers,
+        ),
+        onReceiveProgress: (received, total) {
           if (total > 0 && received == total) {
             GlobalProtectDebug.log('Linux WebView download received $received bytes');
           }
         },
         cancelToken: CancelToken(),
-        header: headers,
       );
-      GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
-    } catch (error, stackTrace) {
-      GlobalProtectDebug.error('Linux WebView download', error, stackTrace);
+    } finally {
+      dio.close(force: true);
     }
   }
 
