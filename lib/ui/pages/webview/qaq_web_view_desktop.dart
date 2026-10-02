@@ -116,7 +116,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(_createNavigationDelegate());
     await _configureLinuxFileTransfer(controller);
+    await _configureWindowsWebResourceDebug(controller);
     _controller = controller;
+    await setInitialCookies();
+
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
       final initialHeaders = await _initialRequestHeadersForUri(initialUrl);
@@ -128,8 +131,6 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<_InitialWebViewContent> _prepareInitialContent() async {
-    await setInitialCookies();
-
     // Only direct iStudy URLs need a desktop proxy preflight before their first
     // load. Non-iStudy pages such as debug Google Forms must not inherit the
     // process-wide WebView proxy; if they later redirect to iStudy,
@@ -213,6 +214,132 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     for (final cookie in cookies) {
       await WebViewCookieStore.setCookie(url: uri, cookie: cookie);
     }
+
+    if (kDebugMode && Platform.isWindows) {
+      final sourceNames = cookies.map((cookie) => cookie.name).toSet();
+      final webViewLabels = await WebViewCookieStore.debugLabels(uri);
+      final webViewNames = webViewLabels.map((label) => label.split('@').first).toSet();
+      final missingNames = sourceNames.difference(webViewNames).toList()..sort();
+
+      debugPrint(
+        '[WebViewCookieSync] copied ${uri.host}: '
+        'dio=${sourceNames.toList()..sort()} '
+        'webview=$webViewLabels '
+        'missing=$missingNames',
+      );
+    }
+  }
+
+  Future<void> _configureWindowsWebResourceDebug(WebViewController controller) async {
+    if (!kDebugMode || !Platform.isWindows) return;
+
+    if (controller.webResourceCaptureSupport != WebResourceCaptureSupport.supported) {
+      debugPrint('[WebViewNet] raw WebView2 request/response capture is unavailable');
+      return;
+    }
+
+    await controller.setOnRawWebResourceRequest((request) {
+      if (!_shouldTraceWebResource(request.uri)) return;
+      _logRawWebResourceRequest('REQUEST', request);
+    });
+
+    await controller.setOnRawWebResourceResponse((request, response) {
+      if (!_shouldTraceWebResource(request.uri) && !_shouldTraceWebResource(response.uri)) {
+        return;
+      }
+
+      // WebView2 reports the request paired with WebResourceResponseReceived
+      // after network-stack headers have been committed. This is the useful
+      // snapshot for checking whether Cookie actually left the WebView.
+      _logRawWebResourceRequest('COMMITTED', request);
+      _logRawWebResourceResponse(response);
+    });
+
+    await controller.setWebResourceCaptureEnabled(true);
+    debugPrint('[WebViewNet] raw WebView2 request/response capture enabled');
+  }
+
+  bool _shouldTraceWebResource(Uri? uri) {
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return false;
+
+    final host = uri.host.toLowerCase();
+    return host == 'ntut.edu.tw' || host.endsWith('.ntut.edu.tw');
+  }
+
+  void _logRawWebResourceRequest(String stage, RawWebResourceRequest request) {
+    final cookieHeader = _headerValue(request.headers, HttpHeaders.cookieHeader);
+    final cookieNames = _requestCookieNames(cookieHeader);
+    final referer = _safeHeaderUri(_headerValue(request.headers, HttpHeaders.refererHeader));
+    final hasAuthorization = _headerValue(request.headers, HttpHeaders.authorizationHeader) != null;
+
+    debugPrint(
+      '[WebViewNet][$stage/${request.headerState.name}] '
+      '${request.method ?? '<unknown>'} ${_safeWebResourceUri(request.uri)} '
+      'cookies=$cookieNames '
+      'referer=${referer ?? '<none>'} '
+      'authorization=${hasAuthorization ? '<present>' : '<none>'}',
+    );
+  }
+
+  void _logRawWebResourceResponse(RawWebResourceResponse response) {
+    final setCookieHeader = _headerValue(response.headers, HttpHeaders.setCookieHeader);
+    final setCookieNames = _responseCookieNames(setCookieHeader);
+    final location = _safeHeaderUri(_headerValue(response.headers, HttpHeaders.locationHeader));
+    final contentType = _headerValue(response.headers, HttpHeaders.contentTypeHeader);
+
+    debugPrint(
+      '[WebViewNet][RESPONSE] ${response.statusCode} '
+      '${_safeWebResourceUri(response.uri)} '
+      'location=${location ?? '<none>'} '
+      'set-cookie=$setCookieNames '
+      'content-type=${contentType ?? '<none>'}',
+    );
+  }
+
+  String _safeWebResourceUri(Uri? uri) {
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return '<unknown>';
+
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme}://${uri.host}$port${uri.path}';
+  }
+
+  String? _safeHeaderUri(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) return '<present>';
+    return _safeWebResourceUri(uri);
+  }
+
+  String? _headerValue(Map<String, String> headers, String name) {
+    final target = name.toLowerCase();
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == target) return entry.value;
+    }
+    return null;
+  }
+
+  List<String> _requestCookieNames(String? header) {
+    if (header == null || header.isEmpty) return const <String>[];
+
+    final names = <String>{};
+    for (final part in header.split(';')) {
+      final separator = part.indexOf('=');
+      if (separator <= 0) continue;
+      names.add(part.substring(0, separator).trim());
+    }
+    return names.toList()..sort();
+  }
+
+  List<String> _responseCookieNames(String? header) {
+    if (header == null || header.isEmpty) return const <String>[];
+
+    final names = <String>{};
+    final cookieStart = RegExp(r'(?:^|[\r\n,]\s*)([^=;,\s]+)=');
+    for (final match in cookieStart.allMatches(header)) {
+      final name = match.group(1);
+      if (name != null && name.isNotEmpty) names.add(name);
+    }
+    return names.toList()..sort();
   }
 
   void _onProgressChanged(int webViewProgress) {
