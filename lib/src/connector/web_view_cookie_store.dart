@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 import 'package:webview_all/webview_all.dart';
+// ignore: depend_on_referenced_packages
+import 'package:webview_all_windows/webview_all_windows.dart' as windows_webview;
 
 /// Cookie bridge shared by QAQ's WebViews.
 ///
@@ -38,14 +40,55 @@ class WebViewCookieStore {
       return;
     }
 
+    if (Platform.isWindows &&
+        _manager.platform is windows_webview.WindowsWebViewCookieManager) {
+      final manager =
+          _manager.platform as windows_webview.WindowsWebViewCookieManager;
+      await manager.setWindowsCookie(
+        windows_webview.WindowsWebViewCookie(
+          name: cookie.name,
+          value: cookie.value,
+          domain: _effectiveDomain(cookie, url),
+          path: _effectivePath(cookie),
+          expires: cookie.expires,
+          isHttpOnly: cookie.httpOnly,
+          isSecure: cookie.secure,
+          sameSite: _windowsSameSite(cookie.sameSite),
+        ),
+      );
+      return;
+    }
+
     await _manager.setCookie(
       WebViewCookie(
         name: cookie.name,
         value: cookie.value,
-        domain: cookie.domain ?? url.host,
-        path: cookie.path ?? '/',
+        domain: _effectiveDomain(cookie, url),
+        path: _effectivePath(cookie),
       ),
     );
+  }
+
+  static String _effectiveDomain(Cookie cookie, Uri url) {
+    final domain = cookie.domain;
+    return domain == null || domain.isEmpty ? url.host : domain;
+  }
+
+  static String _effectivePath(Cookie cookie) {
+    final path = cookie.path;
+    return path == null || path.isEmpty ? '/' : path;
+  }
+
+  static windows_webview.WindowsWebViewCookieSameSite? _windowsSameSite(
+    SameSite? sameSite,
+  ) {
+    return switch (sameSite) {
+      SameSite.none => windows_webview.WindowsWebViewCookieSameSite.none,
+      SameSite.lax => windows_webview.WindowsWebViewCookieSameSite.lax,
+      SameSite.strict => windows_webview.WindowsWebViewCookieSameSite.strict,
+      null => null,
+      _ => null,
+    };
   }
 
   static Future<String?> cookieHeaderFor(Uri url) async {
