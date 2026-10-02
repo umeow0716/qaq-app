@@ -5,8 +5,8 @@ publish_to: 'none'
 version: 1.7.3+5277
 
 environment:
-  flutter: ">=3.47.5 <4.0.0"
-  sdk: ">=3.13.2 <4.0.0"
+  flutter: ">=3.44.7 <4.0.0"
+  sdk: ">=3.12.2 <4.0.0"
 
 dependencies:
   flutter:
@@ -14,7 +14,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  intl: ^0.20.3
+  intl: ^0.20.2
   path: ^1.9.1
   path_provider: ^2.1.6
   provider: ^6.1.5+1
@@ -63,7 +63,7 @@ dependencies:
   numberpicker: ^2.1.2
   open_filex: ^4.7.0
 
-  meta: ^1.19.0
+  meta: ^1.18.0
   android_intent_plus: ^6.1.0
   package_info_plus: ^10.2.1
 
@@ -72,7 +72,7 @@ dev_dependencies:
     sdk: flutter
   dependency_validator: ^5.0.6
   flutter_launcher_icons: ^0.14.4
-  build_runner: ^2.16.1
+  build_runner: ^2.15.1
   json_serializable: ^6.14.1
   flutter_lints: ^6.0.0
   intl_utils: ^2.8.16
