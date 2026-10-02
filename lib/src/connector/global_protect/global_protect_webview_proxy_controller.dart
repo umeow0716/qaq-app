@@ -12,8 +12,11 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 /// Android can apply and clear ProxyOverride at runtime. Windows WebView2 can
 /// only receive proxy settings through its shared environment before the first
 /// WebView controller is created, so that configuration is intentionally sticky
-/// for this process once enabled. Linux uses webview_all's PlatformProxyController
-/// implementation backed by WebKitGTK network proxy settings.
+/// for this process once enabled. The loopback bridge itself remains
+/// destination-aware: only the configured iStudy host is sent through
+/// GlobalProtect; every other destination opens a direct TCP connection. Linux
+/// uses webview_all's PlatformProxyController implementation backed by WebKitGTK
+/// network proxy settings.
 class GlobalProtectWebViewProxyController {
   const GlobalProtectWebViewProxyController._();
 
@@ -100,8 +103,9 @@ class GlobalProtectWebViewProxyController {
     if (host.isEmpty) throw ArgumentError.value(host, 'host', 'Proxy target host must not be empty.');
 
     // WebView2 accepts Chromium proxy flags through additionalArguments. The
-    // QAQ bridge is a loopback HTTP proxy that supports both absolute-form HTTP
-    // requests and HTTPS CONNECT tunnels.
+    // environment-level proxy points HTTP/HTTPS at the QAQ loopback bridge,
+    // which routes only [host] through GlobalProtect and opens direct TCP
+    // connections for every other destination.
     return '--proxy-server=http=127.0.0.1:$port;https=127.0.0.1:$port '
         '--proxy-bypass-list=<-loopback>';
   }

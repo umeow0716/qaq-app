@@ -263,7 +263,9 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
     }
 
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted();
+    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(
+      vpnHost: IStudyAccessGuard.iStudyHost,
+    );
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
     }

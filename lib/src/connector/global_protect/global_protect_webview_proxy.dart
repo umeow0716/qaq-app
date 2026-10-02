@@ -8,11 +8,13 @@ import 'global_protect_debug.dart';
 import 'virtual_byte_socket.dart';
 import 'virtual_tcp_socket.dart';
 
-/// A loopback HTTP proxy used only as an adapter between Android WebView's
-/// ProxyOverride API and the app's userspace GlobalProtect TCP implementation.
+/// A loopback HTTP proxy used as an adapter between platform WebView proxy
+/// configuration and the app's userspace GlobalProtect TCP implementation.
 ///
-/// HTTPS remains end-to-end between WebView and the destination. CONNECT bytes
-/// are forwarded without TLS interception or a custom CA.
+/// Only the configured VPN target host is routed through GlobalProtect. Every
+/// other destination opens a direct TCP connection from the app process. HTTPS
+/// remains end-to-end between WebView and the destination; CONNECT bytes are
+/// forwarded without TLS interception or a custom CA.
 class GlobalProtectWebViewProxyBridge {
   GlobalProtectWebViewProxyBridge._();
 
@@ -27,20 +29,45 @@ class GlobalProtectWebViewProxyBridge {
   bool get isRunning => _server != null;
   int? get port => _server?.port;
 
-  Future<int> ensureStarted() {
+  String? _vpnHost;
+
+  Future<int> ensureStarted({required String vpnHost}) {
+    final normalizedVpnHost = _normalizeHost(vpnHost);
+    if (normalizedVpnHost.isEmpty) {
+      return Future<int>.error(
+        ArgumentError.value(vpnHost, 'vpnHost', 'VPN target host must not be empty.'),
+      );
+    }
+
     final existing = _server;
-    if (existing != null) return Future<int>.value(existing.port);
+    if (existing != null) {
+      if (_vpnHost != normalizedVpnHost) {
+        return Future<int>.error(
+          StateError('WebView GP proxy is already bound to $_vpnHost, not $normalizedVpnHost.'),
+        );
+      }
+      return Future<int>.value(existing.port);
+    }
 
     final inFlight = _startInFlight;
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) {
+      if (_vpnHost != null && _vpnHost != normalizedVpnHost) {
+        return Future<int>.error(
+          StateError('WebView GP proxy is starting for $_vpnHost, not $normalizedVpnHost.'),
+        );
+      }
+      return inFlight;
+    }
 
+    _vpnHost = normalizedVpnHost;
     final generation = _generation;
     final future = _start(generation);
     _startInFlight = future;
     unawaited(
       future.then<void>(
         (_) => _clearStartFuture(future),
-        onError: (Object _, StackTrace _) => _clearStartFuture(future),
+        onError: (Object _, StackTrace _) =>
+            _clearStartFuture(future, failed: true),
       ),
     );
     return future;
@@ -70,8 +97,10 @@ class GlobalProtectWebViewProxyBridge {
     return server.port;
   }
 
-  void _clearStartFuture(Future<int> future) {
-    if (identical(_startInFlight, future)) _startInFlight = null;
+  void _clearStartFuture(Future<int> future, {bool failed = false}) {
+    if (!identical(_startInFlight, future)) return;
+    _startInFlight = null;
+    if (failed && _server == null) _vpnHost = null;
   }
 
   Future<void> _serve(Socket client) async {
@@ -139,7 +168,14 @@ class GlobalProtectWebViewProxyBridge {
               'WebView proxy request method=${request.isConnect ? 'CONNECT' : 'HTTP'} '
               'host=${request.host} port=${request.port}',
             );
-            upstream = await _connectVirtual(request.host, request.port);
+            final useGlobalProtect = _shouldRouteThroughGlobalProtect(request.host);
+            GlobalProtectDebug.log(
+              'WebView proxy route host=${request.host} port=${request.port} '
+              'via=${useGlobalProtect ? 'globalProtect' : 'direct'}',
+            );
+            upstream = useGlobalProtect
+                ? await _connectVirtual(request.host, request.port)
+                : await _connectDirect(request.host, request.port);
             upstreamSubscription = upstream!.stream.listen(
               (bytes) => client.add(bytes),
               onError: (Object error, StackTrace stack) => unawaited(fail(error)),
@@ -169,6 +205,40 @@ class GlobalProtectWebViewProxyBridge {
       onDone: () => unawaited(closeBoth()),
       cancelOnError: false,
     );
+  }
+
+  bool _shouldRouteThroughGlobalProtect(String host) {
+    final vpnHost = _vpnHost;
+    return vpnHost != null &&
+        shouldRouteThroughGlobalProtect(host: host, vpnHost: vpnHost);
+  }
+
+  static bool shouldRouteThroughGlobalProtect({
+    required String host,
+    required String vpnHost,
+  }) {
+    final normalizedHost = _normalizeHost(host);
+    final normalizedVpnHost = _normalizeHost(vpnHost);
+    return normalizedHost.isNotEmpty && normalizedHost == normalizedVpnHost;
+  }
+
+  static String _normalizeHost(String host) {
+    var value = host.trim().toLowerCase();
+    while (value.endsWith('.')) {
+      value = value.substring(0, value.length - 1);
+    }
+    return value;
+  }
+
+  Future<VirtualByteSocket> _connectDirect(String host, int port) async {
+    GlobalProtectDebug.log('direct TCP connect -> $host:$port');
+    final socket = await Socket.connect(
+      host,
+      port,
+      timeout: const Duration(seconds: 10),
+    );
+    GlobalProtectDebug.log('direct TCP connected -> ${socket.remoteAddress.address}:$port');
+    return _DirectByteSocket(socket);
   }
 
   Future<VirtualByteSocket> _connectVirtual(String host, int port) async {
@@ -204,6 +274,7 @@ class GlobalProtectWebViewProxyBridge {
 
     final server = _server;
     _server = null;
+    _vpnHost = null;
     await server?.close();
 
     final clients = _clients.toList(growable: false);
@@ -226,6 +297,30 @@ class GlobalProtectWebViewProxyBridge {
       }
     }
     return -1;
+  }
+}
+
+class _DirectByteSocket implements VirtualByteSocket {
+  _DirectByteSocket(this._socket);
+
+  final Socket _socket;
+
+  @override
+  Stream<Uint8List> get stream => _socket;
+
+  @override
+  Future<void> write(Uint8List data) async {
+    _socket.add(data);
+    await _socket.flush();
+  }
+
+  @override
+  Future<void> close({bool sendFin = true}) async {
+    if (sendFin) {
+      await _socket.close();
+    } else {
+      _socket.destroy();
+    }
   }
 }
 
