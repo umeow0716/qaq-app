@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +20,7 @@ jobs:
     outputs:
       app-version: ${{ steps.version.outputs.app-version }}
       release-tag: ${{ steps.version.outputs.release-tag }}
+      publish-release: ${{ steps.version.outputs.publish-release }}
 
     steps:
       - name: Checkout
@@ -29,21 +31,44 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tag must look like v1.2.3 or v1.2.3-beta.1; got: $tag" >&2
+
+          pubspec_version="$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml | head -n 1)"
+          if [[ -z "$pubspec_version" ]]; then
+            echo "Could not read version from pubspec.yaml." >&2
             exit 1
           fi
 
-          app_version="${tag#v}"
-          pubspec_version="$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml | head -n 1)"
-          if [[ "$pubspec_version" != "$app_version" ]]; then
-            echo "Tag version ($app_version) does not match pubspec.yaml ($pubspec_version)." >&2
-            exit 1
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            app_version="$pubspec_version"
+            release_tag="v${app_version}-dry-run.${GITHUB_RUN_NUMBER}"
+            publish_release=false
+            echo "Manual dry run: artifacts will be built, but no GitHub Release will be created."
+          else
+            tag="${GITHUB_REF_NAME}"
+
+            if [[ "$tag" =~ ^v(.+)-dry-run\.[0-9]+$ ]]; then
+              app_version="${BASH_REMATCH[1]}"
+              release_tag="$tag"
+              publish_release=false
+              echo "Dry-run tag detected: artifacts will be built, but no GitHub Release will be created."
+            elif [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+              app_version="${tag#v}"
+              release_tag="$tag"
+              publish_release=true
+            else
+              echo "Release tag must look like v1.2.3, v1.2.3-beta.1, or v1.2.3-dry-run.1; got: $tag" >&2
+              exit 1
+            fi
+
+            if [[ "$pubspec_version" != "$app_version" ]]; then
+              echo "Tag version ($app_version) does not match pubspec.yaml ($pubspec_version)." >&2
+              exit 1
+            fi
           fi
 
           echo "app-version=$app_version" >> "$GITHUB_OUTPUT"
-          echo "release-tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release-tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "publish-release=$publish_release" >> "$GITHUB_OUTPUT"
 
   android:
     name: Android release artifacts
@@ -290,6 +315,7 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: [prepare, android, windows, linux]
+    if: needs.prepare.outputs.publish-release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
