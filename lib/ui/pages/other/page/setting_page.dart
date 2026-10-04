@@ -48,6 +48,7 @@ class _SettingPageState extends State<SettingPage> {
     listViewData.add(_buildLanguageSetting());
     listViewData.add(_buildLoadIPlusNewsSetting());
     listViewData.add(_buildAutoConnectIStudyVpnSetting());
+    listViewData.add(_buildFollowSystemThemeSetting());
     listViewData.add(_buildDarkModeSetting());
 
     if (Platform.isAndroid) {
@@ -96,27 +97,40 @@ class _SettingPageState extends State<SettingPage> {
     );
   }
 
+  Widget _buildFollowSystemThemeSetting() {
+    final appProvider = Provider.of<AppProvider>(context);
+
+    return SwitchListTile.adaptive(
+      contentPadding: const EdgeInsets.all(0),
+      title: Text(R.current.followSystemTheme, style: textTitle),
+      value: appProvider.followsSystemTheme,
+      onChanged: appProvider.setFollowSystemTheme,
+    );
+  }
+
   Widget _buildDarkModeSetting() {
-    return (MediaQuery.of(context).platformBrightness != AppThemes.darkTheme.brightness)
-        ? SwitchListTile.adaptive(
-            contentPadding: const EdgeInsets.all(0),
-            title: Row(
-              children: [
-                Text(R.current.darkMode, style: textTitle),
-                const Padding(padding: EdgeInsets.only(left: 10)),
-                const Icon(LucideIcons.moon),
-              ],
-            ),
-            value: Provider.of<AppProvider>(context).theme == AppThemes.lightTheme ? false : true,
-            onChanged: (v) {
+    final appProvider = Provider.of<AppProvider>(context);
+
+    return SwitchListTile.adaptive(
+      contentPadding: const EdgeInsets.all(0),
+      title: Row(
+        children: [
+          Text(R.current.darkMode, style: textTitle),
+          const Padding(padding: EdgeInsets.only(left: 10)),
+          const Icon(LucideIcons.moon),
+        ],
+      ),
+      value: appProvider.isDarkTheme,
+      onChanged: appProvider.followsSystemTheme
+          ? null
+          : (v) {
               if (v) {
-                Provider.of<AppProvider>(context, listen: false).setTheme(AppThemes.darkTheme, "dark");
+                appProvider.setTheme(AppThemes.darkTheme, "dark");
               } else {
-                Provider.of<AppProvider>(context, listen: false).setTheme(AppThemes.lightTheme, "light");
+                appProvider.setTheme(AppThemes.lightTheme, "light");
               }
             },
-          )
-        : const SizedBox();
+    );
   }
 
   Widget _buildLoadIPlusNewsSetting() {

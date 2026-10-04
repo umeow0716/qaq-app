@@ -7,7 +7,6 @@ import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
-import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/course/course_system_task.dart';
@@ -25,7 +24,6 @@ import 'package:qaq_app/ui/pages/score/semester_score_grade_metrics.dart';
 import 'package:qaq_app/ui/pages/score/widgets/calculation_warning_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import 'package:sprintf/sprintf.dart';
 
 class ScoreViewerPage extends StatefulWidget {
@@ -420,7 +418,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     margin: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(width: 2, color: context.read<AppProvider>().theme.colorScheme.tertiary),
+      border: Border.all(width: 2, color: Theme.of(context).colorScheme.tertiary),
     ),
     child: Center(child: Text(title, textAlign: TextAlign.center)),
   );

@@ -59,9 +59,10 @@ class _QAQApp extends StatelessWidget {
   Widget build(BuildContext context) => Consumer<AppProvider>(
     builder: (context, appProvider, child) => GetMaterialApp(
       title: AppConfig.appName,
-      theme: appProvider.theme,
+      theme: AppThemes.lightTheme,
       navigatorKey: appProvider.navigatorKey,
       darkTheme: AppThemes.darkTheme,
+      themeMode: appProvider.themeMode,
       localizationsDelegates: const [
         S.delegate,
         GlobalWidgetsLocalizations.delegate,
