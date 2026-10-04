@@ -14,7 +14,7 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 /// only receive proxy settings through its shared environment before the first
 /// WebView controller is created, so that configuration is intentionally sticky
 /// for this process. Windows uses a PAC served by the loopback bridge so only
-/// the configured iStudy host enters that proxy; normal sites stay on WebView2's
+/// the configured iStudy hosts enter that proxy; normal sites stay on WebView2's
 /// native DIRECT path. The bridge can remain bound while VPN routing is disabled
 /// and starts using GlobalProtect only after the access guard selects it. Linux
 /// uses webview_all's PlatformProxyController implementation backed by WebKitGTK
@@ -27,11 +27,11 @@ class GlobalProtectWebViewProxyController {
 
   /// Applies the loopback proxy and returns whether Android reverse-bypass
   /// allow-list mode is supported.
-  static Future<bool> setProxyOverride({required int port, required String host}) async {
+  static Future<bool> setProxyOverride({required int port, required List<String> hosts}) async {
     if (Platform.isAndroid) {
       final reverseBypassSupported = await _channel.invokeMethod<bool>('set_webview_proxy_override', <String, Object>{
         'port': port,
-        'host': host,
+        'hosts': hosts,
       });
       if (reverseBypassSupported == null) {
         throw StateError('Android did not report the WebView proxy mode.');
@@ -40,7 +40,7 @@ class GlobalProtectWebViewProxyController {
     }
 
     if (Platform.isWindows) {
-      final arguments = _windowsProxyArguments(port: port, host: host);
+      final arguments = _windowsProxyArguments(port: port);
       await WindowsWebViewController.ensureEnvironment(additionalArguments: arguments);
       _windowsAdditionalArguments = arguments;
       GlobalProtectDebug.log('Windows WebView2 proxy environment active args=$arguments');
@@ -101,9 +101,7 @@ class GlobalProtectWebViewProxyController {
 
   static String _loopbackProxyUrl({required int port}) => 'http://127.0.0.1:$port';
 
-  static String _windowsProxyArguments({required int port, required String host}) {
-    if (host.isEmpty) throw ArgumentError.value(host, 'host', 'Proxy target host must not be empty.');
-
+  static String _windowsProxyArguments({required int port}) {
     // Keep normal sites on WebView2's native network stack. The PAC is served
     // by the already-bound QAQ loopback listener and returns PROXY only for the
     // iStudy host; every other destination is DIRECT. This avoids forcing sites

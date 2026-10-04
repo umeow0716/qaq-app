@@ -171,7 +171,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(
-      vpnHost: IStudyAccessGuard.iStudyHost,
+      vpnHosts: IStudyAccessGuard.proxyHosts,
     );
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before Windows WebView2 setup.');
@@ -179,7 +179,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     await GlobalProtectWebViewProxyController.setProxyOverride(
       port: port,
-      host: IStudyAccessGuard.iStudyHost,
+      hosts: IStudyAccessGuard.proxyHosts,
     );
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       await GlobalProtectWebViewRuntime.reset();
@@ -1057,7 +1057,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
 
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(
-      vpnHost: IStudyAccessGuard.iStudyHost,
+      vpnHosts: IStudyAccessGuard.proxyHosts,
     );
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
@@ -1065,7 +1065,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
     final reverseBypassSupported = await GlobalProtectWebViewProxyController.setProxyOverride(
       port: port,
-      host: IStudyAccessGuard.iStudyHost,
+      hosts: IStudyAccessGuard.proxyHosts,
     );
     GlobalProtectDebug.log('WebView ProxyOverride applied reverseBypass=$reverseBypassSupported');
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {

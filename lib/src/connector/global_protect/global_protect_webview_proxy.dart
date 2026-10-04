@@ -11,7 +11,7 @@ import 'virtual_tcp_socket.dart';
 /// A loopback HTTP proxy used as an adapter between platform WebView proxy
 /// configuration and the app's userspace GlobalProtect TCP implementation.
 ///
-/// Requests that enter this proxy route only the configured VPN target host
+/// Requests that enter this proxy route only the configured VPN target hosts
 /// through GlobalProtect; other destinations can still be forwarded directly.
 /// Windows normally avoids the bridge entirely for non-iStudy hosts via PAC.
 /// HTTPS remains end-to-end between WebView and the destination; CONNECT bytes
@@ -22,6 +22,7 @@ class GlobalProtectWebViewProxyBridge {
   static final GlobalProtectWebViewProxyBridge instance = GlobalProtectWebViewProxyBridge._();
 
   static const String windowsPacPath = '/qaq-webview-proxy.pac';
+  static const Duration upstreamConnectTimeout = Duration(seconds: 20);
 
   ServerSocket? _server;
   StreamSubscription<Socket>? _serverSubscription;
@@ -34,7 +35,7 @@ class GlobalProtectWebViewProxyBridge {
   int? get port => _server?.port;
   bool get vpnRoutingEnabled => _vpnRoutingEnabled;
 
-  String? _vpnHost;
+  Set<String> _vpnHosts = const <String>{};
 
   /// Starts the loopback listener without connecting GlobalProtect.
   ///
@@ -42,19 +43,24 @@ class GlobalProtectWebViewProxyBridge {
   /// environment is created. Windows therefore binds this listener before the
   /// first WebView exists, while iStudy traffic stays direct until
   /// [enableVpnRouting] is called.
-  Future<int> ensureListening({required String vpnHost}) {
-    final normalizedVpnHost = _normalizeHost(vpnHost);
-    if (normalizedVpnHost.isEmpty) {
+  Future<int> ensureListening({required Iterable<String> vpnHosts}) {
+    final normalizedVpnHosts = vpnHosts
+        .map(_normalizeHost)
+        .where((host) => host.isNotEmpty)
+        .toSet();
+    if (normalizedVpnHosts.isEmpty) {
       return Future<int>.error(
-        ArgumentError.value(vpnHost, 'vpnHost', 'VPN target host must not be empty.'),
+        ArgumentError.value(vpnHosts, 'vpnHosts', 'At least one VPN target host is required.'),
       );
     }
 
     final existing = _server;
     if (existing != null) {
-      if (_vpnHost != normalizedVpnHost) {
+      if (!_sameHostSet(_vpnHosts, normalizedVpnHosts)) {
         return Future<int>.error(
-          StateError('WebView GP proxy is already bound to $_vpnHost, not $normalizedVpnHost.'),
+          StateError(
+            'WebView GP proxy is already bound to $_vpnHosts, not $normalizedVpnHosts.',
+          ),
         );
       }
       return Future<int>.value(existing.port);
@@ -62,15 +68,17 @@ class GlobalProtectWebViewProxyBridge {
 
     final inFlight = _startInFlight;
     if (inFlight != null) {
-      if (_vpnHost != null && _vpnHost != normalizedVpnHost) {
+      if (_vpnHosts.isNotEmpty && !_sameHostSet(_vpnHosts, normalizedVpnHosts)) {
         return Future<int>.error(
-          StateError('WebView GP proxy is starting for $_vpnHost, not $normalizedVpnHost.'),
+          StateError(
+            'WebView GP proxy is starting for $_vpnHosts, not $normalizedVpnHosts.',
+          ),
         );
       }
       return inFlight;
     }
 
-    _vpnHost = normalizedVpnHost;
+    _vpnHosts = Set<String>.unmodifiable(normalizedVpnHosts);
     final generation = _generation;
     final future = _start(generation);
     _startInFlight = future;
@@ -89,14 +97,14 @@ class GlobalProtectWebViewProxyBridge {
   /// Android and Linux call this when they can install their native WebView
   /// proxy dynamically. Windows normally calls [ensureListening] earlier and
   /// enables VPN routing only after its access guard selects the VPN route.
-  Future<int> ensureStarted({required String vpnHost}) async {
-    final port = await ensureListening(vpnHost: vpnHost);
+  Future<int> ensureStarted({required Iterable<String> vpnHosts}) async {
+    final port = await ensureListening(vpnHosts: vpnHosts);
     await enableVpnRouting();
     return port;
   }
 
   Future<void> enableVpnRouting() async {
-    if (_vpnHost == null) {
+    if (_vpnHosts.isEmpty) {
       throw StateError('WebView GP proxy listener must be started before enabling VPN routing.');
     }
     if (_vpnRoutingEnabled) return;
@@ -138,7 +146,7 @@ class GlobalProtectWebViewProxyBridge {
   void _clearStartFuture(Future<int> future, {bool failed = false}) {
     if (!identical(_startInFlight, future)) return;
     _startInFlight = null;
-    if (failed && _server == null) _vpnHost = null;
+    if (failed && _server == null) _vpnHosts = const <String>{};
   }
 
   Future<void> _serve(Socket client) async {
@@ -263,18 +271,19 @@ class GlobalProtectWebViewProxyBridge {
     Socket client,
     StreamSubscription<Uint8List>? clientSubscription,
   ) async {
-    final vpnHost = _vpnHost;
+    final vpnHosts = _vpnHosts;
     final server = _server;
-    if (vpnHost == null || server == null) {
+    if (vpnHosts.isEmpty || server == null) {
       throw StateError('WebView PAC requested before the loopback proxy was ready.');
     }
 
     await clientSubscription?.cancel();
-    final encodedHost = jsonEncode(vpnHost);
+    final encodedHosts = jsonEncode(vpnHosts.toList(growable: false)..sort());
     final body = utf8.encode(
       'function FindProxyForURL(url, host) {\n'
       '  host = String(host || "").toLowerCase().replace(/\\.\$/, "");\n'
-      '  if (host === $encodedHost) return "PROXY 127.0.0.1:${server.port}";\n'
+      '  const proxyHosts = $encodedHosts;\n'
+      '  if (proxyHosts.indexOf(host) !== -1) return "PROXY 127.0.0.1:${server.port}";\n'
       '  return "DIRECT";\n'
       '}\n',
     );
@@ -289,23 +298,25 @@ class GlobalProtectWebViewProxyBridge {
     client.add(<int>[...headers, ...body]);
     await client.flush();
     await client.close();
-    GlobalProtectDebug.log('served Windows WebView2 PAC for $vpnHost');
+    GlobalProtectDebug.log('served Windows WebView2 PAC for ${vpnHosts.join(',')}');
   }
 
   bool _shouldRouteThroughGlobalProtect(String host) {
-    final vpnHost = _vpnHost;
     return _vpnRoutingEnabled &&
-        vpnHost != null &&
-        shouldRouteThroughGlobalProtect(host: host, vpnHost: vpnHost);
+        shouldRouteThroughGlobalProtect(host: host, vpnHosts: _vpnHosts);
   }
 
   static bool shouldRouteThroughGlobalProtect({
     required String host,
-    required String vpnHost,
+    required Iterable<String> vpnHosts,
   }) {
     final normalizedHost = _normalizeHost(host);
-    final normalizedVpnHost = _normalizeHost(vpnHost);
-    return normalizedHost.isNotEmpty && normalizedHost == normalizedVpnHost;
+    if (normalizedHost.isEmpty) return false;
+    return vpnHosts.map(_normalizeHost).contains(normalizedHost);
+  }
+
+  static bool _sameHostSet(Set<String> left, Set<String> right) {
+    return left.length == right.length && left.containsAll(right);
   }
 
   static String _normalizeHost(String host) {
@@ -321,7 +332,7 @@ class GlobalProtectWebViewProxyBridge {
     final socket = await Socket.connect(
       host,
       port,
-      timeout: const Duration(seconds: 10),
+      timeout: upstreamConnectTimeout,
     );
     GlobalProtectDebug.log('direct TCP connected -> ${socket.remoteAddress.address}:$port');
     return _DirectByteSocket(socket);
@@ -343,7 +354,7 @@ class GlobalProtectWebViewProxyBridge {
       localAddress: localAddress,
       remoteAddress: remoteAddress.address,
       remotePort: port,
-      timeout: const Duration(seconds: 10),
+      timeout: upstreamConnectTimeout,
       maxSegmentPayload: _payloadForMtu(connection.config.mtu),
     );
     GlobalProtectDebug.log('virtual TCP connected -> ${remoteAddress.address}:$port');
@@ -360,7 +371,7 @@ class GlobalProtectWebViewProxyBridge {
 
     final server = _server;
     _server = null;
-    _vpnHost = null;
+    _vpnHosts = const <String>{};
     _vpnRoutingEnabled = false;
     await server?.close();
 

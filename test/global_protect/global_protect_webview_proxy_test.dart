@@ -6,20 +6,27 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 
 void main() {
   group('GlobalProtect WebView proxy routing', () {
-    const vpnHost = 'istudy.ntut.edu.tw';
+    const vpnHosts = <String>['istudy.ntut.edu.tw', 'istudycloud.ntut.edu.tw'];
 
-    test('routes only the exact iStudy host through GlobalProtect', () {
+    test('routes configured iStudy hosts through GlobalProtect', () {
       expect(
         GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
           host: 'istudy.ntut.edu.tw',
-          vpnHost: vpnHost,
+          vpnHosts: vpnHosts,
         ),
         isTrue,
       );
       expect(
         GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
           host: 'ISTUDY.NTUT.EDU.TW.',
-          vpnHost: vpnHost,
+          vpnHosts: vpnHosts,
+        ),
+        isTrue,
+      );
+      expect(
+        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
+          host: 'istudycloud.ntut.edu.tw',
+          vpnHosts: vpnHosts,
         ),
         isTrue,
       );
@@ -31,7 +38,7 @@ void main() {
         final bridge = GlobalProtectWebViewProxyBridge.instance;
         addTearDown(bridge.close);
 
-        final port = await bridge.ensureListening(vpnHost: vpnHost);
+        final port = await bridge.ensureListening(vpnHosts: vpnHosts);
 
         expect(port, greaterThan(0));
         expect(bridge.isRunning, isTrue);
@@ -39,11 +46,11 @@ void main() {
       },
     );
 
-    test('serves a Windows PAC that proxies only iStudy', () async {
+    test('serves a Windows PAC that proxies both iStudy service hosts', () async {
       final bridge = GlobalProtectWebViewProxyBridge.instance;
       addTearDown(bridge.close);
 
-      final port = await bridge.ensureListening(vpnHost: vpnHost);
+      final port = await bridge.ensureListening(vpnHosts: vpnHosts);
       final socket = await Socket.connect(InternetAddress.loopbackIPv4, port);
       socket.write(
         'GET http://127.0.0.1:$port${GlobalProtectWebViewProxyBridge.windowsPacPath} HTTP/1.1\r\n'
@@ -55,7 +62,8 @@ void main() {
       final response = await utf8.decoder.bind(socket).join();
 
       expect(response, contains('HTTP/1.1 200 OK'));
-      expect(response, contains('host === "istudy.ntut.edu.tw"'));
+      expect(response, contains('"istudy.ntut.edu.tw"'));
+      expect(response, contains('"istudycloud.ntut.edu.tw"'));
       expect(response, contains('PROXY 127.0.0.1:$port'));
       expect(response, contains('return "DIRECT"'));
     });
@@ -72,7 +80,7 @@ void main() {
         expect(
           GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
             host: host,
-            vpnHost: vpnHost,
+            vpnHosts: vpnHosts,
           ),
           isFalse,
           reason: host,

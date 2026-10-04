@@ -59,11 +59,15 @@ class MainActivity : FlutterActivity() {
                 }
                 "set_webview_proxy_override" -> {
                     val port = call.argument<Int>("port")
-                    val host = call.argument<String>("host")
-                    if (port == null || port !in 1..65535 || host.isNullOrBlank()) {
-                        result.error("INVALID_PROXY_ARGUMENTS", "A valid proxy port and host are required.", null)
+                    val hosts = call.argument<List<String>>("hosts")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotEmpty() }
+                        ?.distinct()
+                        .orEmpty()
+                    if (port == null || port !in 1..65535 || hosts.isEmpty()) {
+                        result.error("INVALID_PROXY_ARGUMENTS", "A valid proxy port and target hosts are required.", null)
                     } else {
-                        setWebViewProxyOverride(port, host, result)
+                        setWebViewProxyOverride(port, hosts, result)
                     }
                 }
                 "clear_webview_proxy_override" -> clearWebViewProxyOverride(result)
@@ -333,7 +337,7 @@ class MainActivity : FlutterActivity() {
         return result
     }
 
-    private fun setWebViewProxyOverride(port: Int, host: String, result: MethodChannel.Result) {
+    private fun setWebViewProxyOverride(port: Int, hosts: List<String>, result: MethodChannel.Result) {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
             result.error(
                 "WEBVIEW_PROXY_UNSUPPORTED",
@@ -350,9 +354,8 @@ class MainActivity : FlutterActivity() {
                 .addProxyRule("http://127.0.0.1:$port")
 
             if (reverseBypassSupported) {
-                builder
-                    .addBypassRule(host)
-                    .setReverseBypassEnabled(true)
+                hosts.forEach(builder::addBypassRule)
+                builder.setReverseBypassEnabled(true)
             } else {
                 builder
                     .addBypassRule("127.0.0.1")
