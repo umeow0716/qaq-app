@@ -6,12 +6,7 @@ import 'package:qaq_app/ui/pages/coursedetail/screen/course_info_page.dart';
 import 'package:qaq_app/ui/pages/coursedetail/screen/ischoolplus/iplus_file_page.dart';
 
 class DesktopCourseInspector extends StatefulWidget {
-  const DesktopCourseInspector({
-    super.key,
-    required this.studentId,
-    required this.courseInfo,
-    required this.onClose,
-  });
+  const DesktopCourseInspector({super.key, required this.studentId, required this.courseInfo, required this.onClose});
 
   final String studentId;
   final CourseInfoJson courseInfo;
@@ -35,10 +30,7 @@ class _DesktopCourseInspectorState extends State<DesktopCourseInspector> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainer,
         border: Border.all(color: borderColor),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
+        borderRadius: const BorderRadius.only(topRight: Radius.circular(24), bottomRight: Radius.circular(24)),
       ),
       child: Column(
         children: [

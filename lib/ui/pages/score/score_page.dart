@@ -266,10 +266,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
             });
           }
         } else {
-          progressRateDialog!.update(
-            nowProgress: rate / total,
-            progressString: sprintf("%d/%d", [rate, total]),
-          );
+          progressRateDialog!.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
         }
 
         if (result == null || result.category.isEmpty) return;
@@ -374,30 +371,30 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     return DefaultTabController(
       length: tabLabelList.length,
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(R.current.searchScore),
-        actions: [
-          ScorePageAppBarActionButtons(
-            onRefreshPressed: _addScoreRankTask,
-            onCalculateCreditPressed: _addSearchCourseTypeTask,
+        appBar: AppBar(
+          title: Text(R.current.searchScore),
+          actions: [
+            ScorePageAppBarActionButtons(
+              onRefreshPressed: _addScoreRankTask,
+              onCalculateCreditPressed: _addSearchCourseTypeTask,
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.mainColor,
+            unselectedLabelColor: Colors.white,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+            isScrollable: true,
+            tabs: tabLabelList,
+            onTap: (int index) {
+              setState(() => _currentTabIndex = index);
+            },
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.mainColor,
-          unselectedLabelColor: Colors.white,
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicator: BoxDecoration(
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
-          isScrollable: true,
-          tabs: tabLabelList,
-          onTap: (int index) {
-            setState(() => _currentTabIndex = index);
-          },
         ),
-      ),
         body: SingleChildScrollView(
           child: (_isLoading || tabChildList.isEmpty) ? const SizedBox.shrink() : tabChildList[_currentTabIndex],
         ),
@@ -489,10 +486,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
                           Positioned(
                             top: 12,
                             right: 12,
-                            child: _DesktopScoreLoadingBadge(
-                              progress: _desktopProgress,
-                              label: _desktopProgressText,
-                            ),
+                            child: _DesktopScoreLoadingBadge(progress: _desktopProgress, label: _desktopProgressText),
                           ),
                       ],
                     ),
@@ -522,10 +516,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
           const ScoreCalculationWarning(),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Text(
-              R.current.courseDisclaimer,
-              style: const TextStyle(fontSize: 14, color: Colors.redAccent),
-            ),
+            child: Text(R.current.courseDisclaimer, style: const TextStyle(fontSize: 14, color: Colors.redAccent)),
           ),
         ];
         tabChildList.add(
@@ -726,9 +717,7 @@ class _DesktopScoreLoadingBadge extends StatelessWidget {
             SizedBox(
               width: 20,
               height: 20,
-              child: RepaintBoundary(
-                child: CircularProgressIndicator(value: progressValue, strokeWidth: 2.2),
-              ),
+              child: RepaintBoundary(child: CircularProgressIndicator(value: progressValue, strokeWidth: 2.2)),
             ),
             if (progressLabel != null && progressLabel.isNotEmpty) ...[
               const SizedBox(width: 8),

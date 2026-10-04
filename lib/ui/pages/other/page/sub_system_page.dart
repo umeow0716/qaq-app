@@ -15,13 +15,7 @@ class SubSystemPage extends StatefulWidget {
   final bool embedded;
   final SubSystemLinkOpenCallback? onLinkOpen;
 
-  const SubSystemPage({
-    super.key,
-    required this.title,
-    this.arg,
-    this.embedded = false,
-    this.onLinkOpen,
-  });
+  const SubSystemPage({super.key, required this.title, this.arg, this.embedded = false, this.onLinkOpen});
 
   @override
   State<SubSystemPage> createState() => _SubSystemPageState();
@@ -96,11 +90,7 @@ class _SubSystemPageState extends State<SubSystemPage> {
       return;
     }
 
-    await RouteUtils.toWebViewPage(
-      initialUrl: target,
-      title: ap.description,
-      shouldUseAppCookies: true,
-    );
+    await RouteUtils.toWebViewPage(initialUrl: target, title: ap.description, shouldUseAppCookies: true);
   }
 
   @override
@@ -108,7 +98,10 @@ class _SubSystemPageState extends State<SubSystemPage> {
     final body = isLoading && !widget.embedded ? const Center(child: CircularProgressIndicator()) : _buildTree();
 
     if (!widget.embedded) {
-      return Scaffold(appBar: AppBar(title: Text(widget.title)), body: body);
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.title)),
+        body: body,
+      );
     }
 
     return Column(
@@ -143,9 +136,10 @@ class _SubSystemPageState extends State<SubSystemPage> {
         Expanded(
           child: Stack(
             children: [
-              Positioned.fill(child: IgnorePointer(ignoring: isLoading, child: body)),
-              if (isLoading)
-                const Center(child: _EmbeddedSubSystemLoadingBadge()),
+              Positioned.fill(
+                child: IgnorePointer(ignoring: isLoading, child: body),
+              ),
+              if (isLoading) const Center(child: _EmbeddedSubSystemLoadingBadge()),
             ],
           ),
         ),
@@ -195,17 +189,8 @@ class _SubSystemPageState extends State<SubSystemPage> {
               height: 52,
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 46,
-                    child: Icon(isLink ? Icons.link_outlined : Icons.folder_outlined),
-                  ),
-                  Expanded(
-                    child: Text(
-                      ap.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  SizedBox(width: 46, child: Icon(isLink ? Icons.link_outlined : Icons.folder_outlined)),
+                  Expanded(child: Text(ap.description, maxLines: 2, overflow: TextOverflow.ellipsis)),
                   Icon(
                     isLink ? Icons.open_in_new_rounded : Icons.chevron_right_rounded,
                     size: 19,
@@ -220,7 +205,6 @@ class _SubSystemPageState extends State<SubSystemPage> {
       },
     );
   }
-
 }
 
 class _EmbeddedSubSystemLoadingBadge extends StatelessWidget {
@@ -240,9 +224,7 @@ class _EmbeddedSubSystemLoadingBadge extends StatelessWidget {
         height: 52,
         child: Padding(
           padding: EdgeInsets.all(14),
-          child: RepaintBoundary(
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
+          child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2.4)),
         ),
       ),
     );

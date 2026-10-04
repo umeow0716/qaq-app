@@ -9,10 +9,8 @@ import 'virtual_tcp_socket.dart';
 import 'virtual_tls_socket.dart';
 
 typedef GlobalProtectHostResolver = Future<InternetAddress> Function(String host);
-typedef GlobalProtectVirtualSocketDialer = Future<VirtualByteSocket> Function(
-  InternetAddress remoteAddress,
-  int remotePort,
-);
+typedef GlobalProtectVirtualSocketDialer =
+    Future<VirtualByteSocket> Function(InternetAddress remoteAddress, int remotePort);
 
 /// Builds a dart:io [HttpClient] whose TCP connections are carried through a
 /// GlobalProtect data transport instead of Android's normal routing table.

@@ -267,10 +267,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
             child: SlideAnimation(
               verticalOffset: 10,
               child: FadeInAnimation(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: listItem[index],
-                ),
+                child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: listItem[index]),
               ),
             ),
           ),
@@ -367,11 +364,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
   }
 
   Widget _buildStudentRows({required Key key, required List<Widget> rows}) {
-    return _StudentListEntrance(
-      key: key,
-      rows: rows,
-      paintOnly: _isDesktop,
-    );
+    return _StudentListEntrance(key: key, rows: rows, paintOnly: _isDesktop);
   }
 
   List<Widget> _buildCourseData() {
@@ -705,10 +698,7 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
             final progress = Interval(start, end, curve: Curves.ease).transform(_controller.value);
             final paintedChild = Opacity(
               opacity: progress,
-              child: Transform.translate(
-                offset: Offset(0, _effectiveVerticalOffset * (1 - progress)),
-                child: child,
-              ),
+              child: Transform.translate(offset: Offset(0, _effectiveVerticalOffset * (1 - progress)), child: child),
             );
 
             // Desktop keeps the final row geometry from the first frame and
@@ -720,11 +710,7 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
 
             // Mobile keeps the existing height entrance animation.
             return ClipRect(
-              child: Align(
-                alignment: Alignment.topCenter,
-                heightFactor: progress,
-                child: paintedChild,
-              ),
+              child: Align(alignment: Alignment.topCenter, heightFactor: progress, child: paintedChild),
             );
           },
         );

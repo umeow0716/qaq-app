@@ -32,8 +32,7 @@ class GlobalProtectWebViewProxyController {
   /// internally. Calling them before this becomes true would create the shared
   /// WebView2 environment with default options, preventing QAQ from installing
   /// its PAC arguments when the first real WebView is opened later.
-  static bool get isWindowsEnvironmentPrepared =>
-      Platform.isWindows && _windowsAdditionalArguments != null;
+  static bool get isWindowsEnvironmentPrepared => Platform.isWindows && _windowsAdditionalArguments != null;
 
   /// Applies the loopback proxy and returns whether Android reverse-bypass
   /// allow-list mode is supported.
@@ -62,16 +61,16 @@ class GlobalProtectWebViewProxyController {
       await ProxyController.instance().setProxyOverride(
         settings: ProxySettings(
           bypassRules: _desktopProxyBypassRules,
-          proxyRules: <ProxyRule>[
-            ProxyRule(url: proxyUrl),
-          ],
+          proxyRules: <ProxyRule>[ProxyRule(url: proxyUrl)],
         ),
       );
       GlobalProtectDebug.log('Linux WebKitGTK proxy active url=$proxyUrl');
       return false;
     }
 
-    throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android, Windows, and Linux only.');
+    throw UnsupportedError(
+      'The experimental iStudy WebView VPN bridge currently supports Android, Windows, and Linux only.',
+    );
   }
 
   /// Attempts to clear native WebView proxy configuration.
@@ -103,11 +102,7 @@ class GlobalProtectWebViewProxyController {
     return true;
   }
 
-  static const List<String> _desktopProxyBypassRules = <String>[
-    'localhost',
-    '127.0.0.1',
-    '::1',
-  ];
+  static const List<String> _desktopProxyBypassRules = <String>['localhost', '127.0.0.1', '::1'];
 
   static String _loopbackProxyUrl({required int port}) => 'http://127.0.0.1:$port';
 

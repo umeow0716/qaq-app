@@ -273,10 +273,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
       if (!mounted) return;
     }
 
-    _getCourseTable(
-      semesterSetting: semester,
-      studentId: _studentIdControl.text,
-    );
+    _getCourseTable(semesterSetting: semester, studentId: _studentIdControl.text);
   }
 
   Widget _getSemesterItem(SemesterJson semester) {
@@ -587,10 +584,10 @@ class _CourseTablePageState extends State<CourseTablePage> {
                         onPressed: isLoading || _desktopRefreshing
                             ? null
                             : () => _getCourseTable(
-                                  semesterSetting: courseTableData?.courseSemester,
-                                  studentId: studentId,
-                                  refresh: true,
-                                ),
+                                semesterSetting: courseTableData?.courseSemester,
+                                studentId: studentId,
+                                refresh: true,
+                              ),
                         icon: const Icon(EvaIcons.refreshOutline),
                       ),
                     ),
@@ -611,11 +608,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
                 children: [
                   Positioned.fill(child: _buildListViewWithScreenshot()),
                   if (_desktopRefreshing && !isLoading)
-                    const Positioned(
-                      top: 12,
-                      right: 12,
-                      child: _DesktopCourseLoadingBadge(),
-                    ),
+                    const Positioned(top: 12, right: 12, child: _DesktopCourseLoadingBadge()),
                 ],
               ),
             ),
@@ -652,9 +645,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
               const SizedBox(
                 width: 18,
                 height: 18,
-                child: RepaintBoundary(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
               const SizedBox(width: 12),
             ],
@@ -1219,9 +1210,7 @@ class _DesktopCourseLoadingBadge extends StatelessWidget {
         height: 42,
         child: Padding(
           padding: EdgeInsets.all(11),
-          child: RepaintBoundary(
-            child: CircularProgressIndicator(strokeWidth: 2.2),
-          ),
+          child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2.2)),
         ),
       ),
     );

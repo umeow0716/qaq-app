@@ -367,14 +367,14 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                         if (name.text.isNotEmpty) {
                           if (type == "file") {
                             if (!File("${path.replaceAll(path_lib.basename(path), "")}${name.text}").existsSync()) {
-                              await File(path)
-                                  .rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}")
-                                  .catchError((e) {
-                                    if (e.toString().contains("Permission denied")) {
-                                      MyToast.show(R.current.cannotWrite);
-                                    }
-                                    return File(path);
-                                  });
+                              await File(
+                                path,
+                              ).rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}").catchError((e) {
+                                if (e.toString().contains("Permission denied")) {
+                                  MyToast.show(R.current.cannotWrite);
+                                }
+                                return File(path);
+                              });
                             } else {
                               MyToast.show(R.current.fileNameAlreadyExists);
                             }
@@ -382,14 +382,14 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                             if (Directory("${path.replaceAll(path_lib.basename(path), "")}${name.text}").existsSync()) {
                               MyToast.show(R.current.fileNameAlreadyExists);
                             } else {
-                              await Directory(path)
-                                  .rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}")
-                                  .catchError((e) {
-                                    if (e.toString().contains("Permission denied")) {
-                                      MyToast.show(R.current.cannotWrite);
-                                    }
-                                    return Directory(path);
-                                  });
+                              await Directory(
+                                path,
+                              ).rename("${path.replaceAll(path_lib.basename(path), "")}${name.text}").catchError((e) {
+                                if (e.toString().contains("Permission denied")) {
+                                  MyToast.show(R.current.cannotWrite);
+                                }
+                                return Directory(path);
+                              });
                             }
                           }
                           Get.back();

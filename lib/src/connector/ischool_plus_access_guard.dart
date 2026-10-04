@@ -18,10 +18,7 @@ class IStudyAccessGuard {
 
   static const iStudyHost = 'istudy.ntut.edu.tw';
   static const iStudyCloudHost = 'istudycloud.ntut.edu.tw';
-  static const List<String> proxyHosts = <String>[
-    iStudyHost,
-    iStudyCloudHost,
-  ];
+  static const List<String> proxyHosts = <String>[iStudyHost, iStudyCloudHost];
 
   static bool isIStudyUri(Uri uri) => proxyHosts.contains(uri.host.toLowerCase());
 

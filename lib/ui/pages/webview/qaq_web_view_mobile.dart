@@ -38,8 +38,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   late final WebViewController _controller;
   late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
-  final Map<String, _AndroidBlobDownloadSession> _blobDownloads =
-      <String, _AndroidBlobDownloadSession>{};
+  final Map<String, _AndroidBlobDownloadSession> _blobDownloads = <String, _AndroidBlobDownloadSession>{};
   Future<void> _blobDownloadMessageQueue = Future<void>.value();
   var _blobDownloadSequence = 0;
 
@@ -210,9 +209,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     );
 
     try {
-      await _controller.runJavaScript(
-        buildWebViewBlobDownloadScript(requestId: requestId, blobUrl: url),
-      );
+      await _controller.runJavaScript(buildWebViewBlobDownloadScript(requestId: requestId, blobUrl: url));
       GlobalProtectDebug.log('Android WebView blob download requested id=$requestId');
     } catch (error, stackTrace) {
       _blobDownloads.remove(requestId);
@@ -407,9 +404,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
     }
 
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(
-      vpnHosts: IStudyAccessGuard.proxyHosts,
-    );
+    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(vpnHosts: IStudyAccessGuard.proxyHosts);
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
     }
@@ -448,9 +443,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
 
   Future<String?> _downloadFilenameHint(String url) async {
     try {
-      final result = await _controller.runJavaScriptReturningResult(
-        buildWebViewDownloadFilenameLookupScript(url),
-      );
+      final result = await _controller.runJavaScriptReturningResult(buildWebViewDownloadFilenameLookupScript(url));
       final hint = parseWebViewDownloadFilenameLookupResult(result);
       return hint == null ? null : sanitizeWebViewDownloadFilename(hint);
     } catch (error, stackTrace) {

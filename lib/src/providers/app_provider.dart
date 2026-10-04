@@ -20,9 +20,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     checkTheme();
   }
 
-  ThemeData _theme = _themeForBrightness(
-    WidgetsBinding.instance.platformDispatcher.platformBrightness,
-  );
+  ThemeData _theme = _themeForBrightness(WidgetsBinding.instance.platformDispatcher.platformBrightness);
 
   AppThemePreferenceMode get themePreferenceMode => _themePreferenceMode;
   AppThemePreferenceMode _themePreferenceMode = AppThemePreferenceMode.auto;
@@ -86,9 +84,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (storedThemeMode == null) {
       // Existing installs already have a saved light/dark preference. Keep it as
       // a manual choice; fresh installs default to following the system theme.
-      _themePreferenceMode = storedTheme == null
-          ? AppThemePreferenceMode.auto
-          : AppThemePreferenceMode.manual;
+      _themePreferenceMode = storedTheme == null ? AppThemePreferenceMode.auto : AppThemePreferenceMode.manual;
       await prefs.setString(_themeModePreferenceKey, _themePreferenceMode.name);
     } else {
       _themePreferenceMode = storedThemeMode == AppThemePreferenceMode.manual.name
@@ -122,9 +118,7 @@ class AppProvider extends ChangeNotifier with WidgetsBindingObserver {
     return brightness == Brightness.dark ? AppThemes.darkTheme : AppThemes.lightTheme;
   }
 
-  ThemeData get _systemTheme => _themeForBrightness(
-    WidgetsBinding.instance.platformDispatcher.platformBrightness,
-  );
+  ThemeData get _systemTheme => _themeForBrightness(WidgetsBinding.instance.platformDispatcher.platformBrightness);
 
   void _applySystemUiOverlayStyle(ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;

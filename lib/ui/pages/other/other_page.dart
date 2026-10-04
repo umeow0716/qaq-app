@@ -84,10 +84,10 @@ class _OtherPageState extends State<OtherPage> {
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
     {
-        "icon": EvaIcons.messageSquareOutline,
-        "color": Colors.cyan,
-        "title": R.current.feedbackForm,
-        "onPress": OnListViewPress.feedback,
+      "icon": EvaIcons.messageSquareOutline,
+      "color": Colors.cyan,
+      "title": R.current.feedbackForm,
+      "onPress": OnListViewPress.feedback,
     },
     {
       "icon": EvaIcons.infoOutline,
@@ -310,7 +310,6 @@ class _OtherPageState extends State<OtherPage> {
         break;
     }
   }
-
 
   Future<Uri> _writeLocalUploadDebugHtml() async {
     final directory = await Directory.systemTemp.createTemp('qaq_upload_debug_');

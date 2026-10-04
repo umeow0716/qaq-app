@@ -1,9 +1,6 @@
 /// Normalizes a WebView download filename so it is safe on every filesystem
 /// currently supported by QAQ's custom download flows.
-String sanitizeWebViewDownloadFilename(
-  String value, {
-  String fallback = 'download',
-}) {
+String sanitizeWebViewDownloadFilename(String value, {String fallback = 'download'}) {
   var result = _decodeFilename(value).trim();
   result = _stripWrappingQuotes(result);
 

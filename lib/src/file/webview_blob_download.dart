@@ -161,10 +161,7 @@ String? parseWebViewDownloadFilenameLookupResult(Object? result) {
 /// Builds JavaScript that copies a page-owned blob URL to Flutter in bounded
 /// base64 chunks. The blob is read inside the document that created it because
 /// blob: URLs cannot be downloaded by an external HTTP client.
-String buildWebViewBlobDownloadScript({
-  required String requestId,
-  required String blobUrl,
-}) {
+String buildWebViewBlobDownloadScript({required String requestId, required String blobUrl}) {
   final encodedRequestId = jsonEncode(requestId);
   final encodedBlobUrl = jsonEncode(blobUrl);
 

@@ -5,11 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 
 class AndroidBlobDownloadResult {
-  const AndroidBlobDownloadResult({
-    required this.filename,
-    required this.bytes,
-    required this.uri,
-  });
+  const AndroidBlobDownloadResult({required this.filename, required this.bytes, required this.uri});
 
   final String filename;
   final int bytes;
@@ -91,10 +87,7 @@ class WebViewFileTransfer {
     return token;
   }
 
-  static Future<void> appendBlobDownloadChunk({
-    required String token,
-    required Uint8List bytes,
-  }) async {
+  static Future<void> appendBlobDownloadChunk({required String token, required Uint8List bytes}) async {
     if (!Platform.isAndroid) return;
     await _channel.invokeMethod<void>('append_webview_blob_download_chunk', <String, Object?>{
       'token': token,
@@ -102,20 +95,14 @@ class WebViewFileTransfer {
     });
   }
 
-  static Future<AndroidBlobDownloadResult> finishBlobDownload(
-    String token, {
-    required String completionTitle,
-  }) async {
+  static Future<AndroidBlobDownloadResult> finishBlobDownload(String token, {required String completionTitle}) async {
     if (!Platform.isAndroid) {
       throw UnsupportedError('Blob WebView downloads are currently implemented on Android only.');
     }
-    final result = await _channel.invokeMapMethod<String, Object?>(
-      'finish_webview_blob_download',
-      <String, Object?>{
-        'token': token,
-        'completionTitle': completionTitle,
-      },
-    );
+    final result = await _channel.invokeMapMethod<String, Object?>('finish_webview_blob_download', <String, Object?>{
+      'token': token,
+      'completionTitle': completionTitle,
+    });
     final filename = result?['filename'] as String?;
     final bytes = result?['bytes'] as int?;
     final uri = result?['uri'] as String?;
@@ -127,8 +114,6 @@ class WebViewFileTransfer {
 
   static Future<void> abortBlobDownload(String token) async {
     if (!Platform.isAndroid) return;
-    await _channel.invokeMethod<void>('abort_webview_blob_download', <String, Object?>{
-      'token': token,
-    });
+    await _channel.invokeMethod<void>('abort_webview_blob_download', <String, Object?>{'token': token});
   }
 }

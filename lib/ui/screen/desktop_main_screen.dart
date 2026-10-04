@@ -40,8 +40,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
   static const double _profileTop = 24.0;
   static const double _profileAvatarSize = 52.0;
   static const double _profileToWorkspaceFrameGap = 16.0;
-  static const double _workspaceFrameTop =
-      _profileTop + _profileAvatarSize + _profileToWorkspaceFrameGap;
+  static const double _workspaceFrameTop = _profileTop + _profileAvatarSize + _profileToWorkspaceFrameGap;
   static const double _workspaceTop = _workspaceFrameTop - _workspaceTabHeight + 1;
   static const double _workspaceBottomClearance = 42.0;
 
@@ -79,10 +78,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
   }
 
   Future<void> _openPortalShortcut(DesktopPortalShortcut shortcut) async {
-    await _openCourseSystemLink(
-      shortcut.uri,
-      shortcut.label(english: _isEnglish),
-    );
+    await _openCourseSystemLink(shortcut.uri, shortcut.label(english: _isEnglish));
   }
 
   Future<Uint8List?> _loadAvatar() async {
@@ -103,10 +99,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
     if (_avatarUploading) return;
     final image = await openFile(
       acceptedTypeGroups: const <XTypeGroup>[
-        XTypeGroup(
-          label: 'Images',
-          extensions: <String>['png', 'jpg', 'jpeg', 'webp'],
-        ),
+        XTypeGroup(label: 'Images', extensions: <String>['png', 'jpg', 'jpeg', 'webp']),
       ],
     );
     if (image == null) return;
@@ -187,12 +180,10 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
     if (_courseInspectorTransitioning) return;
 
     final selected = _selectedCourse;
-    final sameId = selected != null &&
-        selected.main.course.id.isNotEmpty &&
-        selected.main.course.id == course.main.course.id;
-    final sameFallback = selected != null &&
-        selected.main.course.id.isEmpty &&
-        selected.main.course.name == course.main.course.name;
+    final sameId =
+        selected != null && selected.main.course.id.isNotEmpty && selected.main.course.id == course.main.course.id;
+    final sameFallback =
+        selected != null && selected.main.course.id.isEmpty && selected.main.course.name == course.main.course.name;
 
     if (sameId || sameFallback) {
       unawaited(_closeCourseInspector());
@@ -290,70 +281,51 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
           backgroundColor: colorScheme.surface,
           body: SafeArea(
             child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontalMargin = constraints.maxWidth >= 1200 ? 48.0 : 28.0;
-            const workspaceFrameTop = _workspaceFrameTop;
-            final rawWorkspaceWidth = constraints.maxWidth - horizontalMargin * 2;
-            final showPortalRail = constraints.maxWidth >= 1000;
-            final portalRailWidth = constraints.maxWidth >= 1240 ? 226.0 : 198.0;
-            const portalRailGap = 22.0;
-            final maxWorkspaceWidth = rawWorkspaceWidth -
-                (showPortalRail ? portalRailWidth + portalRailGap : 0);
-            // Keep the desktop workspace geometry stable while contextual UI
-            // opens. Resizing the whole IndexedStack here forces hidden pages
-            // (notably TableCalendar's internal AnimatedSize) to relayout in
-            // the middle of their own animation/layout pass.
-            const preferredWidth = 1120.0;
-            final desiredWidth = showPortalRail
-                ? (preferredWidth < maxWorkspaceWidth ? preferredWidth : maxWorkspaceWidth)
-                : (preferredWidth < rawWorkspaceWidth * 0.80
-                    ? preferredWidth
-                    : rawWorkspaceWidth * 0.80);
-            final workspaceWidth = (maxWorkspaceWidth < 680.0
-                    ? maxWorkspaceWidth
-                    : desiredWidth.clamp(680.0, maxWorkspaceWidth))
-                .toDouble();
-            final availableWorkspaceHeight = constraints.maxHeight - _workspaceTop - _workspaceBottomClearance;
-            final workspaceHeight = availableWorkspaceHeight.clamp(520.0, 780.0).toDouble();
+              builder: (context, constraints) {
+                final horizontalMargin = constraints.maxWidth >= 1200 ? 48.0 : 28.0;
+                const workspaceFrameTop = _workspaceFrameTop;
+                final rawWorkspaceWidth = constraints.maxWidth - horizontalMargin * 2;
+                final showPortalRail = constraints.maxWidth >= 1000;
+                final portalRailWidth = constraints.maxWidth >= 1240 ? 226.0 : 198.0;
+                const portalRailGap = 22.0;
+                final maxWorkspaceWidth = rawWorkspaceWidth - (showPortalRail ? portalRailWidth + portalRailGap : 0);
+                // Keep the desktop workspace geometry stable while contextual UI
+                // opens. Resizing the whole IndexedStack here forces hidden pages
+                // (notably TableCalendar's internal AnimatedSize) to relayout in
+                // the middle of their own animation/layout pass.
+                const preferredWidth = 1120.0;
+                final desiredWidth = showPortalRail
+                    ? (preferredWidth < maxWorkspaceWidth ? preferredWidth : maxWorkspaceWidth)
+                    : (preferredWidth < rawWorkspaceWidth * 0.80 ? preferredWidth : rawWorkspaceWidth * 0.80);
+                final workspaceWidth =
+                    (maxWorkspaceWidth < 680.0 ? maxWorkspaceWidth : desiredWidth.clamp(680.0, maxWorkspaceWidth))
+                        .toDouble();
+                final availableWorkspaceHeight = constraints.maxHeight - _workspaceTop - _workspaceBottomClearance;
+                final workspaceHeight = availableWorkspaceHeight.clamp(520.0, 780.0).toDouble();
 
-            return Stack(
-              children: [
-                Positioned(
-                  top: _profileTop,
-                  right: horizontalMargin,
-                  child: _buildProfile(),
-                ),
-                Positioned(
-                  left: horizontalMargin,
-                  top: _workspaceTop,
-                  width: workspaceWidth,
-                  height: workspaceHeight,
-                  child: _buildWorkspace(colorScheme),
-                ),
-                if (showPortalRail)
-                  Positioned(
-                    top: workspaceFrameTop,
-                    right: horizontalMargin,
-                    bottom: _workspaceBottomClearance,
-                    width: portalRailWidth,
-                    child: _buildPortalShortcutRail(),
-                  ),
-                Positioned(
-                  right: horizontalMargin,
-                  bottom: 18,
-                  child: _buildUtilityDock(appProvider),
-                ),
-                if (_focusWebViewUri != null)
-                  Positioned.fill(
-                    child: _buildWebViewFocusMode(colorScheme),
-                  ),
-                Positioned(
-                  right: horizontalMargin,
-                  bottom: 72,
-                  child: const DesktopDownloadPanel(),
-                ),
-              ],
-            );
+                return Stack(
+                  children: [
+                    Positioned(top: _profileTop, right: horizontalMargin, child: _buildProfile()),
+                    Positioned(
+                      left: horizontalMargin,
+                      top: _workspaceTop,
+                      width: workspaceWidth,
+                      height: workspaceHeight,
+                      child: _buildWorkspace(colorScheme),
+                    ),
+                    if (showPortalRail)
+                      Positioned(
+                        top: workspaceFrameTop,
+                        right: horizontalMargin,
+                        bottom: _workspaceBottomClearance,
+                        width: portalRailWidth,
+                        child: _buildPortalShortcutRail(),
+                      ),
+                    Positioned(right: horizontalMargin, bottom: 18, child: _buildUtilityDock(appProvider)),
+                    if (_focusWebViewUri != null) Positioned.fill(child: _buildWebViewFocusMode(colorScheme)),
+                    Positioned(right: horizontalMargin, bottom: 72, child: const DesktopDownloadPanel()),
+                  ],
+                );
               },
             ),
           ),
@@ -400,10 +372,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
       return webView;
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: webView,
-    );
+    return ClipRRect(borderRadius: BorderRadius.circular(22), child: webView);
   }
 
   Widget _buildWorkspace(ColorScheme colorScheme) {
@@ -433,18 +402,9 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
               child: IndexedStack(
                 index: _workspaceIndex,
                 children: [
-                  TickerMode(
-                    enabled: _workspaceIndex == 0,
-                    child: _buildCourseWorkspace(),
-                  ),
-                  TickerMode(
-                    enabled: _workspaceIndex == 1,
-                    child: const CalendarPage(),
-                  ),
-                  TickerMode(
-                    enabled: _workspaceIndex == 2,
-                    child: const ScoreViewerPage(),
-                  ),
+                  TickerMode(enabled: _workspaceIndex == 0, child: _buildCourseWorkspace()),
+                  TickerMode(enabled: _workspaceIndex == 1, child: const CalendarPage()),
+                  TickerMode(enabled: _workspaceIndex == 2, child: const ScoreViewerPage()),
                   TickerMode(
                     enabled: _workspaceIndex == 3,
                     child: SubSystemPage(
@@ -570,10 +530,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                       final progress = Curves.easeInOutCubic.transform(_courseInspectorController.value);
                       return Opacity(
                         opacity: progress,
-                        child: Transform.translate(
-                          offset: Offset(inspectorWidth * (1 - progress), 0),
-                          child: child,
-                        ),
+                        child: Transform.translate(offset: Offset(inspectorWidth * (1 - progress), 0), child: child),
                       );
                     },
                   ),
@@ -600,13 +557,9 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (name.isNotEmpty)
-                  Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                if (name.isNotEmpty) Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 if (email.isNotEmpty)
-                  Text(
-                    email,
-                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
+                  Text(email, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -650,9 +603,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
             child: _avatarUploading
                 ? const Padding(
                     padding: EdgeInsets.all(14),
-                    child: RepaintBoundary(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
+                    child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2)),
                   )
                 : FutureBuilder<Uint8List?>(
                     future: _avatarFuture,
@@ -692,12 +643,8 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                       alignment: Alignment.centerLeft,
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       backgroundColor: colorScheme.surfaceContainerLow.withValues(alpha: 0.72),
-                      side: BorderSide(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.75),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
+                      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.75)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                     ),
                     child: Text(
                       shortcut.label(english: _isEnglish),
