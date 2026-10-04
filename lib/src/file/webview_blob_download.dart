@@ -2,51 +2,142 @@ import 'dart:convert';
 
 const String webViewBlobDownloadJavaScriptChannel = 'QAQBlobDownload';
 
-
 /// Installs a lightweight page-side filename tracker for WebView downloads.
 ///
 /// Sites that create `blob:` URLs often set the real filename on an
 /// `<a download="...">` element. Native download callbacks may only receive the
 /// opaque blob UUID, so remember the anchor's filename synchronously before the
-/// browser starts the download.
+/// browser starts the download. Same-origin child frames are instrumented too,
+/// because document viewers commonly create their blob download inside an
+/// iframe rather than the top-level document.
 String buildWebViewDownloadFilenameCaptureScript() => r'''
 (() => {
-  if (window.__qaqDownloadFilenameCaptureInstalled) return;
-  window.__qaqDownloadFilenameCaptureInstalled = true;
-  window.__qaqDownloadFilenameHints ??= Object.create(null);
-
-  const remember = (anchor) => {
+  const install = (targetWindow) => {
     try {
-      if (!(anchor instanceof HTMLAnchorElement)) return;
-      const href = String(anchor.href || '').trim();
-      const filename = String(anchor.getAttribute('download') || '').trim();
-      if (!href || !filename) return;
-      window.__qaqDownloadFilenameHints[href] = filename;
+      if (!targetWindow || !targetWindow.document) return;
+      if (targetWindow.__qaqDownloadFilenameCaptureInstalled) return;
+      targetWindow.__qaqDownloadFilenameCaptureInstalled = true;
+      targetWindow.__qaqDownloadFilenameHints ??= Object.create(null);
+
+      const remember = (anchor) => {
+        try {
+          const Anchor = targetWindow.HTMLAnchorElement;
+          if (!Anchor || !(anchor instanceof Anchor)) return;
+          const href = String(anchor.href || '').trim();
+          const filename = String(anchor.getAttribute('download') || '').trim();
+          if (!href || !filename) return;
+          targetWindow.__qaqDownloadFilenameHints[href] = filename;
+        } catch (_) {}
+      };
+
+      const Anchor = targetWindow.HTMLAnchorElement;
+      const originalClick = Anchor?.prototype?.click;
+      if (typeof originalClick === 'function') {
+        Anchor.prototype.click = function(...args) {
+          remember(this);
+          return originalClick.apply(this, args);
+        };
+      }
+
+      targetWindow.document.addEventListener('click', (event) => {
+        try {
+          let target = event.target;
+          if (target && target.nodeType === targetWindow.Node.TEXT_NODE) {
+            target = target.parentElement;
+          }
+          const anchor = target && target.closest
+            ? target.closest('a[download]')
+            : null;
+          if (anchor) remember(anchor);
+        } catch (_) {}
+      }, true);
+
+      const installFrame = (frame) => {
+        try {
+          if (frame.contentWindow) install(frame.contentWindow);
+        } catch (_) {}
+        try {
+          frame.addEventListener('load', () => {
+            try {
+              if (frame.contentWindow) install(frame.contentWindow);
+            } catch (_) {}
+          });
+        } catch (_) {}
+      };
+
+      const scanFrames = (root) => {
+        try {
+          if (root.matches?.('iframe,frame')) installFrame(root);
+          root.querySelectorAll?.('iframe,frame').forEach(installFrame);
+        } catch (_) {}
+      };
+
+      scanFrames(targetWindow.document);
+      const Observer = targetWindow.MutationObserver;
+      if (Observer) {
+        const observer = new Observer((records) => {
+          for (const record of records) {
+            for (const node of record.addedNodes || []) {
+              if (node && node.nodeType === targetWindow.Node.ELEMENT_NODE) {
+                scanFrames(node);
+              }
+            }
+          }
+        });
+        observer.observe(
+          targetWindow.document.documentElement || targetWindow.document,
+          {childList: true, subtree: true},
+        );
+      }
     } catch (_) {}
   };
 
-  const originalClick = HTMLAnchorElement.prototype.click;
-  HTMLAnchorElement.prototype.click = function(...args) {
-    remember(this);
-    return originalClick.apply(this, args);
-  };
-
-  document.addEventListener('click', (event) => {
-    let target = event.target;
-    if (target && target.nodeType === Node.TEXT_NODE) target = target.parentElement;
-    const anchor = target && target.closest ? target.closest('a[download]') : null;
-    if (anchor) remember(anchor);
-  }, true);
+  install(window);
 })();
 ''';
 
-/// Looks up the filename captured for [downloadUrl] in the current page.
+/// Looks up the filename captured for [downloadUrl] in the current page and
+/// every same-origin child frame.
 String buildWebViewDownloadFilenameLookupScript(String downloadUrl) {
   final encodedUrl = jsonEncode(downloadUrl);
   return '''
 (() => {
-  const value = window.__qaqDownloadFilenameHints?.[$encodedUrl];
-  return typeof value === 'string' ? value : '';
+  const downloadUrl = $encodedUrl;
+  const visited = new Set();
+
+  const lookup = (targetWindow) => {
+    try {
+      if (!targetWindow || visited.has(targetWindow)) return '';
+      visited.add(targetWindow);
+
+      const remembered = targetWindow.__qaqDownloadFilenameHints?.[downloadUrl];
+      if (typeof remembered === 'string' && remembered.trim()) {
+        return remembered.trim();
+      }
+
+      const anchors = Array.from(
+        targetWindow.document?.querySelectorAll?.('a[download]') || [],
+      ).reverse();
+      const matchingAnchor = anchors.find(
+        (anchor) => String(anchor.href || '') === downloadUrl,
+      );
+      const filename = matchingAnchor?.getAttribute('download');
+      if (typeof filename === 'string' && filename.trim()) {
+        return filename.trim();
+      }
+
+      const frames = targetWindow.document?.querySelectorAll?.('iframe,frame') || [];
+      for (const frame of frames) {
+        try {
+          const value = lookup(frame.contentWindow);
+          if (value) return value;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return '';
+  };
+
+  return lookup(window);
 })()
 ''';
 }
@@ -81,14 +172,39 @@ String buildWebViewBlobDownloadScript({
 (() => {
   const requestId = $encodedRequestId;
   const blobUrl = $encodedBlobUrl;
-  const matchingAnchor = Array.from(document.querySelectorAll('a[download]'))
-    .reverse()
-    .find((anchor) => anchor.href === blobUrl);
-  const filenameHint = String(
-    window.__qaqDownloadFilenameHints?.[blobUrl] ||
-    matchingAnchor?.getAttribute('download') ||
-    '',
-  ).trim();
+  const visited = new Set();
+  const lookupFilenameHint = (targetWindow) => {
+    try {
+      if (!targetWindow || visited.has(targetWindow)) return '';
+      visited.add(targetWindow);
+
+      const remembered = targetWindow.__qaqDownloadFilenameHints?.[blobUrl];
+      if (typeof remembered === 'string' && remembered.trim()) {
+        return remembered.trim();
+      }
+
+      const anchors = Array.from(
+        targetWindow.document?.querySelectorAll?.('a[download]') || [],
+      ).reverse();
+      const matchingAnchor = anchors.find(
+        (anchor) => String(anchor.href || '') === blobUrl,
+      );
+      const filename = matchingAnchor?.getAttribute('download');
+      if (typeof filename === 'string' && filename.trim()) {
+        return filename.trim();
+      }
+
+      const frames = targetWindow.document?.querySelectorAll?.('iframe,frame') || [];
+      for (const frame of frames) {
+        try {
+          const value = lookupFilenameHint(frame.contentWindow);
+          if (value) return value;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return '';
+  };
+  const filenameHint = lookupFilenameHint(window);
   const channel = window.$webViewBlobDownloadJavaScriptChannel;
   const send = (payload) => {
     if (!channel || typeof channel.postMessage !== 'function') return;

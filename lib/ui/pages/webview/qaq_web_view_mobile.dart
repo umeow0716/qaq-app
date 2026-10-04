@@ -237,16 +237,20 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
           final reportedMimeType = message['mimeType'] as String?;
           final reportedFilenameHint = message['filenameHint'] as String?;
           final total = (message['total'] as num?)?.toInt() ?? session.contentLength;
+          final selectedFilenameHint = reportedFilenameHint?.trim().isNotEmpty == true
+              ? sanitizeWebViewDownloadFilename(reportedFilenameHint!)
+              : session.filenameHint;
           session.nativeToken = await WebViewFileTransfer.beginBlobDownload(
             sourceUrl: session.sourceUrl,
             contentDisposition: session.contentDisposition,
             mimeType: reportedMimeType?.isNotEmpty == true ? reportedMimeType! : session.mimeType,
             totalBytes: total,
-            filenameHint: reportedFilenameHint?.trim().isNotEmpty == true
-                ? sanitizeWebViewDownloadFilename(reportedFilenameHint!)
-                : session.filenameHint,
+            filenameHint: selectedFilenameHint,
           );
-          GlobalProtectDebug.log('Android WebView blob download started bytes=$total');
+          GlobalProtectDebug.log(
+            'Android WebView blob download started bytes=$total '
+            'filename=${selectedFilenameHint ?? '<fallback>'}',
+          );
           break;
         case 'chunk':
           final token = session.nativeToken;
