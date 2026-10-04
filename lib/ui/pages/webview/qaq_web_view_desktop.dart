@@ -20,6 +20,8 @@ import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_linux/webview_all_linux.dart' as linux_webview;
+// ignore: depend_on_referenced_packages
+import 'package:webview_all_windows/webview_all_windows.dart' as windows_webview;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -45,7 +47,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   bool _showNativeWebView = !Platform.isLinux;
   bool _allowNextLinuxPop = false;
   bool _linuxNativeWebViewDetachedForPop = false;
-  var _linuxDownloadOverlaySequence = 0;
+  var _downloadOverlaySequence = 0;
 
   final progress = ValueNotifier(0.0);
 
@@ -124,6 +126,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(_createNavigationDelegate());
     await _configureLinuxFileTransfer(controller);
+    await _configureWindowsFileTransfer(controller);
     await _configureWindowsWebResourceDebug(controller);
     _controller = controller;
     await setInitialCookies();
@@ -383,6 +386,109 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     onPageFinished: (url) => unawaited(_onPageFinished(url)),
   );
 
+
+  Future<void> _configureWindowsFileTransfer(WebViewController controller) async {
+    if (!Platform.isWindows) return;
+
+    final platformController = controller.platform;
+    if (platformController is! windows_webview.WindowsWebViewController) {
+      GlobalProtectDebug.log(
+        'Windows WebView file transfer unavailable: ${platformController.runtimeType}',
+      );
+      return;
+    }
+
+    await platformController.setDownloadsEnabled(true);
+    platformController.setOnDownloadStart((request) {
+      unawaited(_trackWindowsDownload(request));
+    });
+    GlobalProtectDebug.log(
+      'Windows WebView download callback attached; native WebView2 download progress will be mirrored in-page',
+    );
+  }
+
+  Future<void> _trackWindowsDownload(
+    windows_webview.WindowsDownloadStartRequest request,
+  ) async {
+    final resultFilePath = request.resultFilePath?.trim();
+    if (resultFilePath == null || resultFilePath.isEmpty) {
+      GlobalProtectDebug.log(
+        'Windows WebView download started without a result file path: ${request.url}',
+      );
+      return;
+    }
+
+    final destination = File(resultFilePath);
+    final overlayId = ++_downloadOverlaySequence;
+    final reportedTotal = request.totalBytesToReceive;
+    final total = reportedTotal != null && reportedTotal > 0 ? reportedTotal : -1;
+    await _showDownloadOverlayItem(
+      id: overlayId,
+      filename: path.basename(resultFilePath),
+      filePath: resultFilePath,
+    );
+
+    GlobalProtectDebug.log(
+      'Windows WebView download tracking ${request.url} -> $resultFilePath total=$total',
+    );
+
+    var lastReceived = -1;
+    var stableUnknownSizePolls = 0;
+    try {
+      while (mounted) {
+        var exists = false;
+        int? received;
+        try {
+          exists = await destination.exists();
+          if (exists) received = await destination.length();
+        } on FileSystemException {
+          // WebView2 may briefly hold the destination without allowing a
+          // concurrent stat/read. Keep the native download running and retry.
+        }
+
+        if (received != null && received != lastReceived) {
+          lastReceived = received;
+          stableUnknownSizePolls = 0;
+          _updateDownloadOverlayProgress(
+            id: overlayId,
+            received: received,
+            total: total,
+          );
+        } else if (received != null && received > 0 && total < 0) {
+          stableUnknownSizePolls++;
+        }
+
+        if (received != null && total > 0 && received >= total) {
+          break;
+        }
+        // WebView2 reports an unknown total when Content-Length is unavailable.
+        // Its current public Dart callback only exposes download start, so use a
+        // conservative five-second stable-file window as the completion fallback.
+        if (exists && received != null && received > 0 && total < 0 && stableUnknownSizePolls >= 20) {
+          break;
+        }
+
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+
+      if (!mounted) return;
+      await _finishDownloadOverlayItem(
+        id: overlayId,
+        status: _DownloadOverlayStatus.completed,
+      );
+      GlobalProtectDebug.log('Windows WebView download completed $resultFilePath');
+    } catch (error, stackTrace) {
+      if (mounted) {
+        await _finishDownloadOverlayItem(
+          id: overlayId,
+          status: _DownloadOverlayStatus.failed,
+          message: error.toString(),
+        );
+      }
+      GlobalProtectDebug.error('Windows WebView download progress', error, stackTrace);
+    }
+  }
+
   Future<void> _configureLinuxFileTransfer(WebViewController controller) async {
     if (!Platform.isLinux) return;
 
@@ -420,8 +526,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       final downloadsDirectory = await _linuxDownloadsDirectory();
       final filename = _linuxDownloadFilename(request, sourceUri);
       final destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
-      overlayId = ++_linuxDownloadOverlaySequence;
-      await _showLinuxDownloadOverlayItem(
+      overlayId = ++_downloadOverlaySequence;
+      await _showDownloadOverlayItem(
         id: overlayId,
         filename: path.basename(destination.path),
         filePath: destination.path,
@@ -455,24 +561,24 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
             if (showedUnknownOverlayProgress) return;
             showedUnknownOverlayProgress = true;
           }
-          _updateLinuxDownloadOverlayProgress(
+          _updateDownloadOverlayProgress(
             id: currentOverlayId,
             received: received,
             total: total,
           );
         },
       );
-      await _finishLinuxDownloadOverlayItem(
+      await _finishDownloadOverlayItem(
         id: overlayId,
-        status: _LinuxDownloadOverlayStatus.completed,
+        status: _DownloadOverlayStatus.completed,
       );
       GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
     } catch (error, stackTrace) {
       final currentOverlayId = overlayId;
       if (currentOverlayId != null) {
-        await _finishLinuxDownloadOverlayItem(
+        await _finishDownloadOverlayItem(
           id: currentOverlayId,
-          status: _LinuxDownloadOverlayStatus.failed,
+          status: _DownloadOverlayStatus.failed,
           message: error.toString(),
         );
       }
@@ -527,14 +633,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  Future<void> _showLinuxDownloadOverlayItem({
+  Future<void> _showDownloadOverlayItem({
     required int id,
     required String filename,
     required String filePath,
   }) async {
-    await _runLinuxDownloadOverlayScript(
-      _linuxDownloadOverlayBootstrapScript() +
-          _linuxDownloadOverlayCallScript(
+    await _runDownloadOverlayScript(
+      _downloadOverlayBootstrapScript() +
+          _downloadOverlayCallScript(
             method: 'show',
             payload: {
               'id': id,
@@ -548,15 +654,15 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  void _updateLinuxDownloadOverlayProgress({
+  void _updateDownloadOverlayProgress({
     required int id,
     required int received,
     required int total,
   }) {
     final percent = total > 0 ? ((received / total) * 100).clamp(0, 100).floor() : null;
     unawaited(
-      _runLinuxDownloadOverlayScript(
-        _linuxDownloadOverlayCallScript(
+      _runDownloadOverlayScript(
+        _downloadOverlayCallScript(
           method: 'update',
           payload: {
             'id': id,
@@ -571,21 +677,21 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  Future<void> _finishLinuxDownloadOverlayItem({
+  Future<void> _finishDownloadOverlayItem({
     required int id,
-    required _LinuxDownloadOverlayStatus status,
+    required _DownloadOverlayStatus status,
     String? message,
   }) async {
-    await _runLinuxDownloadOverlayScript(
-      _linuxDownloadOverlayCallScript(
+    await _runDownloadOverlayScript(
+      _downloadOverlayCallScript(
         method: 'finish',
         payload: {
           'id': id,
-          'percent': status == _LinuxDownloadOverlayStatus.completed ? 100 : null,
+          'percent': status == _DownloadOverlayStatus.completed ? 100 : null,
           'status': status.name,
           'statusText': switch (status) {
-            _LinuxDownloadOverlayStatus.completed => R.current.downloadComplete,
-            _LinuxDownloadOverlayStatus.failed => R.current.downloadError,
+            _DownloadOverlayStatus.completed => R.current.downloadComplete,
+            _DownloadOverlayStatus.failed => R.current.downloadError,
           },
           'message': ?message,
         },
@@ -593,17 +699,17 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  Future<void> _runLinuxDownloadOverlayScript(String script) async {
+  Future<void> _runDownloadOverlayScript(String script) async {
     try {
       await _requiredController.runJavaScript(script);
     } catch (error, stackTrace) {
       // The page may be navigating or may have already been disposed. Download
       // should continue even if the visual overlay cannot be updated.
-      GlobalProtectDebug.error('Linux WebView download overlay', error, stackTrace);
+      GlobalProtectDebug.error('Desktop WebView download overlay', error, stackTrace);
     }
   }
 
-  String _linuxDownloadOverlayCallScript({
+  String _downloadOverlayCallScript({
     required String method,
     required Map<String, Object?> payload,
   }) {
@@ -611,7 +717,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     return 'window.__qaqDownloadPanel?.$method($encodedPayload);';
   }
 
-  String _linuxDownloadOverlayBootstrapScript() {
+  String _downloadOverlayBootstrapScript() {
     final labels = jsonEncode({
       'downloading': R.current.downloading,
       'prepareDownload': R.current.prepareDownload,
@@ -1103,7 +1209,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   );
 }
 
-enum _LinuxDownloadOverlayStatus { completed, failed }
+enum _DownloadOverlayStatus { completed, failed }
 
 class _InitialWebViewContent {
   const _InitialWebViewContent._({this.initialUrl, this.initialData});

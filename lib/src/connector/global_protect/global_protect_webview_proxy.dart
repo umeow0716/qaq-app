@@ -11,14 +11,17 @@ import 'virtual_tcp_socket.dart';
 /// A loopback HTTP proxy used as an adapter between platform WebView proxy
 /// configuration and the app's userspace GlobalProtect TCP implementation.
 ///
-/// Only the configured VPN target host is routed through GlobalProtect. Every
-/// other destination opens a direct TCP connection from the app process. HTTPS
-/// remains end-to-end between WebView and the destination; CONNECT bytes are
-/// forwarded without TLS interception or a custom CA.
+/// Requests that enter this proxy route only the configured VPN target host
+/// through GlobalProtect; other destinations can still be forwarded directly.
+/// Windows normally avoids the bridge entirely for non-iStudy hosts via PAC.
+/// HTTPS remains end-to-end between WebView and the destination; CONNECT bytes
+/// are forwarded without TLS interception or a custom CA.
 class GlobalProtectWebViewProxyBridge {
   GlobalProtectWebViewProxyBridge._();
 
   static final GlobalProtectWebViewProxyBridge instance = GlobalProtectWebViewProxyBridge._();
+
+  static const String windowsPacPath = '/qaq-webview-proxy.pac';
 
   ServerSocket? _server;
   StreamSubscription<Socket>? _serverSubscription;
@@ -199,6 +202,12 @@ class GlobalProtectWebViewProxyBridge {
         unawaited(() async {
           try {
             final request = _ProxyRequest.parse(buffered, headerEnd);
+            if (_isWindowsPacRequest(request)) {
+              await _serveWindowsPac(client, clientSubscription);
+              closed = true;
+              _clients.remove(client);
+              return;
+            }
             GlobalProtectDebug.log(
               'WebView proxy request method=${request.isConnect ? 'CONNECT' : 'HTTP'} '
               'host=${request.host} port=${request.port}',
@@ -240,6 +249,47 @@ class GlobalProtectWebViewProxyBridge {
       onDone: () => unawaited(closeBoth()),
       cancelOnError: false,
     );
+  }
+
+  bool _isWindowsPacRequest(_ProxyRequest request) {
+    final server = _server;
+    if (server == null || request.isConnect) return false;
+    return request.host == InternetAddress.loopbackIPv4.address &&
+        request.port == server.port &&
+        request.target == windowsPacPath;
+  }
+
+  Future<void> _serveWindowsPac(
+    Socket client,
+    StreamSubscription<Uint8List>? clientSubscription,
+  ) async {
+    final vpnHost = _vpnHost;
+    final server = _server;
+    if (vpnHost == null || server == null) {
+      throw StateError('WebView PAC requested before the loopback proxy was ready.');
+    }
+
+    await clientSubscription?.cancel();
+    final encodedHost = jsonEncode(vpnHost);
+    final body = utf8.encode(
+      'function FindProxyForURL(url, host) {\n'
+      '  host = String(host || "").toLowerCase().replace(/\\.\$/, "");\n'
+      '  if (host === $encodedHost) return "PROXY 127.0.0.1:${server.port}";\n'
+      '  return "DIRECT";\n'
+      '}\n',
+    );
+    final headers = ascii.encode(
+      'HTTP/1.1 200 OK\r\n'
+      'Content-Type: application/x-ns-proxy-autoconfig; charset=utf-8\r\n'
+      'Cache-Control: no-store, no-cache, must-revalidate\r\n'
+      'Content-Length: ${body.length}\r\n'
+      'Connection: close\r\n'
+      '\r\n',
+    );
+    client.add(<int>[...headers, ...body]);
+    await client.flush();
+    await client.close();
+    GlobalProtectDebug.log('served Windows WebView2 PAC for $vpnHost');
   }
 
   bool _shouldRouteThroughGlobalProtect(String host) {
@@ -366,6 +416,7 @@ class _ProxyRequest {
     required this.isConnect,
     required this.host,
     required this.port,
+    required this.target,
     required this.forwardBytes,
     required this.remainder,
   });
@@ -373,6 +424,7 @@ class _ProxyRequest {
   final bool isConnect;
   final String host;
   final int port;
+  final String target;
   final Uint8List forwardBytes;
   final Uint8List remainder;
 
@@ -396,6 +448,7 @@ class _ProxyRequest {
         isConnect: true,
         host: authority.$1,
         port: authority.$2,
+        target: target,
         forwardBytes: Uint8List(0),
         remainder: remainder,
       );
@@ -429,6 +482,7 @@ class _ProxyRequest {
       isConnect: false,
       host: host,
       port: port,
+      target: originTarget,
       forwardBytes: Uint8List.fromList(<int>[...rewrittenHeader, ...remainder]),
       remainder: Uint8List(0),
     );

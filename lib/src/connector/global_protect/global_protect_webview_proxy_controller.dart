@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_windows/webview_all_windows.dart';
@@ -12,10 +13,10 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 /// Android can apply and clear ProxyOverride at runtime. Windows WebView2 can
 /// only receive proxy settings through its shared environment before the first
 /// WebView controller is created, so that configuration is intentionally sticky
-/// for this process. The loopback bridge itself remains destination-aware and
-/// can stay bound while VPN routing is disabled: only the configured iStudy host
-/// is sent through GlobalProtect after routing is enabled; every other
-/// destination opens a direct TCP connection. Linux
+/// for this process. Windows uses a PAC served by the loopback bridge so only
+/// the configured iStudy host enters that proxy; normal sites stay on WebView2's
+/// native DIRECT path. The bridge can remain bound while VPN routing is disabled
+/// and starts using GlobalProtect only after the access guard selects it. Linux
 /// uses webview_all's PlatformProxyController implementation backed by WebKitGTK
 /// network proxy settings.
 class GlobalProtectWebViewProxyController {
@@ -103,11 +104,11 @@ class GlobalProtectWebViewProxyController {
   static String _windowsProxyArguments({required int port, required String host}) {
     if (host.isEmpty) throw ArgumentError.value(host, 'host', 'Proxy target host must not be empty.');
 
-    // WebView2 accepts Chromium proxy flags through additionalArguments. The
-    // environment-level proxy points HTTP/HTTPS at the QAQ loopback bridge,
-    // which routes only [host] through GlobalProtect and opens direct TCP
-    // connections for every other destination.
-    return '--proxy-server=http=127.0.0.1:$port;https=127.0.0.1:$port '
-        '--proxy-bypass-list=<-loopback>';
+    // Keep normal sites on WebView2's native network stack. The PAC is served
+    // by the already-bound QAQ loopback listener and returns PROXY only for the
+    // iStudy host; every other destination is DIRECT. This avoids forcing sites
+    // such as Google through the Dart CONNECT tunnel while keeping the immutable
+    // WebView2 environment ready for a later iStudy VPN redirect.
+    return '--proxy-pac-url=http://127.0.0.1:$port${GlobalProtectWebViewProxyBridge.windowsPacPath}';
   }
 }

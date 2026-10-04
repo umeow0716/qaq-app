@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
 
@@ -35,6 +38,27 @@ void main() {
         expect(bridge.vpnRoutingEnabled, isFalse);
       },
     );
+
+    test('serves a Windows PAC that proxies only iStudy', () async {
+      final bridge = GlobalProtectWebViewProxyBridge.instance;
+      addTearDown(bridge.close);
+
+      final port = await bridge.ensureListening(vpnHost: vpnHost);
+      final socket = await Socket.connect(InternetAddress.loopbackIPv4, port);
+      socket.write(
+        'GET http://127.0.0.1:$port${GlobalProtectWebViewProxyBridge.windowsPacPath} HTTP/1.1\r\n'
+        'Host: 127.0.0.1:$port\r\n'
+        'Connection: close\r\n'
+        '\r\n',
+      );
+      await socket.flush();
+      final response = await utf8.decoder.bind(socket).join();
+
+      expect(response, contains('HTTP/1.1 200 OK'));
+      expect(response, contains('host === "istudy.ntut.edu.tw"'));
+      expect(response, contains('PROXY 127.0.0.1:$port'));
+      expect(response, contains('return "DIRECT"'));
+    });
 
     test('keeps every non-iStudy destination direct', () {
       for (final host in <String>[
