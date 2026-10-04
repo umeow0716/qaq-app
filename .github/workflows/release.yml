@@ -141,7 +141,9 @@ jobs:
           copy_one() {
             local pattern="$1"
             local target="$2"
-            mapfile -t matches < <(find build/app/outputs -type f -name "$pattern" | sort)
+            mapfile -t matches < <(
+              find build/app/outputs/flutter-apk -maxdepth 1 -type f -name "$pattern" | sort
+            )
             if [[ ${#matches[@]} -ne 1 ]]; then
               printf 'Expected exactly one match for %s, got %d:\n' "$pattern" "${#matches[@]}" >&2
               printf '  %s\n' "${matches[@]:-<none>}" >&2
