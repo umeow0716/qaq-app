@@ -220,7 +220,8 @@ class MainActivity : FlutterActivity() {
         mimeType: String?,
     ): String {
         val dispositionName = parseContentDispositionFilename(contentDisposition)
-        val candidate = dispositionName ?: Uri.decode(URLUtil.guessFileName(sourceUrl, null, mimeType))
+        val candidate = dispositionName
+            ?: decodeFilenameValue(URLUtil.guessFileName(sourceUrl, null, mimeType))
         return sanitizeDownloadFilename(candidate)
     }
 
@@ -238,7 +239,15 @@ class MainActivity : FlutterActivity() {
         val plain = Regex(
             """(?i)(?:^|;)\s*filename\s*=\s*("(?:\\.|[^"])*"|[^;]+)""",
         ).find(contentDisposition)?.groupValues?.get(1)
-        return unquoteHeaderValue(plain)?.let(Uri::decode)
+        return unquoteHeaderValue(plain)?.let(::decodeFilenameValue)
+    }
+
+    private fun decodeFilenameValue(value: String): String {
+        return try {
+            Uri.decode(value)
+        } catch (_: IllegalArgumentException) {
+            value
+        }
     }
 
     private fun decodeExtendedFilename(rawValue: String?): String? {
@@ -281,19 +290,47 @@ class MainActivity : FlutterActivity() {
 
     private fun unquoteHeaderValue(rawValue: String?): String? {
         var value = rawValue?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        if (value.length >= 2 && value.first() == '"' && value.last() == '"') {
-            value = value.substring(1, value.length - 1)
-                .replace(Regex("""\\(.)"""), "$1")
+        val unquoted = stripWrappingFilenameQuotes(value)
+        if (unquoted != value) {
+            value = unquoted.replace(Regex("""\\(.)"""), "$1")
         }
         return value.takeIf { it.isNotBlank() }
     }
 
+    // Keep these portability rules aligned with
+    // lib/src/file/webview_download_filename.dart for desktop downloads.
     private fun sanitizeDownloadFilename(value: String): String {
-        val sanitized = value
-            .replace(Regex("""[\\/:*?"<>|\u0000-\u001F]"""), "_")
+        var sanitized = stripWrappingFilenameQuotes(value.trim())
+            .replace(Regex("""[\\/:*?"<>|\u0000-\u001F\u007F]"""), "_")
             .trim()
+            .trimStart('.', ' ')
             .trimEnd('.', ' ')
+        sanitized = stripWrappingFilenameQuotes(sanitized).trimEnd('.', ' ')
+
+        if (sanitized.isEmpty()) return "download"
+
+        val stem = sanitized.substringBefore('.').uppercase(Locale.ROOT)
+        if (Regex("""^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$""").matches(stem)) {
+            sanitized = "_$sanitized"
+        }
         return sanitized.ifEmpty { "download" }
+    }
+
+    private fun stripWrappingFilenameQuotes(value: String): String {
+        var result = value
+        while (result.length >= 2) {
+            val matches = when (result.first() to result.last()) {
+                '"' to '"',
+                '\'' to '\'',
+                '“' to '”',
+                '‘' to '’',
+                '`' to '`' -> true
+                else -> false
+            }
+            if (!matches) break
+            result = result.substring(1, result.length - 1).trim()
+        }
+        return result
     }
 
     private fun setWebViewProxyOverride(port: Int, host: String, result: MethodChannel.Result) {

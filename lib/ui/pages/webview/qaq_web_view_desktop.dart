@@ -15,6 +15,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_all/webview_all.dart';
@@ -422,9 +423,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final overlayId = ++_downloadOverlaySequence;
     final reportedTotal = request.totalBytesToReceive;
     final total = reportedTotal != null && reportedTotal > 0 ? reportedTotal : -1;
+    final displayFilename = sanitizeWebViewDownloadFilename(path.basename(resultFilePath));
     await _showDownloadOverlayItem(
       id: overlayId,
-      filename: path.basename(resultFilePath),
+      filename: displayFilename,
       filePath: resultFilePath,
     );
 
@@ -472,11 +474,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       }
 
       if (!mounted) return;
+      final completedDestination = await _normalizeWindowsDownloadFilename(destination);
       await _finishDownloadOverlayItem(
         id: overlayId,
         status: _DownloadOverlayStatus.completed,
+        filename: path.basename(completedDestination.path),
+        filePath: completedDestination.path,
       );
-      GlobalProtectDebug.log('Windows WebView download completed $resultFilePath');
+      GlobalProtectDebug.log('Windows WebView download completed ${completedDestination.path}');
     } catch (error, stackTrace) {
       if (mounted) {
         await _finishDownloadOverlayItem(
@@ -487,6 +492,28 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       }
       GlobalProtectDebug.error('Windows WebView download progress', error, stackTrace);
     }
+  }
+
+  Future<File> _normalizeWindowsDownloadFilename(File destination) async {
+    if (!await destination.exists()) return destination;
+
+    final originalName = path.basename(destination.path);
+    final safeName = sanitizeWebViewDownloadFilename(originalName);
+    if (safeName == originalName) return destination;
+
+    final safeDestination = await _nextAvailableDownloadFile(destination.parent, safeName);
+    for (var attempt = 0; attempt < 8; attempt++) {
+      try {
+        return await destination.rename(safeDestination.path);
+      } on FileSystemException catch (error, stackTrace) {
+        if (attempt == 7) {
+          GlobalProtectDebug.error('Windows WebView download filename normalization', error, stackTrace);
+          return destination;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 125));
+      }
+    }
+    return destination;
   }
 
   Future<void> _configureLinuxFileTransfer(WebViewController controller) async {
@@ -681,6 +708,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     required int id,
     required _DownloadOverlayStatus status,
     String? message,
+    String? filename,
+    String? filePath,
   }) async {
     await _runDownloadOverlayScript(
       _downloadOverlayCallScript(
@@ -694,6 +723,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
             _DownloadOverlayStatus.failed => R.current.downloadError,
           },
           'message': ?message,
+          'filename': ?filename,
+          'path': ?filePath,
         },
       ),
     );
@@ -928,38 +959,11 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   ) {
     final suggested = request.suggestedFilename?.trim();
     if (suggested != null && suggested.isNotEmpty) {
-      return _sanitizeLinuxFilename(_decodeLinuxFilename(suggested));
+      return sanitizeWebViewDownloadFilename(suggested);
     }
 
     final lastSegment = sourceUri.pathSegments.isEmpty ? '' : sourceUri.pathSegments.last;
-    final decoded = lastSegment.isEmpty ? 'download' : _decodeLinuxFilename(lastSegment);
-    return _sanitizeLinuxFilename(decoded);
-  }
-
-  String _decodeLinuxFilename(String value) {
-    try {
-      return Uri.decodeComponent(value);
-    } on FormatException {
-      return value;
-    }
-  }
-
-  String _sanitizeLinuxFilename(String value) {
-    final buffer = StringBuffer();
-    for (final codeUnit in value.codeUnits) {
-      if (codeUnit < 0x20 || codeUnit == 0x2f || codeUnit == 0x5c) {
-        buffer.write('_');
-      } else {
-        buffer.writeCharCode(codeUnit);
-      }
-    }
-
-    final sanitized = buffer
-        .toString()
-        .trim()
-        .replaceAll(RegExp(r'^[. ]+'), '')
-        .replaceAll(RegExp(r'[. ]+$'), '');
-    return sanitized.isEmpty ? 'download' : sanitized;
+    return sanitizeWebViewDownloadFilename(lastSegment.isEmpty ? 'download' : lastSegment);
   }
 
   Future<File> _nextAvailableDownloadFile(Directory directory, String filename) async {
