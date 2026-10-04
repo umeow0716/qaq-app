@@ -22,6 +22,20 @@ void main() {
       );
     });
 
+    test(
+      'can bind the loopback listener before VPN routing is enabled',
+      () async {
+        final bridge = GlobalProtectWebViewProxyBridge.instance;
+        addTearDown(bridge.close);
+
+        final port = await bridge.ensureListening(vpnHost: vpnHost);
+
+        expect(port, greaterThan(0));
+        expect(bridge.isRunning, isTrue);
+        expect(bridge.vpnRoutingEnabled, isFalse);
+      },
+    );
+
     test('keeps every non-iStudy destination direct', () {
       for (final host in <String>[
         'nportal.ntut.edu.tw',

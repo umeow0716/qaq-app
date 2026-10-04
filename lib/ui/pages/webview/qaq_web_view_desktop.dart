@@ -41,6 +41,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   static const _linuxNativeWebViewDetachDelay = Duration(milliseconds: 32);
 
   bool _vpnProxyEnabled = false;
+  bool _windowsProxyEnvironmentPrepared = false;
   bool _showNativeWebView = !Platform.isLinux;
   bool _allowNextLinuxPop = false;
   bool _linuxNativeWebViewDetachedForPop = false;
@@ -112,6 +113,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<void> _prepareControllerAndLoadInitialContent() async {
+    // WebView2 environment options are process-scoped and immutable after the
+    // first Windows controller is created. Install the destination-aware
+    // loopback proxy before that first controller exists; VPN routing itself
+    // remains disabled until IStudyAccessGuard selects the VPN route.
+    await _prepareWindowsWebViewProxyEnvironment();
+
     final content = await _prepareInitialContent();
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -132,15 +139,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<_InitialWebViewContent> _prepareInitialContent() async {
-    // Only direct iStudy URLs need a desktop proxy preflight before their first
-    // load. Non-iStudy pages such as debug Google Forms must not inherit the
-    // process-wide WebView proxy; if they later redirect to iStudy,
-    // _onNavigationRequest enables the bridge and retries that navigation.
     if (!IStudyAccessGuard.isIStudyUri(widget.initialUrl)) {
       return _InitialWebViewContent.url(widget.initialUrl);
     }
 
-    final preflightRoute = await _prepareDesktopVpnProxyBeforeWebViewEnvironment();
+    // Linux can still install its WebKitGTK proxy dynamically, so keep the
+    // existing direct-iStudy preflight there. Windows has already fixed its
+    // WebView2 environment above and only toggles bridge routing here.
+    final preflightRoute = await _prepareLinuxVpnProxyBeforeWebViewEnvironment();
     final route = preflightRoute ?? await IStudyAccessGuard.route();
     GlobalProtectDebug.log('direct iStudy initial URL route=${route.name}');
     switch (route) {
@@ -156,15 +162,38 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  Future<IStudyAccessRoute?> _prepareDesktopVpnProxyBeforeWebViewEnvironment() async {
-    if (!Platform.isWindows && !Platform.isLinux) return null;
+  Future<void> _prepareWindowsWebViewProxyEnvironment() async {
+    if (!Platform.isWindows || _windowsProxyEnvironmentPrepared) return;
+
+    final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
+    final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(
+      vpnHost: IStudyAccessGuard.iStudyHost,
+    );
+    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
+      throw StateError('WebView GlobalProtect runtime was reset before Windows WebView2 setup.');
+    }
+
+    await GlobalProtectWebViewProxyController.setProxyOverride(
+      port: port,
+      host: IStudyAccessGuard.iStudyHost,
+    );
+    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
+      await GlobalProtectWebViewRuntime.reset();
+      throw StateError('WebView GlobalProtect runtime was reset during Windows WebView2 setup.');
+    }
+
+    _windowsProxyEnvironmentPrepared = true;
+    GlobalProtectDebug.log(
+      'Windows WebView2 proxy environment prepared on loopback port=$port; VPN routing disabled',
+    );
+  }
+
+  Future<IStudyAccessRoute?> _prepareLinuxVpnProxyBeforeWebViewEnvironment() async {
+    if (!Platform.isLinux) return null;
 
     final route = await IStudyAccessGuard.route();
-    GlobalProtectDebug.log('${Platform.operatingSystem} WebView preflight iStudy route=${route.name}');
+    GlobalProtectDebug.log('Linux WebView preflight iStudy route=${route.name}');
     if (route == IStudyAccessRoute.vpn) {
-      // Desktop WebViews should receive their process-wide proxy before the
-      // first controller request. Windows installs WebView2 arguments; Linux
-      // applies WebKitGTK network proxy settings through webview_all.
       await _enableWebViewProxy();
     }
     return route;
@@ -853,18 +882,41 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     GlobalProtectDebug.log('WebView redirect reached iStudy; route=${route.name}');
     switch (route) {
       case IStudyAccessRoute.direct:
+        if (Platform.isWindows) {
+          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          _vpnProxyEnabled = false;
+        }
         return NavigationDecision.navigate;
       case IStudyAccessRoute.blocked:
+        if (Platform.isWindows) {
+          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          _vpnProxyEnabled = false;
+        }
         await _requiredController.loadHtmlString(IStudyAccessGuard.blockedHtml);
         return NavigationDecision.prevent;
       case IStudyAccessRoute.vpn:
         if (_vpnProxyEnabled) return NavigationDecision.navigate;
         try {
+          if (Platform.isWindows) {
+            GlobalProtectDebug.log(
+              'enabling Windows GP routing before allowing original iStudy navigation',
+            );
+            await _enableWebViewProxy();
+            // webview_all defers Windows network navigation policy at
+            // WebResourceRequested, so the original request (including POST
+            // body and request-specific headers) can continue unchanged once
+            // the loopback bridge starts routing iStudy through GlobalProtect.
+            GlobalProtectDebug.log(
+              'Windows GP routing active; allowing original iStudy navigation',
+            );
+            return NavigationDecision.navigate;
+          }
+
           GlobalProtectDebug.log('enabling GP proxy before retrying iStudy redirect');
           await _enableWebViewProxy();
-          // The desktop WebView API exposes the redirect URL but not the complete native
-          // request object. iStudy SSO redirects are expected to be GET requests,
-          // so retry the same URL after ProxyOverride is active.
+          // Linux exposes the redirect URL but not a replayable request object.
+          // iStudy SSO redirects are expected to be GET requests, so retry the
+          // same URL after the WebKitGTK proxy is active.
           GlobalProtectDebug.log('GP proxy active; retrying iStudy navigation');
           await _requiredController.loadRequest(uri);
         } catch (error, stackTrace) {
@@ -880,6 +932,18 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
     if (!Platform.isWindows && !Platform.isLinux) {
       throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports desktop WebViews on Windows and Linux only.');
+    }
+
+    if (Platform.isWindows) {
+      await _prepareWindowsWebViewProxyEnvironment();
+      await GlobalProtectWebViewProxyBridge.instance.enableVpnRouting();
+      if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
+        await GlobalProtectWebViewRuntime.reset();
+        throw StateError('WebView GlobalProtect runtime was reset while enabling Windows VPN routing.');
+      }
+      _vpnProxyEnabled = true;
+      GlobalProtectDebug.log('Windows WebView GP routing active');
+      return;
     }
 
     final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(

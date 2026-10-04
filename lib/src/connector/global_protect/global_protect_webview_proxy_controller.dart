@@ -12,9 +12,10 @@ import 'package:webview_all_windows/webview_all_windows.dart';
 /// Android can apply and clear ProxyOverride at runtime. Windows WebView2 can
 /// only receive proxy settings through its shared environment before the first
 /// WebView controller is created, so that configuration is intentionally sticky
-/// for this process once enabled. The loopback bridge itself remains
-/// destination-aware: only the configured iStudy host is sent through
-/// GlobalProtect; every other destination opens a direct TCP connection. Linux
+/// for this process. The loopback bridge itself remains destination-aware and
+/// can stay bound while VPN routing is disabled: only the configured iStudy host
+/// is sent through GlobalProtect after routing is enabled; every other
+/// destination opens a direct TCP connection. Linux
 /// uses webview_all's PlatformProxyController implementation backed by WebKitGTK
 /// network proxy settings.
 class GlobalProtectWebViewProxyController {

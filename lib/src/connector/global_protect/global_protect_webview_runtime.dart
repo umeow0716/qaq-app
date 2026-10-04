@@ -18,6 +18,7 @@ class GlobalProtectWebViewRuntime {
 
   static Future<void> reset() async {
     _generation++;
+    GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
     var closeLoopbackBridge = true;
     try {
       closeLoopbackBridge = await GlobalProtectWebViewProxyController.clearProxyOverride();

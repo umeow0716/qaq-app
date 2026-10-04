@@ -25,13 +25,21 @@ class GlobalProtectWebViewProxyBridge {
   final Set<Socket> _clients = <Socket>{};
   Future<int>? _startInFlight;
   int _generation = 0;
+  bool _vpnRoutingEnabled = false;
 
   bool get isRunning => _server != null;
   int? get port => _server?.port;
+  bool get vpnRoutingEnabled => _vpnRoutingEnabled;
 
   String? _vpnHost;
 
-  Future<int> ensureStarted({required String vpnHost}) {
+  /// Starts the loopback listener without connecting GlobalProtect.
+  ///
+  /// Windows WebView2 proxy arguments are fixed when its process-wide
+  /// environment is created. Windows therefore binds this listener before the
+  /// first WebView exists, while iStudy traffic stays direct until
+  /// [enableVpnRouting] is called.
+  Future<int> ensureListening({required String vpnHost}) {
     final normalizedVpnHost = _normalizeHost(vpnHost);
     if (normalizedVpnHost.isEmpty) {
       return Future<int>.error(
@@ -73,10 +81,37 @@ class GlobalProtectWebViewProxyBridge {
     return future;
   }
 
-  Future<int> _start(int generation) async {
-    GlobalProtectDebug.log('WebView bridge start requested');
+  /// Starts the listener and enables GlobalProtect routing for iStudy.
+  ///
+  /// Android and Linux call this when they can install their native WebView
+  /// proxy dynamically. Windows normally calls [ensureListening] earlier and
+  /// enables VPN routing only after its access guard selects the VPN route.
+  Future<int> ensureStarted({required String vpnHost}) async {
+    final port = await ensureListening(vpnHost: vpnHost);
+    await enableVpnRouting();
+    return port;
+  }
+
+  Future<void> enableVpnRouting() async {
+    if (_vpnHost == null) {
+      throw StateError('WebView GP proxy listener must be started before enabling VPN routing.');
+    }
+    if (_vpnRoutingEnabled) return;
+
+    GlobalProtectDebug.log('WebView proxy enabling GlobalProtect routing');
     await GlobalProtectAppSession.instance.ensureConnected();
-    GlobalProtectDebug.log('GP session connected; binding WebView loopback proxy');
+    _vpnRoutingEnabled = true;
+    GlobalProtectDebug.log('WebView proxy GlobalProtect routing enabled');
+  }
+
+  void disableVpnRouting() {
+    if (!_vpnRoutingEnabled) return;
+    _vpnRoutingEnabled = false;
+    GlobalProtectDebug.log('WebView proxy GlobalProtect routing disabled');
+  }
+
+  Future<int> _start(int generation) async {
+    GlobalProtectDebug.log('WebView loopback proxy listener start requested');
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0, shared: false);
     if (generation != _generation) {
       await server.close();
@@ -209,7 +244,8 @@ class GlobalProtectWebViewProxyBridge {
 
   bool _shouldRouteThroughGlobalProtect(String host) {
     final vpnHost = _vpnHost;
-    return vpnHost != null &&
+    return _vpnRoutingEnabled &&
+        vpnHost != null &&
         shouldRouteThroughGlobalProtect(host: host, vpnHost: vpnHost);
   }
 
@@ -275,6 +311,7 @@ class GlobalProtectWebViewProxyBridge {
     final server = _server;
     _server = null;
     _vpnHost = null;
+    _vpnRoutingEnabled = false;
     await server?.close();
 
     final clients = _clients.toList(growable: false);
