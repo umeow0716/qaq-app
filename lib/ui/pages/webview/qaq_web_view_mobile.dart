@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runt
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
+import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -33,6 +35,10 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   late final WebViewController _controller;
   late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
+  final Map<String, _AndroidBlobDownloadSession> _blobDownloads =
+      <String, _AndroidBlobDownloadSession>{};
+  Future<void> _blobDownloadMessageQueue = Future<void>.value();
+  var _blobDownloadSequence = 0;
 
   final progress = ValueNotifier(0.0);
 
@@ -50,12 +56,18 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     if (_vpnProxyEnabled) {
       unawaited(_clearWebViewProxy());
     }
+    for (final session in _blobDownloads.values) {
+      final token = session.nativeToken;
+      if (token != null) unawaited(WebViewFileTransfer.abortBlobDownload(token));
+    }
+    _blobDownloads.clear();
     progress.dispose();
     super.dispose();
   }
 
   Future<void> _prepareAndLoadInitialContent() async {
     await _configurePlatformFilePicker();
+    await _configureBlobDownloadChannel();
     final content = await _prepareInitialContent();
     final initialUrl = content.initialUrl;
     if (initialUrl != null) {
@@ -162,6 +174,105 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     );
   }
 
+  Future<void> _configureBlobDownloadChannel() async {
+    if (!Platform.isAndroid) return;
+    await _controller.addJavaScriptChannel(
+      webViewBlobDownloadJavaScriptChannel,
+      onMessageReceived: (message) {
+        _blobDownloadMessageQueue = _blobDownloadMessageQueue.then((_) async {
+          try {
+            await _handleBlobDownloadMessage(message.message);
+          } catch (error, stackTrace) {
+            GlobalProtectDebug.error('Android WebView blob download message', error, stackTrace);
+          }
+        });
+      },
+    );
+  }
+
+  Future<void> _startAndroidBlobDownload({
+    required String url,
+    required String contentDisposition,
+    required String mimeType,
+    required int contentLength,
+  }) async {
+    final requestId = 'android-blob-${DateTime.now().microsecondsSinceEpoch}-${++_blobDownloadSequence}';
+    _blobDownloads[requestId] = _AndroidBlobDownloadSession(
+      sourceUrl: url,
+      contentDisposition: contentDisposition,
+      mimeType: mimeType,
+      contentLength: contentLength,
+    );
+
+    try {
+      await _controller.runJavaScript(
+        buildWebViewBlobDownloadScript(requestId: requestId, blobUrl: url),
+      );
+      GlobalProtectDebug.log('Android WebView blob download requested id=$requestId');
+    } catch (error, stackTrace) {
+      _blobDownloads.remove(requestId);
+      GlobalProtectDebug.error('Android WebView blob extraction', error, stackTrace);
+    }
+  }
+
+  Future<void> _handleBlobDownloadMessage(String rawMessage) async {
+    final message = decodeWebViewBlobDownloadMessage(rawMessage);
+    if (message == null) return;
+
+    final requestId = message['requestId'] as String?;
+    final type = message['type'] as String?;
+    if (requestId == null || type == null) return;
+
+    final session = _blobDownloads[requestId];
+    if (session == null) return;
+
+    try {
+      switch (type) {
+        case 'start':
+          final reportedMimeType = message['mimeType'] as String?;
+          final total = (message['total'] as num?)?.toInt() ?? session.contentLength;
+          session.nativeToken = await WebViewFileTransfer.beginBlobDownload(
+            sourceUrl: session.sourceUrl,
+            contentDisposition: session.contentDisposition,
+            mimeType: reportedMimeType?.isNotEmpty == true ? reportedMimeType! : session.mimeType,
+            totalBytes: total,
+          );
+          GlobalProtectDebug.log('Android WebView blob download started bytes=$total');
+          break;
+        case 'chunk':
+          final token = session.nativeToken;
+          final encoded = message['data'] as String?;
+          if (token == null || encoded == null) {
+            throw StateError('Blob chunk arrived before Android destination creation.');
+          }
+          final bytes = base64Decode(encoded);
+          await WebViewFileTransfer.appendBlobDownloadChunk(token: token, bytes: bytes);
+          session.receivedBytes += bytes.length;
+          break;
+        case 'done':
+          final token = session.nativeToken;
+          if (token == null) {
+            throw StateError('Blob download completed before Android destination creation.');
+          }
+          await WebViewFileTransfer.finishBlobDownload(token);
+          _blobDownloads.remove(requestId);
+          GlobalProtectDebug.log('Android WebView blob download completed bytes=${session.receivedBytes}');
+          break;
+        case 'error':
+          final token = session.nativeToken;
+          if (token != null) await WebViewFileTransfer.abortBlobDownload(token);
+          _blobDownloads.remove(requestId);
+          GlobalProtectDebug.log('Android WebView blob download failed: ${message['message']}');
+          break;
+      }
+    } catch (_) {
+      final token = session.nativeToken;
+      if (token != null) await WebViewFileTransfer.abortBlobDownload(token);
+      _blobDownloads.remove(requestId);
+      rethrow;
+    }
+  }
+
   Future<void> _handleDownload({
     required String url,
     required String userAgent,
@@ -171,6 +282,15 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   }) async {
     if (!Platform.isAndroid) return;
     final sourceUri = Uri.tryParse(url);
+    if (sourceUri?.scheme == 'blob') {
+      await _startAndroidBlobDownload(
+        url: url,
+        contentDisposition: contentDisposition,
+        mimeType: mimeType,
+        contentLength: contentLength,
+      );
+      return;
+    }
     if (sourceUri == null || (sourceUri.scheme != 'http' && sourceUri.scheme != 'https')) {
       GlobalProtectDebug.log('ignoring unsupported WebView download URL: $url');
       return;
@@ -350,6 +470,22 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       ),
     ),
   );
+}
+
+class _AndroidBlobDownloadSession {
+  _AndroidBlobDownloadSession({
+    required this.sourceUrl,
+    required this.contentDisposition,
+    required this.mimeType,
+    required this.contentLength,
+  });
+
+  final String sourceUrl;
+  final String contentDisposition;
+  final String mimeType;
+  final int contentLength;
+  String? nativeToken;
+  int receivedBytes = 0;
 }
 
 class _InitialWebViewContent {

@@ -2,11 +2,13 @@ package dev.umeow.qaq
 
 import android.app.Activity
 import android.app.DownloadManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.webkit.CookieManager
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
@@ -20,11 +22,14 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.Log
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.OutputStream
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.Executor
 
 class MainActivity : FlutterActivity() {
@@ -33,6 +38,13 @@ class MainActivity : FlutterActivity() {
     private val mainExecutor = Executor { command -> runOnUiThread(command) }
     private val filePickerRequestCode = 0x5141
     private var pendingFilePickerResult: MethodChannel.Result? = null
+    private val pendingBlobDownloads = mutableMapOf<String, PendingBlobDownload>()
+
+    private data class PendingBlobDownload(
+        val output: OutputStream,
+        val contentUri: Uri? = null,
+        val file: File? = null,
+    )
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -74,11 +86,21 @@ class MainActivity : FlutterActivity() {
                 "set_webview_cookie" -> setWebViewCookie(call, result)
                 "pick_webview_files" -> pickWebViewFiles(call, result)
                 "enqueue_webview_download" -> enqueueWebViewDownload(call, result)
+                "begin_webview_blob_download" -> beginWebViewBlobDownload(call, result)
+                "append_webview_blob_download_chunk" -> appendWebViewBlobDownloadChunk(call, result)
+                "finish_webview_blob_download" -> finishWebViewBlobDownload(call, result)
+                "abort_webview_blob_download" -> abortWebViewBlobDownload(call, result)
                 else -> {
                     result.notImplemented()
                 }
             }
         }
+    }
+
+
+    override fun onDestroy() {
+        pendingBlobDownloads.keys.toList().forEach { cleanupBlobDownload(it, publish = false) }
+        super.onDestroy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -216,6 +238,131 @@ class MainActivity : FlutterActivity() {
             Log.e(logTag, "Unable to enqueue WebView download", e)
             result.error("WEBVIEW_DOWNLOAD_ERROR", e.message, null)
         }
+    }
+
+    private fun beginWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val sourceUrl = call.argument<String>("sourceUrl")
+        if (sourceUrl.isNullOrBlank()) {
+            result.error("INVALID_BLOB_DOWNLOAD", "A blob source URL is required.", null)
+            return
+        }
+
+        val contentDisposition = call.argument<String>("contentDisposition")
+        val mimeType = call.argument<String>("mimeType")
+        val filename = resolveBrowserLikeFilename(sourceUrl, contentDisposition, mimeType)
+        val token = UUID.randomUUID().toString()
+
+        try {
+            val pending = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    if (!mimeType.isNullOrBlank()) put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Unable to create a Downloads entry for $filename")
+                val output = contentResolver.openOutputStream(uri, "w")
+                    ?: run {
+                        contentResolver.delete(uri, null, null)
+                        throw IllegalStateException("Unable to open the Downloads entry for $filename")
+                    }
+                PendingBlobDownload(output = output, contentUri = uri)
+            } else {
+                val directory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                    ?: File(filesDir, Environment.DIRECTORY_DOWNLOADS)
+                directory.mkdirs()
+                val file = nextAvailableDownloadFile(directory, filename)
+                PendingBlobDownload(output = file.outputStream(), file = file)
+            }
+
+            pendingBlobDownloads[token] = pending
+            result.success(token)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to start WebView blob download", e)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun appendWebViewBlobDownloadChunk(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        val bytes = call.argument<ByteArray>("bytes")
+        val pending = token?.let(pendingBlobDownloads::get)
+        if (pending == null || bytes == null) {
+            result.error("INVALID_BLOB_DOWNLOAD", "Unknown blob download or missing data.", null)
+            return
+        }
+
+        try {
+            pending.output.write(bytes)
+            result.success(null)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to write WebView blob download", e)
+            if (token != null) cleanupBlobDownload(token, publish = false)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun finishWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        if (token.isNullOrBlank() || !pendingBlobDownloads.containsKey(token)) {
+            result.error("INVALID_BLOB_DOWNLOAD", "Unknown blob download.", null)
+            return
+        }
+
+        try {
+            cleanupBlobDownload(token, publish = true)
+            result.success(null)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to finish WebView blob download", e)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun abortWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        if (!token.isNullOrBlank()) cleanupBlobDownload(token, publish = false)
+        result.success(null)
+    }
+
+    private fun cleanupBlobDownload(token: String, publish: Boolean) {
+        val pending = pendingBlobDownloads.remove(token) ?: return
+        try {
+            pending.output.flush()
+        } catch (_: Exception) {
+        }
+        try {
+            pending.output.close()
+        } catch (_: Exception) {
+        }
+
+        val uri = pending.contentUri
+        if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (publish) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }
+                contentResolver.update(uri, values, null, null)
+            } else {
+                contentResolver.delete(uri, null, null)
+            }
+        } else if (!publish) {
+            pending.file?.delete()
+        }
+    }
+
+    private fun nextAvailableDownloadFile(directory: File, filename: String): File {
+        var candidate = File(directory, filename)
+        if (!candidate.exists()) return candidate
+
+        val dot = filename.lastIndexOf('.')
+        val base = if (dot > 0) filename.substring(0, dot) else filename
+        val extension = if (dot > 0) filename.substring(dot) else ""
+        for (index in 1..999) {
+            candidate = File(directory, "$base ($index)$extension")
+            if (!candidate.exists()) return candidate
+        }
+        throw IllegalStateException("Unable to find an available filename for $filename")
     }
 
     private fun resolveBrowserLikeFilename(

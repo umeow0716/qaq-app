@@ -15,6 +15,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
@@ -49,6 +50,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   bool _allowNextLinuxPop = false;
   bool _linuxNativeWebViewDetachedForPop = false;
   var _downloadOverlaySequence = 0;
+  var _blobDownloadSequence = 0;
+  final Map<String, _LinuxBlobDownloadSession> _blobDownloads =
+      <String, _LinuxBlobDownloadSession>{};
+  Future<void> _blobDownloadMessageQueue = Future<void>.value();
 
   final progress = ValueNotifier(0.0);
 
@@ -66,6 +71,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     if (_vpnProxyEnabled) {
       unawaited(_clearWebViewProxy());
     }
+    for (final session in _blobDownloads.values) {
+      unawaited(_abortLinuxBlobDownloadSession(session));
+    }
+    _blobDownloads.clear();
     progress.dispose();
     super.dispose();
   }
@@ -126,6 +135,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(_createNavigationDelegate());
+    await _configureDesktopBlobDownloadChannel(controller);
     await _configureLinuxFileTransfer(controller);
     await _configureWindowsFileTransfer(controller);
     await _configureWindowsWebResourceDebug(controller);
@@ -516,6 +526,150 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     return destination;
   }
 
+  Future<void> _configureDesktopBlobDownloadChannel(WebViewController controller) async {
+    if (!Platform.isLinux) return;
+    await controller.addJavaScriptChannel(
+      webViewBlobDownloadJavaScriptChannel,
+      onMessageReceived: (message) {
+        _blobDownloadMessageQueue = _blobDownloadMessageQueue.then((_) async {
+          try {
+            await _handleLinuxBlobDownloadMessage(message.message);
+          } catch (error, stackTrace) {
+            GlobalProtectDebug.error('Linux WebView blob download message', error, stackTrace);
+          }
+        });
+      },
+    );
+  }
+
+  Future<void> _startLinuxBlobDownload(
+    linux_webview.LinuxDownloadStartRequest request,
+  ) async {
+    int? overlayId;
+    String? requestId;
+    File? destination;
+
+    try {
+      final downloadsDirectory = await _linuxDownloadsDirectory();
+      final sourceUri = Uri.parse(request.url);
+      final filename = _linuxDownloadFilename(request, sourceUri);
+      destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
+      overlayId = ++_downloadOverlaySequence;
+      requestId = 'linux-blob-${DateTime.now().microsecondsSinceEpoch}-${++_blobDownloadSequence}';
+      final sink = destination.openWrite();
+      _blobDownloads[requestId] = _LinuxBlobDownloadSession(
+        sink: sink,
+        destination: destination,
+        overlayId: overlayId,
+      );
+
+      await _showDownloadOverlayItem(
+        id: overlayId,
+        filename: path.basename(destination.path),
+        filePath: destination.path,
+      );
+      await _requiredController.runJavaScript(
+        buildWebViewBlobDownloadScript(requestId: requestId, blobUrl: request.url),
+      );
+      GlobalProtectDebug.log('Linux WebView blob download requested ${request.url}');
+    } catch (error, stackTrace) {
+      if (requestId != null) {
+        final session = _blobDownloads.remove(requestId);
+        if (session != null) await _abortLinuxBlobDownloadSession(session);
+      } else if (destination != null && await destination.exists()) {
+        await destination.delete();
+      }
+      if (overlayId != null) {
+        await _finishDownloadOverlayItem(
+          id: overlayId,
+          status: _DownloadOverlayStatus.failed,
+          message: error.toString(),
+        );
+      }
+      GlobalProtectDebug.error('Linux WebView blob extraction', error, stackTrace);
+    }
+  }
+
+  Future<void> _handleLinuxBlobDownloadMessage(String rawMessage) async {
+    final message = decodeWebViewBlobDownloadMessage(rawMessage);
+    if (message == null) return;
+
+    final requestId = message['requestId'] as String?;
+    final type = message['type'] as String?;
+    if (requestId == null || type == null) return;
+    final session = _blobDownloads[requestId];
+    if (session == null) return;
+
+    try {
+      switch (type) {
+        case 'start':
+          session.totalBytes = (message['total'] as num?)?.toInt() ?? 0;
+          _updateDownloadOverlayProgress(
+            id: session.overlayId,
+            received: 0,
+            total: session.totalBytes,
+          );
+          break;
+        case 'chunk':
+          final encoded = message['data'] as String?;
+          if (encoded == null) throw StateError('Linux blob chunk did not contain data.');
+          final bytes = base64Decode(encoded);
+          session.sink.add(bytes);
+          session.receivedBytes += bytes.length;
+          _updateDownloadOverlayProgress(
+            id: session.overlayId,
+            received: session.receivedBytes,
+            total: session.totalBytes,
+          );
+          break;
+        case 'done':
+          await session.sink.flush();
+          await session.sink.close();
+          _blobDownloads.remove(requestId);
+          await _finishDownloadOverlayItem(
+            id: session.overlayId,
+            status: _DownloadOverlayStatus.completed,
+          );
+          GlobalProtectDebug.log(
+            'Linux WebView blob download saved ${session.destination.path} bytes=${session.receivedBytes}',
+          );
+          break;
+        case 'error':
+          _blobDownloads.remove(requestId);
+          await _abortLinuxBlobDownloadSession(session);
+          await _finishDownloadOverlayItem(
+            id: session.overlayId,
+            status: _DownloadOverlayStatus.failed,
+            message: '${message['message'] ?? 'Blob download failed'}',
+          );
+          GlobalProtectDebug.log('Linux WebView blob download failed: ${message['message']}');
+          break;
+      }
+    } catch (_) {
+      _blobDownloads.remove(requestId);
+      await _abortLinuxBlobDownloadSession(session);
+      await _finishDownloadOverlayItem(
+        id: session.overlayId,
+        status: _DownloadOverlayStatus.failed,
+        message: 'Blob download failed',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _abortLinuxBlobDownloadSession(_LinuxBlobDownloadSession session) async {
+    try {
+      await session.sink.close();
+    } catch (_) {
+      // Best-effort cleanup while a route or WebView is closing.
+    }
+    try {
+      if (await session.destination.exists()) await session.destination.delete();
+    } catch (_) {
+      // Best-effort cleanup while a route or WebView is closing.
+    }
+  }
+
   Future<void> _configureLinuxFileTransfer(WebViewController controller) async {
     if (!Platform.isLinux) return;
 
@@ -542,6 +696,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     linux_webview.LinuxDownloadStartRequest request,
   ) async {
     final sourceUri = Uri.tryParse(request.url);
+    if (sourceUri?.scheme == 'blob') {
+      await _startLinuxBlobDownload(request);
+      return;
+    }
     if (sourceUri == null || (sourceUri.scheme != 'http' && sourceUri.scheme != 'https')) {
       GlobalProtectDebug.log('ignoring unsupported Linux WebView download URL: ${request.url}');
       return;
@@ -1211,6 +1369,20 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       ),
     ),
   );
+}
+
+class _LinuxBlobDownloadSession {
+  _LinuxBlobDownloadSession({
+    required this.sink,
+    required this.destination,
+    required this.overlayId,
+  });
+
+  final IOSink sink;
+  final File destination;
+  final int overlayId;
+  int receivedBytes = 0;
+  int totalBytes = 0;
 }
 
 enum _DownloadOverlayStatus { completed, failed }
