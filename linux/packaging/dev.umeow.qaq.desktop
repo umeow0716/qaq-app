@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=QAQ
+Comment=Independent campus life assistant for NTUT students
+Exec=QAQ
+Icon=dev.umeow.qaq
+Terminal=false
+Categories=Education;Utility;
+StartupNotify=true
+StartupWMClass=dev.umeow.qaq
