@@ -36,10 +36,7 @@ class DesktopDownloadPanel extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              R.current.download,
-                              style: const TextStyle(fontWeight: FontWeight.w800),
-                            ),
+                            child: Text(R.current.download, style: const TextStyle(fontWeight: FontWeight.w800)),
                           ),
                           IconButton(
                             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
@@ -97,7 +94,8 @@ class _DownloadItemTile extends StatelessWidget {
       status = R.current.prepareDownload;
     } else if (item.totalBytes > 0) {
       final percent = ((progress ?? 0) * 100).round();
-      status = '$percent% · ${FileUtils.formatBytes(item.receivedBytes, 2)} / '
+      status =
+          '$percent% · ${FileUtils.formatBytes(item.receivedBytes, 2)} / '
           '${FileUtils.formatBytes(item.totalBytes, 2)}';
     } else {
       status = FileUtils.formatBytes(item.receivedBytes, 2);
@@ -125,10 +123,7 @@ class _DownloadItemTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: failed ? colorScheme.error : colorScheme.onSurfaceVariant,
-                  ),
+                  style: TextStyle(fontSize: 11, color: failed ? colorScheme.error : colorScheme.onSurfaceVariant),
                 ),
               ),
             ],

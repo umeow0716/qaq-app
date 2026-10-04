@@ -96,22 +96,17 @@ class CalendarController extends GetxController {
     }
 
     late final Future<void> load;
-    load = _loadMonthlyEvents(
-      firstDayOfTargetMonth: firstDayOfTargetMonth,
-      showLoadingDialog: showLoadingDialog,
-    ).whenComplete(() {
-      if (identical(_pendingMonthLoads[firstDayOfTargetMonth], load)) {
-        _pendingMonthLoads.remove(firstDayOfTargetMonth);
-      }
-    });
+    load = _loadMonthlyEvents(firstDayOfTargetMonth: firstDayOfTargetMonth, showLoadingDialog: showLoadingDialog)
+        .whenComplete(() {
+          if (identical(_pendingMonthLoads[firstDayOfTargetMonth], load)) {
+            _pendingMonthLoads.remove(firstDayOfTargetMonth);
+          }
+        });
     _pendingMonthLoads[firstDayOfTargetMonth] = load;
     return load;
   }
 
-  Future<void> _loadMonthlyEvents({
-    required DateTime firstDayOfTargetMonth,
-    required bool showLoadingDialog,
-  }) async {
+  Future<void> _loadMonthlyEvents({required DateTime firstDayOfTargetMonth, required bool showLoadingDialog}) async {
     // Use `zero` to represent the last day of the month.
     const fixedEventRequestLastDayOfAnyMonth = 0;
     final lastDayOfTargetMonth = DateTime(
@@ -154,7 +149,6 @@ class CalendarController extends GetxController {
       isLoadingRx.value = _activeLoads > 0;
     }
   }
-
 }
 
 extension on DateTime {

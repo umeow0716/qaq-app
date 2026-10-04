@@ -44,23 +44,16 @@ class GlobalProtectWebViewProxyBridge {
   /// first WebView exists, while iStudy traffic stays direct until
   /// [enableVpnRouting] is called.
   Future<int> ensureListening({required Iterable<String> vpnHosts}) {
-    final normalizedVpnHosts = vpnHosts
-        .map(_normalizeHost)
-        .where((host) => host.isNotEmpty)
-        .toSet();
+    final normalizedVpnHosts = vpnHosts.map(_normalizeHost).where((host) => host.isNotEmpty).toSet();
     if (normalizedVpnHosts.isEmpty) {
-      return Future<int>.error(
-        ArgumentError.value(vpnHosts, 'vpnHosts', 'At least one VPN target host is required.'),
-      );
+      return Future<int>.error(ArgumentError.value(vpnHosts, 'vpnHosts', 'At least one VPN target host is required.'));
     }
 
     final existing = _server;
     if (existing != null) {
       if (!_sameHostSet(_vpnHosts, normalizedVpnHosts)) {
         return Future<int>.error(
-          StateError(
-            'WebView GP proxy is already bound to $_vpnHosts, not $normalizedVpnHosts.',
-          ),
+          StateError('WebView GP proxy is already bound to $_vpnHosts, not $normalizedVpnHosts.'),
         );
       }
       return Future<int>.value(existing.port);
@@ -69,11 +62,7 @@ class GlobalProtectWebViewProxyBridge {
     final inFlight = _startInFlight;
     if (inFlight != null) {
       if (_vpnHosts.isNotEmpty && !_sameHostSet(_vpnHosts, normalizedVpnHosts)) {
-        return Future<int>.error(
-          StateError(
-            'WebView GP proxy is starting for $_vpnHosts, not $normalizedVpnHosts.',
-          ),
-        );
+        return Future<int>.error(StateError('WebView GP proxy is starting for $_vpnHosts, not $normalizedVpnHosts.'));
       }
       return inFlight;
     }
@@ -85,8 +74,7 @@ class GlobalProtectWebViewProxyBridge {
     unawaited(
       future.then<void>(
         (_) => _clearStartFuture(future),
-        onError: (Object _, StackTrace _) =>
-            _clearStartFuture(future, failed: true),
+        onError: (Object _, StackTrace _) => _clearStartFuture(future, failed: true),
       ),
     );
     return future;
@@ -267,10 +255,7 @@ class GlobalProtectWebViewProxyBridge {
         request.target == windowsPacPath;
   }
 
-  Future<void> _serveWindowsPac(
-    Socket client,
-    StreamSubscription<Uint8List>? clientSubscription,
-  ) async {
+  Future<void> _serveWindowsPac(Socket client, StreamSubscription<Uint8List>? clientSubscription) async {
     final vpnHosts = _vpnHosts;
     final server = _server;
     if (vpnHosts.isEmpty || server == null) {
@@ -302,14 +287,10 @@ class GlobalProtectWebViewProxyBridge {
   }
 
   bool _shouldRouteThroughGlobalProtect(String host) {
-    return _vpnRoutingEnabled &&
-        shouldRouteThroughGlobalProtect(host: host, vpnHosts: _vpnHosts);
+    return _vpnRoutingEnabled && shouldRouteThroughGlobalProtect(host: host, vpnHosts: _vpnHosts);
   }
 
-  static bool shouldRouteThroughGlobalProtect({
-    required String host,
-    required Iterable<String> vpnHosts,
-  }) {
+  static bool shouldRouteThroughGlobalProtect({required String host, required Iterable<String> vpnHosts}) {
     final normalizedHost = _normalizeHost(host);
     if (normalizedHost.isEmpty) return false;
     return vpnHosts.map(_normalizeHost).contains(normalizedHost);
@@ -329,11 +310,7 @@ class GlobalProtectWebViewProxyBridge {
 
   Future<VirtualByteSocket> _connectDirect(String host, int port) async {
     GlobalProtectDebug.log('direct TCP connect -> $host:$port');
-    final socket = await Socket.connect(
-      host,
-      port,
-      timeout: upstreamConnectTimeout,
-    );
+    final socket = await Socket.connect(host, port, timeout: upstreamConnectTimeout);
     GlobalProtectDebug.log('direct TCP connected -> ${socket.remoteAddress.address}:$port');
     return _DirectByteSocket(socket);
   }

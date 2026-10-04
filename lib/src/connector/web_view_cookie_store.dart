@@ -30,8 +30,7 @@ class WebViewCookieStore {
     // to clear, so skipping this initialization is both safe and necessary.
     // Once a WebView environment has been prepared, logout still clears cookies
     // exactly as before.
-    if (Platform.isWindows &&
-        !GlobalProtectWebViewProxyController.isWindowsEnvironmentPrepared) {
+    if (Platform.isWindows && !GlobalProtectWebViewProxyController.isWindowsEnvironmentPrepared) {
       return;
     }
 
@@ -57,10 +56,8 @@ class WebViewCookieStore {
       return;
     }
 
-    if (Platform.isWindows &&
-        _manager.platform is windows_webview.WindowsWebViewCookieManager) {
-      final manager =
-          _manager.platform as windows_webview.WindowsWebViewCookieManager;
+    if (Platform.isWindows && _manager.platform is windows_webview.WindowsWebViewCookieManager) {
+      final manager = _manager.platform as windows_webview.WindowsWebViewCookieManager;
       await manager.setWindowsCookie(
         windows_webview.WindowsWebViewCookie(
           name: cookie.name,
@@ -96,9 +93,7 @@ class WebViewCookieStore {
     return path == null || path.isEmpty ? '/' : path;
   }
 
-  static windows_webview.WindowsWebViewCookieSameSite? _windowsSameSite(
-    SameSite? sameSite,
-  ) {
+  static windows_webview.WindowsWebViewCookieSameSite? _windowsSameSite(SameSite? sameSite) {
     return switch (sameSite) {
       SameSite.none => windows_webview.WindowsWebViewCookieSameSite.none,
       SameSite.lax => windows_webview.WindowsWebViewCookieSameSite.lax,

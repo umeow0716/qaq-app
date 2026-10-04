@@ -27,13 +27,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 class QAQWebViewDesktop extends StatefulWidget {
-  const QAQWebViewDesktop({
-    super.key,
-    required this.initialUrl,
-    this.title,
-    this.showAppBar = true,
-    this.onClose,
-  });
+  const QAQWebViewDesktop({super.key, required this.initialUrl, this.title, this.showAppBar = true, this.onClose});
 
   final Uri initialUrl;
   final String? title;
@@ -58,8 +52,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   bool _linuxNativeWebViewDetachedForPop = false;
   var _downloadOverlaySequence = 0;
   var _blobDownloadSequence = 0;
-  final Map<String, _LinuxBlobDownloadSession> _blobDownloads =
-      <String, _LinuxBlobDownloadSession>{};
+  final Map<String, _LinuxBlobDownloadSession> _blobDownloads = <String, _LinuxBlobDownloadSession>{};
   Future<void> _blobDownloadMessageQueue = Future<void>.value();
 
   final progress = ValueNotifier(0.0);
@@ -189,26 +182,19 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     if (!Platform.isWindows || _windowsProxyEnvironmentPrepared) return;
 
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(
-      vpnHosts: IStudyAccessGuard.proxyHosts,
-    );
+    final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(vpnHosts: IStudyAccessGuard.proxyHosts);
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before Windows WebView2 setup.');
     }
 
-    await GlobalProtectWebViewProxyController.setProxyOverride(
-      port: port,
-      hosts: IStudyAccessGuard.proxyHosts,
-    );
+    await GlobalProtectWebViewProxyController.setProxyOverride(port: port, hosts: IStudyAccessGuard.proxyHosts);
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       await GlobalProtectWebViewRuntime.reset();
       throw StateError('WebView GlobalProtect runtime was reset during Windows WebView2 setup.');
     }
 
     _windowsProxyEnvironmentPrepared = true;
-    GlobalProtectDebug.log(
-      'Windows WebView2 proxy environment prepared on loopback port=$port; VPN routing disabled',
-    );
+    GlobalProtectDebug.log('Windows WebView2 proxy environment prepared on loopback port=$port; VPN routing disabled');
   }
 
   Future<IStudyAccessRoute?> _prepareLinuxVpnProxyBeforeWebViewEnvironment() async {
@@ -252,7 +238,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
           '${cookies.map((cookie) => cookie.name).join(',')}',
         );
       } else {
-        GlobalProtectDebug.log('[WebViewCookieSync] Windows initial request has no Dio cookies for ${uri.host}${uri.path}');
+        GlobalProtectDebug.log(
+          '[WebViewCookieSync] Windows initial request has no Dio cookies for ${uri.host}${uri.path}',
+        );
       }
     }
 
@@ -406,15 +394,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     onPageFinished: (url) => unawaited(_onPageFinished(url)),
   );
 
-
   Future<void> _configureWindowsFileTransfer(WebViewController controller) async {
     if (!Platform.isWindows) return;
 
     final platformController = controller.platform;
     if (platformController is! windows_webview.WindowsWebViewController) {
-      GlobalProtectDebug.log(
-        'Windows WebView file transfer unavailable: ${platformController.runtimeType}',
-      );
+      GlobalProtectDebug.log('Windows WebView file transfer unavailable: ${platformController.runtimeType}');
       return;
     }
 
@@ -427,14 +412,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  Future<void> _trackWindowsDownload(
-    windows_webview.WindowsDownloadStartRequest request,
-  ) async {
+  Future<void> _trackWindowsDownload(windows_webview.WindowsDownloadStartRequest request) async {
     final resultFilePath = request.resultFilePath?.trim();
     if (resultFilePath == null || resultFilePath.isEmpty) {
-      GlobalProtectDebug.log(
-        'Windows WebView download started without a result file path: ${request.url}',
-      );
+      GlobalProtectDebug.log('Windows WebView download started without a result file path: ${request.url}');
       return;
     }
 
@@ -444,15 +425,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final reportedTotal = request.totalBytesToReceive;
     final total = reportedTotal != null && reportedTotal > 0 ? reportedTotal : -1;
     final displayFilename = filenameHint ?? sanitizeWebViewDownloadFilename(path.basename(resultFilePath));
-    await _showDownloadOverlayItem(
-      id: overlayId,
-      filename: displayFilename,
-      filePath: resultFilePath,
-    );
+    await _showDownloadOverlayItem(id: overlayId, filename: displayFilename, filePath: resultFilePath);
 
-    GlobalProtectDebug.log(
-      'Windows WebView download tracking ${request.url} -> $resultFilePath total=$total',
-    );
+    GlobalProtectDebug.log('Windows WebView download tracking ${request.url} -> $resultFilePath total=$total');
 
     var lastReceived = -1;
     var stableUnknownSizePolls = 0;
@@ -471,11 +446,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
         if (received != null && received != lastReceived) {
           lastReceived = received;
           stableUnknownSizePolls = 0;
-          _updateDownloadOverlayProgress(
-            id: overlayId,
-            received: received,
-            total: total,
-          );
+          _updateDownloadOverlayProgress(id: overlayId, received: received, total: total);
         } else if (received != null && received > 0 && total < 0) {
           stableUnknownSizePolls++;
         }
@@ -494,10 +465,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       }
 
       if (!mounted) return;
-      final completedDestination = await _normalizeWindowsDownloadFilename(
-        destination,
-        filenameHint: filenameHint,
-      );
+      final completedDestination = await _normalizeWindowsDownloadFilename(destination, filenameHint: filenameHint);
       await _finishDownloadOverlayItem(
         id: overlayId,
         status: _DownloadOverlayStatus.completed,
@@ -517,10 +485,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  Future<File> _normalizeWindowsDownloadFilename(
-    File destination, {
-    String? filenameHint,
-  }) async {
+  Future<File> _normalizeWindowsDownloadFilename(File destination, {String? filenameHint}) async {
     if (!await destination.exists()) return destination;
 
     final originalName = path.basename(destination.path);
@@ -558,10 +523,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  Future<void> _startLinuxBlobDownload(
-    linux_webview.LinuxDownloadStartRequest request, {
-    String? filenameHint,
-  }) async {
+  Future<void> _startLinuxBlobDownload(linux_webview.LinuxDownloadStartRequest request, {String? filenameHint}) async {
     int? overlayId;
     String? requestId;
     File? destination;
@@ -569,20 +531,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     try {
       final downloadsDirectory = await _linuxDownloadsDirectory();
       final sourceUri = Uri.parse(request.url);
-      final filename = _linuxDownloadFilename(
-        request,
-        sourceUri,
-        filenameHint: filenameHint,
-      );
+      final filename = _linuxDownloadFilename(request, sourceUri, filenameHint: filenameHint);
       destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
       overlayId = ++_downloadOverlaySequence;
       requestId = 'linux-blob-${DateTime.now().microsecondsSinceEpoch}-${++_blobDownloadSequence}';
       final sink = destination.openWrite();
-      _blobDownloads[requestId] = _LinuxBlobDownloadSession(
-        sink: sink,
-        destination: destination,
-        overlayId: overlayId,
-      );
+      _blobDownloads[requestId] = _LinuxBlobDownloadSession(sink: sink, destination: destination, overlayId: overlayId);
 
       await _showDownloadOverlayItem(
         id: overlayId,
@@ -625,11 +579,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       switch (type) {
         case 'start':
           session.totalBytes = (message['total'] as num?)?.toInt() ?? 0;
-          _updateDownloadOverlayProgress(
-            id: session.overlayId,
-            received: 0,
-            total: session.totalBytes,
-          );
+          _updateDownloadOverlayProgress(id: session.overlayId, received: 0, total: session.totalBytes);
           break;
         case 'chunk':
           final encoded = message['data'] as String?;
@@ -647,10 +597,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
           await session.sink.flush();
           await session.sink.close();
           _blobDownloads.remove(requestId);
-          await _finishDownloadOverlayItem(
-            id: session.overlayId,
-            status: _DownloadOverlayStatus.completed,
-          );
+          await _finishDownloadOverlayItem(id: session.overlayId, status: _DownloadOverlayStatus.completed);
           GlobalProtectDebug.log(
             'Linux WebView blob download saved ${session.destination.path} bytes=${session.receivedBytes}',
           );
@@ -696,9 +643,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     final platformController = controller.platform;
     if (platformController is! linux_webview.LinuxWebViewController) {
-      GlobalProtectDebug.log(
-        'Linux WebView file transfer unavailable: ${platformController.runtimeType}',
-      );
+      GlobalProtectDebug.log('Linux WebView file transfer unavailable: ${platformController.runtimeType}');
       return;
     }
 
@@ -713,9 +658,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     GlobalProtectDebug.log('Linux WebView download callback attached; upload uses native file chooser');
   }
 
-  Future<void> _handleLinuxDownload(
-    linux_webview.LinuxDownloadStartRequest request,
-  ) async {
+  Future<void> _handleLinuxDownload(linux_webview.LinuxDownloadStartRequest request) async {
     final sourceUri = Uri.tryParse(request.url);
     final filenameHint = await _downloadFilenameHint(request.url);
     if (sourceUri?.scheme == 'blob') {
@@ -731,11 +674,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     try {
       final downloadsDirectory = await _linuxDownloadsDirectory();
-      final filename = _linuxDownloadFilename(
-        request,
-        sourceUri,
-        filenameHint: filenameHint,
-      );
+      final filename = _linuxDownloadFilename(request, sourceUri, filenameHint: filenameHint);
       final destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
       overlayId = ++_downloadOverlaySequence;
       await _showDownloadOverlayItem(
@@ -772,17 +711,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
             if (showedUnknownOverlayProgress) return;
             showedUnknownOverlayProgress = true;
           }
-          _updateDownloadOverlayProgress(
-            id: currentOverlayId,
-            received: received,
-            total: total,
-          );
+          _updateDownloadOverlayProgress(id: currentOverlayId, received: received, total: total);
         },
       );
-      await _finishDownloadOverlayItem(
-        id: overlayId,
-        status: _DownloadOverlayStatus.completed,
-      );
+      await _finishDownloadOverlayItem(id: overlayId, status: _DownloadOverlayStatus.completed);
       GlobalProtectDebug.log('Linux WebView download saved ${destination.path}');
     } catch (error, stackTrace) {
       final currentOverlayId = overlayId;
@@ -827,10 +759,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       await dio.downloadUri(
         sourceUri,
         destination.path,
-        options: Options(
-          receiveTimeout: Duration.zero,
-          headers: headers,
-        ),
+        options: Options(receiveTimeout: Duration.zero, headers: headers),
         onReceiveProgress: (received, total) {
           onProgress(received, total);
           if (total > 0 && received == total) {
@@ -844,11 +773,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  Future<void> _showDownloadOverlayItem({
-    required int id,
-    required String filename,
-    required String filePath,
-  }) async {
+  Future<void> _showDownloadOverlayItem({required int id, required String filename, required String filePath}) async {
     await _runDownloadOverlayScript(
       _downloadOverlayBootstrapScript() +
           _downloadOverlayCallScript(
@@ -865,11 +790,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     );
   }
 
-  void _updateDownloadOverlayProgress({
-    required int id,
-    required int received,
-    required int total,
-  }) {
+  void _updateDownloadOverlayProgress({required int id, required int received, required int total}) {
     final percent = total > 0 ? ((received / total) * 100).clamp(0, 100).floor() : null;
     unawaited(
       _runDownloadOverlayScript(
@@ -924,10 +845,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  String _downloadOverlayCallScript({
-    required String method,
-    required Map<String, Object?> payload,
-  }) {
+  String _downloadOverlayCallScript({required String method, required Map<String, Object?> payload}) {
     final encodedPayload = jsonEncode(payload);
     return 'window.__qaqDownloadPanel?.$method($encodedPayload);';
   }
@@ -944,7 +862,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 (function () {
   if (window.__qaqDownloadPanel) return;
   const labels = $labels;
-''' + r'''
+''' +
+        r'''
 
   const rootId = 'qaq-download-panel-root';
   const styleId = 'qaq-download-panel-style';
@@ -1198,17 +1117,13 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
         if (_vpnProxyEnabled) return NavigationDecision.navigate;
         try {
           if (Platform.isWindows) {
-            GlobalProtectDebug.log(
-              'enabling Windows GP routing before allowing original iStudy navigation',
-            );
+            GlobalProtectDebug.log('enabling Windows GP routing before allowing original iStudy navigation');
             await _enableWebViewProxy();
             // webview_all defers Windows network navigation policy at
             // WebResourceRequested, so the original request (including POST
             // body and request-specific headers) can continue unchanged once
             // the loopback bridge starts routing iStudy through GlobalProtect.
-            GlobalProtectDebug.log(
-              'Windows GP routing active; allowing original iStudy navigation',
-            );
+            GlobalProtectDebug.log('Windows GP routing active; allowing original iStudy navigation');
             return NavigationDecision.navigate;
           }
 
@@ -1231,7 +1146,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
     final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
     if (!Platform.isWindows && !Platform.isLinux) {
-      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports desktop WebViews on Windows and Linux only.');
+      throw UnsupportedError(
+        'The experimental iStudy WebView VPN bridge currently supports desktop WebViews on Windows and Linux only.',
+      );
     }
 
     if (Platform.isWindows) {
@@ -1246,9 +1163,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       return;
     }
 
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(
-      vpnHosts: IStudyAccessGuard.proxyHosts,
-    );
+    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(vpnHosts: IStudyAccessGuard.proxyHosts);
     if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
       throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
     }
@@ -1403,11 +1318,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF0F172A),
-          Color(0xFF111827),
-          Color(0xFF020617),
-        ],
+        colors: [Color(0xFF0F172A), Color(0xFF111827), Color(0xFF020617)],
       ),
     ),
     child: Center(
@@ -1421,19 +1332,11 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2.4),
-            ),
+            const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4)),
             const SizedBox(width: 12),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -1464,11 +1367,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 }
 
 class _LinuxBlobDownloadSession {
-  _LinuxBlobDownloadSession({
-    required this.sink,
-    required this.destination,
-    required this.overlayId,
-  });
+  _LinuxBlobDownloadSession({required this.sink, required this.destination, required this.overlayId});
 
   final IOSink sink;
   final File destination;

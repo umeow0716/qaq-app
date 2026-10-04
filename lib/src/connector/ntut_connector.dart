@@ -208,8 +208,9 @@ class NTUTConnector {
     }
 
     final oldFilename = LocalStorage.instance.getUserInfo().userPhoto;
-    final uploadUri = Uri.parse(_uploadPictureUrl)
-        .replace(queryParameters: {'uploadQuota': '20', 'ldapPhoto': oldFilename});
+    final uploadUri = Uri.parse(
+      _uploadPictureUrl,
+    ).replace(queryParameters: {'uploadQuota': '20', 'ldapPhoto': oldFilename});
     final parameter = ConnectorParameter(uploadUri.toString())
       ..userAgent = _portalApiUserAgent
       ..referer = "${host}index.do"

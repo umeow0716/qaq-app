@@ -56,11 +56,7 @@ class DesktopDownloadManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> download({
-    required String url,
-    required String suggestedName,
-    String? referer,
-  }) async {
+  Future<void> download({required String url, required String suggestedName, String? referer}) async {
     final item = DesktopDownloadItem(
       id: ++_sequence,
       name: sanitizeWebViewDownloadFilename(suggestedName, fallback: 'download'),
@@ -80,11 +76,7 @@ class DesktopDownloadManager extends ChangeNotifier {
       await DioConnector.instance.download(
         url,
         (headers) {
-          final filename = _resolveFilename(
-            headers: headers,
-            url: url,
-            suggestedName: suggestedName,
-          );
+          final filename = _resolveFilename(headers: headers, url: url, suggestedName: suggestedName);
           final destination = _reserveAvailablePath(downloadsDirectory, filename);
           reservedPath = destination;
           item
@@ -151,11 +143,7 @@ class DesktopDownloadManager extends ChangeNotifier {
     throw StateError('Unable to allocate a download filename for $safeName');
   }
 
-  String _resolveFilename({
-    required Headers headers,
-    required String url,
-    required String suggestedName,
-  }) {
+  String _resolveFilename({required Headers headers, required String url, required String suggestedName}) {
     var base = sanitizeWebViewDownloadFilename(suggestedName, fallback: 'download');
     if (path.extension(base).isNotEmpty) return base;
 
@@ -181,10 +169,10 @@ class DesktopDownloadManager extends ChangeNotifier {
   String? _contentDispositionFilename(String? disposition) {
     if (disposition == null || disposition.isEmpty) return null;
 
-    final extended = RegExp(r"filename\*\s*=\s*(?:UTF-8''|utf-8'')?([^;]+)", caseSensitive: false)
-        .firstMatch(disposition)
-        ?.group(1)
-        ?.trim();
+    final extended = RegExp(
+      r"filename\*\s*=\s*(?:UTF-8''|utf-8'')?([^;]+)",
+      caseSensitive: false,
+    ).firstMatch(disposition)?.group(1)?.trim();
     if (extended != null && extended.isNotEmpty) {
       final unquoted = _stripQuotes(extended);
       try {
@@ -194,10 +182,10 @@ class DesktopDownloadManager extends ChangeNotifier {
       }
     }
 
-    final plain = RegExp(r"""filename\s*=\s*("[^"]*"|'[^']*'|[^;]+)""", caseSensitive: false)
-        .firstMatch(disposition)
-        ?.group(1)
-        ?.trim();
+    final plain = RegExp(
+      r"""filename\s*=\s*("[^"]*"|'[^']*'|[^;]+)""",
+      caseSensitive: false,
+    ).firstMatch(disposition)?.group(1)?.trim();
     return plain == null ? null : _stripQuotes(plain);
   }
 

@@ -14,17 +14,11 @@ void main() {
     });
 
     test('replaces cross-platform unsafe characters', () {
-      expect(
-        sanitizeWebViewDownloadFilename(r'report:2026/10\04?.pdf'),
-        'report_2026_10_04_.pdf',
-      );
+      expect(sanitizeWebViewDownloadFilename(r'report:2026/10\04?.pdf'), 'report_2026_10_04_.pdf');
     });
 
     test('preserves an apostrophe inside a normal filename', () {
-      expect(
-        sanitizeWebViewDownloadFilename("teacher's-notes.pdf"),
-        "teacher's-notes.pdf",
-      );
+      expect(sanitizeWebViewDownloadFilename("teacher's-notes.pdf"), "teacher's-notes.pdf");
     });
 
     test('avoids Windows reserved device names', () {

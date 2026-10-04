@@ -26,9 +26,7 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   void initState() {
     super.initState();
-    _initialLoadFuture = CalendarController.instance.findFirstEventsFromToday(
-      showLoadingDialog: !_isDesktop,
-    );
+    _initialLoadFuture = CalendarController.instance.findFirstEventsFromToday(showLoadingDialog: !_isDesktop);
   }
 
   Widget _buildEventList(BuildContext context, List<NTUTCalendarJson> selectedEvents) {
@@ -73,9 +71,7 @@ class _CalendarPageState extends State<CalendarPage> {
           setState(() => _selectedDesktopEvent = null);
         }
       },
-      onPageChanged: (focusedDay) => unawaited(
-        controller.onPageChanged(focusedDay, showLoadingDialog: !desktop),
-      ),
+      onPageChanged: (focusedDay) => unawaited(controller.onPageChanged(focusedDay, showLoadingDialog: !desktop)),
       pageAnimationEnabled: true,
       pageAnimationDuration: desktop ? const Duration(milliseconds: 180) : const Duration(milliseconds: 300),
       pageAnimationCurve: desktop ? Curves.easeOutCubic : Curves.easeOut,
@@ -179,9 +175,8 @@ class _CalendarPageState extends State<CalendarPage> {
                     top: 12,
                     right: 12,
                     child: Obx(
-                      () => controller.isLoadingRx.value
-                          ? const _DesktopCalendarLoadingBadge()
-                          : const SizedBox.shrink(),
+                      () =>
+                          controller.isLoadingRx.value ? const _DesktopCalendarLoadingBadge() : const SizedBox.shrink(),
                     ),
                   ),
                 ],
@@ -281,15 +276,13 @@ class _CalendarPageState extends State<CalendarPage> {
           const SizedBox(height: 12),
           _EventMeta(
             icon: Icons.access_time,
-            text: '${DateFormat.yMMMd(locale).format(event.startTime)} – ${DateFormat.yMMMd(locale).format(event.endTime)}',
+            text:
+                '${DateFormat.yMMMd(locale).format(event.startTime)} – ${DateFormat.yMMMd(locale).format(event.endTime)}',
           ),
           if (event.calPlace.trim().isNotEmpty) _EventMeta(icon: Icons.place_outlined, text: event.calPlace.trim()),
           if (event.creatorName.trim().isNotEmpty)
             _EventMeta(icon: Icons.person_outline, text: event.creatorName.trim()),
-          if (event.calContent.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(event.calContent.trim()),
-          ],
+          if (event.calContent.trim().isNotEmpty) ...[const SizedBox(height: 10), Text(event.calContent.trim())],
         ],
       ),
     );
@@ -313,9 +306,7 @@ class _DesktopCalendarLoadingBadge extends StatelessWidget {
         height: 42,
         child: Padding(
           padding: EdgeInsets.all(11),
-          child: RepaintBoundary(
-            child: CircularProgressIndicator(strokeWidth: 2.2),
-          ),
+          child: RepaintBoundary(child: CircularProgressIndicator(strokeWidth: 2.2)),
         ),
       ),
     );

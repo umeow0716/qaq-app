@@ -5,13 +5,8 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_android/src/android_webkit.g.dart' as android_webview;
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 
-typedef QAQWebViewDownloadCallback = void Function(
-  String url,
-  String userAgent,
-  String contentDisposition,
-  String mimeType,
-  int contentLength,
-);
+typedef QAQWebViewDownloadCallback =
+    void Function(String url, String userAgent, String contentDisposition, String mimeType, int contentLength);
 
 class QAQAndroidNavigationDelegate extends AndroidNavigationDelegate {
   QAQAndroidNavigationDelegate({required QAQWebViewDownloadCallback onDownloadStart})

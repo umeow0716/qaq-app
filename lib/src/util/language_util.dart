@@ -81,15 +81,13 @@ class LanguageUtil {
   }
 
   static LangEnum getLangIndex() {
-    final locale =
-        localeNotifier.value ?? string2Locale(LocalStorage.instance.getOtherSetting().lang);
+    final locale = localeNotifier.value ?? string2Locale(LocalStorage.instance.getOtherSetting().lang);
     return locale.languageCode == 'en' ? LangEnum.en : LangEnum.zh;
   }
 
   static Locale _resolveSupportedLocale(Locale requestedLocale) {
     for (final locale in getSupportLocale) {
-      if (locale.languageCode == requestedLocale.languageCode &&
-          locale.countryCode == requestedLocale.countryCode) {
+      if (locale.languageCode == requestedLocale.languageCode && locale.countryCode == requestedLocale.countryCode) {
         return locale;
       }
     }

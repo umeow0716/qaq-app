@@ -268,11 +268,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
       MsgDialog(errorDialogParameter).show();
     } else {
       if (widget.desktopMode) {
-        await DesktopDownloadManager.instance.download(
-          url: url,
-          suggestedName: courseFile.name,
-          referer: referer,
-        );
+        await DesktopDownloadManager.instance.download(url: url, suggestedName: courseFile.name, referer: referer);
       } else {
         await FileDownload.download(url, dirName, courseFile.name, referer);
       }
@@ -293,11 +289,7 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
 }
 
 class _DesktopCourseResourceButton extends StatefulWidget {
-  const _DesktopCourseResourceButton({
-    required this.child,
-    required this.trailingIcon,
-    required this.onPressed,
-  });
+  const _DesktopCourseResourceButton({required this.child, required this.trailingIcon, required this.onPressed});
 
   final Widget child;
   final IconData trailingIcon;
@@ -334,11 +326,7 @@ class _DesktopCourseResourceButtonState extends State<_DesktopCourseResourceButt
                 scale: _pressed ? 0.82 : 1,
                 duration: const Duration(milliseconds: 80),
                 curve: Curves.easeOutCubic,
-                child: Icon(
-                  widget.trailingIcon,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                child: Icon(widget.trailingIcon, size: 20, color: Theme.of(context).colorScheme.primary),
               ),
             ),
           ],

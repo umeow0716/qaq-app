@@ -10,10 +10,7 @@ void main() {
 
     test('routes configured iStudy hosts through GlobalProtect', () {
       expect(
-        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
-          host: 'istudy.ntut.edu.tw',
-          vpnHosts: vpnHosts,
-        ),
+        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudy.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
       );
       expect(
@@ -32,19 +29,16 @@ void main() {
       );
     });
 
-    test(
-      'can bind the loopback listener before VPN routing is enabled',
-      () async {
-        final bridge = GlobalProtectWebViewProxyBridge.instance;
-        addTearDown(bridge.close);
+    test('can bind the loopback listener before VPN routing is enabled', () async {
+      final bridge = GlobalProtectWebViewProxyBridge.instance;
+      addTearDown(bridge.close);
 
-        final port = await bridge.ensureListening(vpnHosts: vpnHosts);
+      final port = await bridge.ensureListening(vpnHosts: vpnHosts);
 
-        expect(port, greaterThan(0));
-        expect(bridge.isRunning, isTrue);
-        expect(bridge.vpnRoutingEnabled, isFalse);
-      },
-    );
+      expect(port, greaterThan(0));
+      expect(bridge.isRunning, isTrue);
+      expect(bridge.vpnRoutingEnabled, isFalse);
+    });
 
     test('serves a Windows PAC that proxies both iStudy service hosts', () async {
       final bridge = GlobalProtectWebViewProxyBridge.instance;
@@ -78,10 +72,7 @@ void main() {
         'istudy.ntut.edu.tw.example.com',
       ]) {
         expect(
-          GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
-            host: host,
-            vpnHosts: vpnHosts,
-          ),
+          GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts),
           isFalse,
           reason: host,
         );
