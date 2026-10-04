@@ -19,6 +19,7 @@ class CalendarController extends GetxController {
   final knownSchoolEvents = LinkedHashMap<DateTime, List<NTUTCalendarJson>>(equals: isSameDay);
 
   final selectedEventsRx = <NTUTCalendarJson>[].obs;
+  final isLoadingRx = false.obs;
   final calendarFormatRx = CalendarFormat.month.obs;
   final focusDayRx = DateTime.now().toLocal().obs;
   final selectedDayRx = DateTime.now().toLocal().obs;
@@ -27,6 +28,8 @@ class CalendarController extends GetxController {
   final lastDay = DateTime(2099);
 
   final _storedMonthSet = <DateTime>{};
+  final _pendingMonthLoads = <DateTime, Future<void>>{};
+  int _activeLoads = 0;
 
   String get currentCalendarLocaleString => (LanguageUtil.getLangIndex() == LangEnum.zh) ? "zh_TW" : "en_US";
 
@@ -45,9 +48,9 @@ class CalendarController extends GetxController {
     }
   }
 
-  Future<void> onPageChanged(DateTime focusedDay) async {
+  Future<void> onPageChanged(DateTime focusedDay, {bool showLoadingDialog = true}) async {
     focusDayRx.value = focusedDay;
-    await _getMonthlyEvents(startTime: focusedDay);
+    await _getMonthlyEvents(startTime: focusedDay, showLoadingDialog: showLoadingDialog);
 
     // change the selected day to the first day of current month.
     selectedDayRx.value = DateTime(focusedDay.year, focusedDay.month, 1).toUTCLocal();
@@ -63,62 +66,95 @@ class CalendarController extends GetxController {
     update();
   }
 
-  Future<void> findFirstEventsFromToday() async {
-    if (_storedMonthSet.isNotEmpty) {
-      return;
-    }
-
+  Future<void> findFirstEventsFromToday({bool showLoadingDialog = true}) async {
     final now = DateTime.now();
+    final firstDayOfCurrentMonth = DateTime(now.year, now.month, 1);
 
     // Only preserve the day part of the date.
     final today = DateTime(now.year, now.month, now.day).toUTCLocal();
 
-    await _getMonthlyEvents(startTime: today);
+    if (!_storedMonthSet.contains(firstDayOfCurrentMonth)) {
+      await _getMonthlyEvents(startTime: today, showLoadingDialog: showLoadingDialog);
+    }
     selectedEventsRx.value = getEventsFromDay(today);
   }
 
   /// Get the events of the month of the given [startTime].
   /// If the [startTime] is not the first day of the month, the [startTime] will be set to the first day of the month.
-  Future<void> _getMonthlyEvents({required DateTime startTime}) async {
+  Future<void> _getMonthlyEvents({required DateTime startTime, bool showLoadingDialog = true}) {
     // Since the backend api only supports monthly query, we need to query the whole month.
     const fixedEventRequestDay = 1;
-
     final firstDayOfTargetMonth = DateTime(startTime.year, startTime.month, fixedEventRequestDay);
+
     if (_storedMonthSet.contains(firstDayOfTargetMonth)) {
-      return;
+      return Future<void>.value();
     }
 
+    final pending = _pendingMonthLoads[firstDayOfTargetMonth];
+    if (pending != null) {
+      return pending;
+    }
+
+    late final Future<void> load;
+    load = _loadMonthlyEvents(
+      firstDayOfTargetMonth: firstDayOfTargetMonth,
+      showLoadingDialog: showLoadingDialog,
+    ).whenComplete(() {
+      if (identical(_pendingMonthLoads[firstDayOfTargetMonth], load)) {
+        _pendingMonthLoads.remove(firstDayOfTargetMonth);
+      }
+    });
+    _pendingMonthLoads[firstDayOfTargetMonth] = load;
+    return load;
+  }
+
+  Future<void> _loadMonthlyEvents({
+    required DateTime firstDayOfTargetMonth,
+    required bool showLoadingDialog,
+  }) async {
     // Use `zero` to represent the last day of the month.
     const fixedEventRequestLastDayOfAnyMonth = 0;
-
-    final lastDayOfTargetMonth = DateTime(startTime.year, startTime.month + 1, fixedEventRequestLastDayOfAnyMonth);
+    final lastDayOfTargetMonth = DateTime(
+      firstDayOfTargetMonth.year,
+      firstDayOfTargetMonth.month + 1,
+      fixedEventRequestLastDayOfAnyMonth,
+    );
 
     final taskFlow = TaskFlow();
-    final calendarTask = NTUTCalendarTask(firstDayOfTargetMonth, lastDayOfTargetMonth);
+    final calendarTask = NTUTCalendarTask(firstDayOfTargetMonth, lastDayOfTargetMonth)
+      ..openLoadingDialog = showLoadingDialog;
     taskFlow.addTask(calendarTask);
 
-    if (await taskFlow.start()) {
-      final schoolEvents = calendarTask.result;
-      if (schoolEvents == null) {
-        return;
-      }
-
-      for (final nonAddedSchoolEvent in schoolEvents) {
-        final eventTime = nonAddedSchoolEvent.startTime.toLocal();
-        if (eventTime.isBefore(firstDayOfTargetMonth) || eventTime.isAfter(lastDayOfTargetMonth)) {
-          continue;
+    _activeLoads++;
+    isLoadingRx.value = true;
+    try {
+      if (await taskFlow.start()) {
+        final schoolEvents = calendarTask.result;
+        if (schoolEvents == null) {
+          return;
         }
 
-        knownSchoolEvents.update(
-          eventTime,
-          (addedEvents) => [...addedEvents, nonAddedSchoolEvent],
-          ifAbsent: () => [nonAddedSchoolEvent],
-        );
-      }
+        for (final nonAddedSchoolEvent in schoolEvents) {
+          final eventTime = nonAddedSchoolEvent.startTime.toLocal();
+          if (eventTime.isBefore(firstDayOfTargetMonth) || eventTime.isAfter(lastDayOfTargetMonth)) {
+            continue;
+          }
 
-      _storedMonthSet.add(firstDayOfTargetMonth);
+          knownSchoolEvents.update(
+            eventTime,
+            (addedEvents) => [...addedEvents, nonAddedSchoolEvent],
+            ifAbsent: () => [nonAddedSchoolEvent],
+          );
+        }
+
+        _storedMonthSet.add(firstDayOfTargetMonth);
+      }
+    } finally {
+      _activeLoads--;
+      isLoadingRx.value = _activeLoads > 0;
     }
   }
+
 }
 
 extension on DateTime {

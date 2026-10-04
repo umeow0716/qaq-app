@@ -21,8 +21,9 @@ void main() {
     expect(IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true), IStudyAccessRoute.vpn);
   });
 
-  test('only guards the iStudy host', () {
+  test('guards both iStudy service hosts', () {
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudy.ntut.edu.tw/mooc/')), isTrue);
+    expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudycloud.ntut.edu.tw/')), isTrue);
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/')), isFalse);
   });
 }

@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
+import 'package:webview_all/webview_all.dart';
+// ignore: depend_on_referenced_packages
+import 'package:webview_all_windows/webview_all_windows.dart' as windows_webview;
 
 /// Cookie bridge shared by QAQ's WebViews.
 ///
-/// webview_flutter intentionally exposes only name/value/domain/path when
+/// The common WebView cookie API exposes only name/value/domain/path when
 /// setting a cookie. Android and iOS use a small native channel so the session
 /// cookies copied from Dio also retain Secure, HttpOnly, Expires and Max-Age.
 class WebViewCookieStore {
@@ -16,6 +19,22 @@ class WebViewCookieStore {
   static final WebViewCookieManager _manager = WebViewCookieManager();
 
   static Future<void> clearAll() async {
+    // On Windows, webview_all's cookie manager creates a native WebView
+    // controller in order to access the WebView2 cookie manager. If this runs
+    // during the unauthenticated startup/logout path, it would implicitly
+    // create the process-wide WebView2 environment with default options. QAQ
+    // would then be unable to install its PAC proxy arguments when the first
+    // actual WebView is opened after login.
+    //
+    // Before the first real QAQ WebView there cannot be any QAQ WebView cookies
+    // to clear, so skipping this initialization is both safe and necessary.
+    // Once a WebView environment has been prepared, logout still clears cookies
+    // exactly as before.
+    if (Platform.isWindows &&
+        !GlobalProtectWebViewProxyController.isWindowsEnvironmentPrepared) {
+      return;
+    }
+
     await _manager.clearCookies();
   }
 
@@ -38,14 +57,55 @@ class WebViewCookieStore {
       return;
     }
 
+    if (Platform.isWindows &&
+        _manager.platform is windows_webview.WindowsWebViewCookieManager) {
+      final manager =
+          _manager.platform as windows_webview.WindowsWebViewCookieManager;
+      await manager.setWindowsCookie(
+        windows_webview.WindowsWebViewCookie(
+          name: cookie.name,
+          value: cookie.value,
+          domain: _effectiveDomain(cookie, url),
+          path: _effectivePath(cookie),
+          expires: cookie.expires,
+          isHttpOnly: cookie.httpOnly,
+          isSecure: cookie.secure,
+          sameSite: _windowsSameSite(cookie.sameSite),
+        ),
+      );
+      return;
+    }
+
     await _manager.setCookie(
       WebViewCookie(
         name: cookie.name,
         value: cookie.value,
-        domain: cookie.domain ?? url.host,
-        path: cookie.path ?? '/',
+        domain: _effectiveDomain(cookie, url),
+        path: _effectivePath(cookie),
       ),
     );
+  }
+
+  static String _effectiveDomain(Cookie cookie, Uri url) {
+    final domain = cookie.domain;
+    return domain == null || domain.isEmpty ? url.host : domain;
+  }
+
+  static String _effectivePath(Cookie cookie) {
+    final path = cookie.path;
+    return path == null || path.isEmpty ? '/' : path;
+  }
+
+  static windows_webview.WindowsWebViewCookieSameSite? _windowsSameSite(
+    SameSite? sameSite,
+  ) {
+    return switch (sameSite) {
+      SameSite.none => windows_webview.WindowsWebViewCookieSameSite.none,
+      SameSite.lax => windows_webview.WindowsWebViewCookieSameSite.lax,
+      SameSite.strict => windows_webview.WindowsWebViewCookieSameSite.strict,
+      null => null,
+      _ => null,
+    };
   }
 
   static Future<String?> cookieHeaderFor(Uri url) async {

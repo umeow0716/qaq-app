@@ -8,6 +8,8 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    - windows/**
+    - linux/**
   language:
     strict-casts: false
     strict-inference: false

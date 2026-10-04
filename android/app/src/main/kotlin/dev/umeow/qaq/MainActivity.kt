@@ -2,11 +2,16 @@ package dev.umeow.qaq
 
 import android.app.Activity
 import android.app.DownloadManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.webkit.CookieManager
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
@@ -20,11 +25,14 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.Log
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.OutputStream
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
 import java.util.concurrent.Executor
 
 class MainActivity : FlutterActivity() {
@@ -33,6 +41,18 @@ class MainActivity : FlutterActivity() {
     private val mainExecutor = Executor { command -> runOnUiThread(command) }
     private val filePickerRequestCode = 0x5141
     private var pendingFilePickerResult: MethodChannel.Result? = null
+    private val pendingBlobDownloads = mutableMapOf<String, PendingBlobDownload>()
+    private var blobDownloadNotificationSequence = 0
+
+    private data class PendingBlobDownload(
+        val output: OutputStream,
+        val filename: String,
+        val mimeType: String?,
+        val expectedBytes: Long,
+        val contentUri: Uri? = null,
+        val file: File? = null,
+        var receivedBytes: Long = 0,
+    )
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -59,22 +79,36 @@ class MainActivity : FlutterActivity() {
                 }
                 "set_webview_proxy_override" -> {
                     val port = call.argument<Int>("port")
-                    val host = call.argument<String>("host")
-                    if (port == null || port !in 1..65535 || host.isNullOrBlank()) {
-                        result.error("INVALID_PROXY_ARGUMENTS", "A valid proxy port and host are required.", null)
+                    val hosts = call.argument<List<String>>("hosts")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotEmpty() }
+                        ?.distinct()
+                        .orEmpty()
+                    if (port == null || port !in 1..65535 || hosts.isEmpty()) {
+                        result.error("INVALID_PROXY_ARGUMENTS", "A valid proxy port and target hosts are required.", null)
                     } else {
-                        setWebViewProxyOverride(port, host, result)
+                        setWebViewProxyOverride(port, hosts, result)
                     }
                 }
                 "clear_webview_proxy_override" -> clearWebViewProxyOverride(result)
                 "set_webview_cookie" -> setWebViewCookie(call, result)
                 "pick_webview_files" -> pickWebViewFiles(call, result)
                 "enqueue_webview_download" -> enqueueWebViewDownload(call, result)
+                "begin_webview_blob_download" -> beginWebViewBlobDownload(call, result)
+                "append_webview_blob_download_chunk" -> appendWebViewBlobDownloadChunk(call, result)
+                "finish_webview_blob_download" -> finishWebViewBlobDownload(call, result)
+                "abort_webview_blob_download" -> abortWebViewBlobDownload(call, result)
                 else -> {
                     result.notImplemented()
                 }
             }
         }
+    }
+
+
+    override fun onDestroy() {
+        pendingBlobDownloads.keys.toList().forEach { cleanupBlobDownload(it, publish = false) }
+        super.onDestroy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -183,7 +217,13 @@ class MainActivity : FlutterActivity() {
             val cookie = call.argument<String>("cookie")
             val referer = call.argument<String>("referer")
             val keepAlive = call.argument<Boolean>("keepAlive") == true
-            val filename = resolveBrowserLikeFilename(sourceUrl, contentDisposition, mimeType)
+            val filenameHint = call.argument<String>("filenameHint")
+            val filename = resolveBrowserLikeFilename(
+                sourceUrl,
+                contentDisposition,
+                mimeType,
+                filenameHint,
+            )
 
             val request = DownloadManager.Request(requestUri)
                 .setTitle(filename)
@@ -214,13 +254,267 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun beginWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val sourceUrl = call.argument<String>("sourceUrl")
+        if (sourceUrl.isNullOrBlank()) {
+            result.error("INVALID_BLOB_DOWNLOAD", "A blob source URL is required.", null)
+            return
+        }
+
+        val contentDisposition = call.argument<String>("contentDisposition")
+        val mimeType = call.argument<String>("mimeType")
+        val filenameHint = call.argument<String>("filenameHint")
+        val totalBytes = (call.argument<Number>("totalBytes")?.toLong() ?: -1L).coerceAtLeast(-1L)
+        val filename = resolveBrowserLikeFilename(
+            sourceUrl,
+            contentDisposition,
+            mimeType,
+            filenameHint,
+        )
+        val token = UUID.randomUUID().toString()
+
+        try {
+            val pending = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    if (!mimeType.isNullOrBlank()) put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IllegalStateException("Unable to create a Downloads entry for $filename")
+                val output = contentResolver.openOutputStream(uri, "w")
+                    ?: run {
+                        contentResolver.delete(uri, null, null)
+                        throw IllegalStateException("Unable to open the Downloads entry for $filename")
+                    }
+                PendingBlobDownload(
+                    output = output,
+                    filename = filename,
+                    mimeType = mimeType,
+                    expectedBytes = totalBytes,
+                    contentUri = uri,
+                )
+            } else {
+                val directory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                    ?: File(filesDir, Environment.DIRECTORY_DOWNLOADS)
+                directory.mkdirs()
+                val file = nextAvailableDownloadFile(directory, filename)
+                PendingBlobDownload(
+                    output = file.outputStream(),
+                    filename = filename,
+                    mimeType = mimeType,
+                    expectedBytes = totalBytes,
+                    file = file,
+                )
+            }
+
+            pendingBlobDownloads[token] = pending
+            result.success(token)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to start WebView blob download", e)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun appendWebViewBlobDownloadChunk(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        val bytes = call.argument<ByteArray>("bytes")
+        val pending = token?.let(pendingBlobDownloads::get)
+        if (pending == null || bytes == null) {
+            result.error("INVALID_BLOB_DOWNLOAD", "Unknown blob download or missing data.", null)
+            return
+        }
+
+        try {
+            pending.output.write(bytes)
+            pending.receivedBytes += bytes.size
+            result.success(null)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to write WebView blob download", e)
+            if (token != null) cleanupBlobDownload(token, publish = false)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun finishWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        if (token.isNullOrBlank() || !pendingBlobDownloads.containsKey(token)) {
+            result.error("INVALID_BLOB_DOWNLOAD", "Unknown blob download.", null)
+            return
+        }
+
+        try {
+            val completed = publishBlobDownload(token)
+            val completionTitle = call.argument<String>("completionTitle")
+                ?.takeIf { it.isNotBlank() }
+                ?: "QAQ"
+            showBlobDownloadCompletedNotification(
+                title = completionTitle,
+                filename = completed["filename"] as String,
+            )
+            result.success(completed)
+        } catch (e: Exception) {
+            Log.e(logTag, "Unable to finish WebView blob download", e)
+            result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun abortWebViewBlobDownload(call: MethodCall, result: MethodChannel.Result) {
+        val token = call.argument<String>("token")
+        if (!token.isNullOrBlank()) cleanupBlobDownload(token, publish = false)
+        result.success(null)
+    }
+
+    private fun publishBlobDownload(token: String): Map<String, Any> {
+        val pending = pendingBlobDownloads.remove(token)
+            ?: throw IllegalStateException("Unknown blob download.")
+
+        try {
+            pending.output.flush()
+            pending.output.close()
+
+            val uri = pending.contentUri
+            val publishedBytes = if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }
+                val updated = contentResolver.update(uri, values, null, null)
+                if (updated != 1) {
+                    throw IllegalStateException("Unable to publish ${pending.filename} to Downloads.")
+                }
+                queryMediaStoreSize(uri)
+            } else {
+                pending.file?.length() ?: -1L
+            }
+
+            val expectedBytes = pending.expectedBytes.takeIf { it >= 0 } ?: pending.receivedBytes
+            val verifiedBytes = publishedBytes.takeIf { it >= 0 } ?: pending.receivedBytes
+            if (verifiedBytes != pending.receivedBytes ||
+                (expectedBytes >= 0 && verifiedBytes != expectedBytes)
+            ) {
+                throw IllegalStateException(
+                    "Published blob size mismatch for ${pending.filename}: " +
+                        "expected=$expectedBytes received=${pending.receivedBytes} published=$verifiedBytes",
+                )
+            }
+
+            return mapOf(
+                "filename" to pending.filename,
+                "bytes" to verifiedBytes,
+                "uri" to (uri?.toString() ?: pending.file?.toURI()?.toString().orEmpty()),
+            )
+        } catch (e: Exception) {
+            val uri = pending.contentUri
+            if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentResolver.delete(uri, null, null)
+            } else {
+                pending.file?.delete()
+            }
+            throw e
+        }
+    }
+
+    private fun queryMediaStoreSize(uri: Uri): Long {
+        contentResolver.query(
+            uri,
+            arrayOf(MediaStore.MediaColumns.SIZE),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                if (index >= 0 && !cursor.isNull(index)) return cursor.getLong(index)
+            }
+        }
+        return -1L
+    }
+
+    private fun cleanupBlobDownload(token: String, publish: Boolean) {
+        if (publish) {
+            publishBlobDownload(token)
+            return
+        }
+
+        val pending = pendingBlobDownloads.remove(token) ?: return
+        try {
+            pending.output.flush()
+        } catch (_: Exception) {
+        }
+        try {
+            pending.output.close()
+        } catch (_: Exception) {
+        }
+
+        val uri = pending.contentUri
+        if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentResolver.delete(uri, null, null)
+        } else {
+            pending.file?.delete()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showBlobDownloadCompletedNotification(title: String, filename: String) {
+        val manager = getSystemService(NotificationManager::class.java)
+        val channelId = "qaq_webview_blob_download"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    channelId,
+                    "WebView downloads",
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
+            )
+        }
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            Notification.Builder(this)
+        }
+        builder
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(title)
+            .setContentText(filename)
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_STATUS)
+
+        try {
+            blobDownloadNotificationSequence =
+                if (blobDownloadNotificationSequence >= 0x4FFF) 1 else blobDownloadNotificationSequence + 1
+            manager.notify(0x5200 + blobDownloadNotificationSequence, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(logTag, "Notification permission unavailable for completed blob download", e)
+        }
+    }
+
+    private fun nextAvailableDownloadFile(directory: File, filename: String): File {
+        var candidate = File(directory, filename)
+        if (!candidate.exists()) return candidate
+
+        val dot = filename.lastIndexOf('.')
+        val base = if (dot > 0) filename.substring(0, dot) else filename
+        val extension = if (dot > 0) filename.substring(dot) else ""
+        for (index in 1..999) {
+            candidate = File(directory, "$base ($index)$extension")
+            if (!candidate.exists()) return candidate
+        }
+        throw IllegalStateException("Unable to find an available filename for $filename")
+    }
+
     private fun resolveBrowserLikeFilename(
         sourceUrl: String,
         contentDisposition: String?,
         mimeType: String?,
+        filenameHint: String? = null,
     ): String {
+        val hintedName = filenameHint?.trim()?.takeIf { it.isNotEmpty() }
         val dispositionName = parseContentDispositionFilename(contentDisposition)
-        val candidate = dispositionName ?: Uri.decode(URLUtil.guessFileName(sourceUrl, null, mimeType))
+        val candidate = hintedName
+            ?: dispositionName
+            ?: decodeFilenameValue(URLUtil.guessFileName(sourceUrl, null, mimeType))
         return sanitizeDownloadFilename(candidate)
     }
 
@@ -238,7 +532,15 @@ class MainActivity : FlutterActivity() {
         val plain = Regex(
             """(?i)(?:^|;)\s*filename\s*=\s*("(?:\\.|[^"])*"|[^;]+)""",
         ).find(contentDisposition)?.groupValues?.get(1)
-        return unquoteHeaderValue(plain)?.let(Uri::decode)
+        return unquoteHeaderValue(plain)?.let(::decodeFilenameValue)
+    }
+
+    private fun decodeFilenameValue(value: String): String {
+        return try {
+            Uri.decode(value)
+        } catch (_: IllegalArgumentException) {
+            value
+        }
     }
 
     private fun decodeExtendedFilename(rawValue: String?): String? {
@@ -281,22 +583,50 @@ class MainActivity : FlutterActivity() {
 
     private fun unquoteHeaderValue(rawValue: String?): String? {
         var value = rawValue?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        if (value.length >= 2 && value.first() == '"' && value.last() == '"') {
-            value = value.substring(1, value.length - 1)
-                .replace(Regex("""\\(.)"""), "$1")
+        val unquoted = stripWrappingFilenameQuotes(value)
+        if (unquoted != value) {
+            value = unquoted.replace(Regex("""\\(.)"""), "$1")
         }
         return value.takeIf { it.isNotBlank() }
     }
 
+    // Keep these portability rules aligned with
+    // lib/src/file/webview_download_filename.dart for desktop downloads.
     private fun sanitizeDownloadFilename(value: String): String {
-        val sanitized = value
-            .replace(Regex("""[\\/:*?"<>|\u0000-\u001F]"""), "_")
+        var sanitized = stripWrappingFilenameQuotes(value.trim())
+            .replace(Regex("""[\\/:*?"<>|\u0000-\u001F\u007F]"""), "_")
             .trim()
+            .trimStart('.', ' ')
             .trimEnd('.', ' ')
+        sanitized = stripWrappingFilenameQuotes(sanitized).trimEnd('.', ' ')
+
+        if (sanitized.isEmpty()) return "download"
+
+        val stem = sanitized.substringBefore('.').uppercase(Locale.ROOT)
+        if (Regex("""^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$""").matches(stem)) {
+            sanitized = "_$sanitized"
+        }
         return sanitized.ifEmpty { "download" }
     }
 
-    private fun setWebViewProxyOverride(port: Int, host: String, result: MethodChannel.Result) {
+    private fun stripWrappingFilenameQuotes(value: String): String {
+        var result = value
+        while (result.length >= 2) {
+            val matches = when (result.first() to result.last()) {
+                '"' to '"',
+                '\'' to '\'',
+                '“' to '”',
+                '‘' to '’',
+                '`' to '`' -> true
+                else -> false
+            }
+            if (!matches) break
+            result = result.substring(1, result.length - 1).trim()
+        }
+        return result
+    }
+
+    private fun setWebViewProxyOverride(port: Int, hosts: List<String>, result: MethodChannel.Result) {
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
             result.error(
                 "WEBVIEW_PROXY_UNSUPPORTED",
@@ -313,9 +643,8 @@ class MainActivity : FlutterActivity() {
                 .addProxyRule("http://127.0.0.1:$port")
 
             if (reverseBypassSupported) {
-                builder
-                    .addBypassRule(host)
-                    .setReverseBypassEnabled(true)
+                hosts.forEach(builder::addBypassRule)
+                builder.setReverseBypassEnabled(true)
             } else {
                 builder
                     .addBypassRule("127.0.0.1")

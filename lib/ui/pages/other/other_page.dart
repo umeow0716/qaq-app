@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,17 +14,30 @@ import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/file_store.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/other/route_utils.dart';
+import 'package:qaq_app/ui/pages/webview/qaq_web_view.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum OnListViewPress { setting, fileViewer, logout, feedback, about, login, subSystem }
+enum OnListViewPress {
+  setting,
+  fileViewer,
+  logout,
+  feedback,
+  feedbackUploadTest,
+  localUploadHtmlTest,
+  about,
+  login,
+  subSystem,
+  installDesktopApp,
+}
 
 class OtherPage extends StatefulWidget {
   final PageController pageController;
@@ -68,19 +83,39 @@ class _OtherPageState extends State<OtherPage> {
       },
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
-    if (Platform.isAndroid)
-      {
+    {
         "icon": EvaIcons.messageSquareOutline,
         "color": Colors.cyan,
         "title": R.current.feedbackForm,
         "onPress": OnListViewPress.feedback,
-      },
+    },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
       "title": R.current.about,
       "onPress": OnListViewPress.about,
     },
+    if (kDebugMode) ...[
+      {
+        "icon": EvaIcons.uploadOutline,
+        "color": Colors.deepPurpleAccent,
+        "title": R.current.feedbackUploadTest,
+        "onPress": OnListViewPress.feedbackUploadTest,
+      },
+      {
+        "icon": EvaIcons.fileAddOutline,
+        "color": Colors.indigoAccent,
+        "title": R.current.localUploadHtmlTest,
+        "onPress": OnListViewPress.localUploadHtmlTest,
+      },
+    ],
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+      {
+        "icon": Icons.desktop_windows_outlined,
+        "color": Colors.blueGrey,
+        "title": R.current.installDesktopApp,
+        "onPress": OnListViewPress.installDesktopApp,
+      },
   ];
 
   @override
@@ -262,7 +297,74 @@ class _OtherPageState extends State<OtherPage> {
       case OnListViewPress.setting:
         RouteUtils.toSettingPage(widget.pageController);
         break;
+      case OnListViewPress.feedbackUploadTest:
+        final link = await _buildFeedbackUrl();
+        await Get.to(() => QAQWebView(initialUrl: link, title: R.current.feedbackUploadTest));
+        break;
+      case OnListViewPress.localUploadHtmlTest:
+        final link = await _writeLocalUploadDebugHtml();
+        await Get.to(() => QAQWebView(initialUrl: link, title: R.current.localUploadHtmlTest));
+        break;
+      case OnListViewPress.installDesktopApp:
+        await launchUrl(AppLink.githubLatestReleaseUrl, mode: LaunchMode.externalApplication);
+        break;
     }
+  }
+
+
+  Future<Uri> _writeLocalUploadDebugHtml() async {
+    final directory = await Directory.systemTemp.createTemp('qaq_upload_debug_');
+    final file = File('${directory.path}/index.html');
+    await file.writeAsString(_localUploadDebugHtml);
+    return file.uri;
+  }
+
+  String get _localUploadDebugHtml {
+    const htmlEscape = HtmlEscape();
+    final htmlLanguage = LanguageUtil.getLangIndex() == LangEnum.en ? 'en' : 'zh-Hant';
+    final noFileSelected = jsonEncode(R.current.noFileSelected);
+    return '''<!doctype html>
+<html lang="$htmlLanguage">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${htmlEscape.convert(R.current.localUploadDebugHeading)}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; line-height: 1.5; }
+    label { display: block; margin: 18px 0 8px; font-weight: 700; }
+    input { display: block; margin: 8px 0 16px; }
+    pre { white-space: pre-wrap; padding: 12px; border: 1px solid #bbb; border-radius: 8px; }
+    .hint { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>${htmlEscape.convert(R.current.localUploadDebugHeading)}</h1>
+  <p class="hint">${htmlEscape.convert(R.current.localUploadDebugHint)}</p>
+
+  <label for="single">${htmlEscape.convert(R.current.singleFile)}</label>
+  <input id="single" type="file">
+
+  <label for="multiple">${htmlEscape.convert(R.current.multipleFiles)}</label>
+  <input id="multiple" type="file" multiple>
+
+  <label for="image">${htmlEscape.convert(R.current.imageFile)}</label>
+  <input id="image" type="file" accept="image/*">
+
+  <h2>${htmlEscape.convert(R.current.selectedFiles)}</h2>
+  <pre id="result">${htmlEscape.convert(R.current.noFileSelected)}</pre>
+
+  <script>
+    const result = document.getElementById('result');
+    const noFileSelected = $noFileSelected;
+    for (const input of document.querySelectorAll('input[type=file]')) {
+      input.addEventListener('change', () => {
+        const names = Array.from(input.files || []).map((file) => file.name + ' (' + file.size + ' bytes)');
+        result.textContent = input.id + ':\\n' + (names.length ? names.join('\\n') : noFileSelected);
+      });
+    }
+  </script>
+</body>
+</html>''';
   }
 
   Future<Uri> _buildFeedbackUrl() async {

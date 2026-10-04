@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/ischool_plus_connector.dart';
+import 'package:qaq_app/src/file/desktop_download_manager.dart';
 import 'package:qaq_app/src/file/file_download.dart';
 import 'package:qaq_app/src/file/file_store.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
@@ -19,7 +20,9 @@ class IPlusFilePage extends StatefulWidget {
   final CourseInfoJson courseInfo;
   final String studentId;
 
-  const IPlusFilePage(this.studentId, this.courseInfo, {super.key});
+  const IPlusFilePage(this.studentId, this.courseInfo, {super.key, this.desktopMode = false});
+
+  final bool desktopMode;
 
   @override
   State<IPlusFilePage> createState() => _IPlusFilePage();
@@ -75,6 +78,10 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (widget.desktopMode) {
+      return _buildBody();
+    }
+
     return PopScope<void>(
       canPop: !selectList.inSelectMode,
       onPopInvokedWithResult: (didPop, result) {
@@ -139,26 +146,38 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
       Expanded(
         child: ListView.separated(
           itemCount: courseFileList.length,
-          itemBuilder: (context, index) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            child: _buildCourseFile(index, courseFileList[index]),
-            onTap: () {
-              if (selectList.inSelectMode) {
-                setState(() {
-                  selectList.setItemReverse(index);
-                });
-              } else {
-                _downloadOneFile(index);
-              }
-            },
-            onLongPress: () {
-              if (!selectList.inSelectMode) {
-                setState(() {
-                  selectList.setItemReverse(index);
-                });
-              }
-            },
-          ),
+          itemBuilder: (context, index) {
+            final courseFile = courseFileList[index];
+            if (widget.desktopMode) {
+              final opensLink = courseFile.fileType.any((type) => type.type == CourseFileType.link);
+              return _DesktopCourseResourceButton(
+                trailingIcon: opensLink ? Icons.open_in_new_rounded : Icons.download_rounded,
+                onPressed: () => _downloadOneFile(index),
+                child: _buildCourseFile(index, courseFile),
+              );
+            }
+
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              child: _buildCourseFile(index, courseFile),
+              onTap: () {
+                if (selectList.inSelectMode) {
+                  setState(() {
+                    selectList.setItemReverse(index);
+                  });
+                } else {
+                  _downloadOneFile(index);
+                }
+              },
+              onLongPress: () {
+                if (!selectList.inSelectMode) {
+                  setState(() {
+                    selectList.setItemReverse(index);
+                  });
+                }
+              },
+            );
+          },
           separatorBuilder: (context, index) => Container(color: Colors.black12, height: 1),
         ),
       ),
@@ -234,6 +253,10 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
     }
 
     if (urlParse.host.contains("istream.ntut.edu.tw")) {
+      if (widget.desktopMode) {
+        await RouteUtils.toVideoPlayer(urlParse.toString(), widget.courseInfo, courseFile.name);
+        return;
+      }
       final errorDialogParameter = MsgDialogParameter(
         desc: '${R.current.isVideo}\n${R.current.videoMayLoadFailedWarningMsg}',
       );
@@ -244,7 +267,15 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
           RouteUtils.toVideoPlayer(urlParse.toString(), widget.courseInfo, courseFile.name);
       MsgDialog(errorDialogParameter).show();
     } else {
-      await FileDownload.download(url, dirName, courseFile.name, referer);
+      if (widget.desktopMode) {
+        await DesktopDownloadManager.instance.download(
+          url: url,
+          suggestedName: courseFile.name,
+          referer: referer,
+        );
+      } else {
+        await FileDownload.download(url, dirName, courseFile.name, referer);
+      }
     }
   }
 
@@ -259,6 +290,62 @@ class _IPlusFilePage extends State<IPlusFilePage> with AutomaticKeepAliveClientM
 
   @override
   bool get wantKeepAlive => true;
+}
+
+class _DesktopCourseResourceButton extends StatefulWidget {
+  const _DesktopCourseResourceButton({
+    required this.child,
+    required this.trailingIcon,
+    required this.onPressed,
+  });
+
+  final Widget child;
+  final IconData trailingIcon;
+  final VoidCallback onPressed;
+
+  @override
+  State<_DesktopCourseResourceButton> createState() => _DesktopCourseResourceButtonState();
+}
+
+class _DesktopCourseResourceButtonState extends State<_DesktopCourseResourceButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedScale(
+    scale: _pressed ? 0.985 : 1,
+    duration: const Duration(milliseconds: 80),
+    curve: Curves.easeOutCubic,
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onPressed,
+        onHighlightChanged: _setPressed,
+        child: Row(
+          children: [
+            Expanded(child: widget.child),
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: AnimatedScale(
+                scale: _pressed ? 0.82 : 1,
+                duration: const Duration(milliseconds: 80),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  widget.trailingIcon,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class SelectList {

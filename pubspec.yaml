@@ -2,11 +2,11 @@ name: qaq_app
 description: QAQ, an independent campus life assistant for NTUT students.
 publish_to: 'none'
 
-version: 1.7.3+5277
+version: 1.8.0+5278
 
 environment:
-  flutter: ">=3.47.5 <4.0.0"
-  sdk: ">=3.13.2 <4.0.0"
+  flutter: ">=3.44.7 <4.0.0"
+  sdk: ">=3.12.2 <4.0.0"
 
 dependencies:
   flutter:
@@ -14,7 +14,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  intl: ^0.20.3
+  intl: ^0.20.2
   path: ^1.9.1
   path_provider: ^2.1.6
   provider: ^6.1.5+1
@@ -29,6 +29,7 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_secure_storage: ^11.2.0
   flutter_cache_manager: ^3.4.2
+  file_selector: ^1.0.3
   dio: ^5.11.1
   dio_cookie_manager: ^3.5.0
   cookie_jar: ^4.0.9
@@ -38,8 +39,10 @@ dependencies:
   pointycastle: ^4.0.0
   github: ^9.26.0
   webview_flutter: ^4.14.1
-  webview_flutter_android: 4.14.1
-  webview_flutter_platform_interface: 2.15.1
+  webview_all:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all
   eva_icons_flutter: ^4.0.0
   lucide_icons_flutter: ^3.1.18
   json_annotation: ^4.12.0
@@ -60,7 +63,7 @@ dependencies:
   numberpicker: ^2.1.2
   open_filex: ^4.7.0
 
-  meta: ^1.19.0
+  meta: ^1.18.0
   android_intent_plus: ^6.1.0
   package_info_plus: ^10.2.1
 
@@ -69,16 +72,54 @@ dev_dependencies:
     sdk: flutter
   dependency_validator: ^5.0.6
   flutter_launcher_icons: ^0.14.4
-  build_runner: ^2.16.1
+  build_runner: ^2.15.1
   json_serializable: ^6.14.1
   flutter_lints: ^6.0.0
   intl_utils: ^2.8.16
   flutter_native_splash: ^2.4.8
 
+# The forked webview_all package is a monorepo. A git dependency on only
+# webview_all does not force its federated implementation packages or
+# platform interface to resolve from the same git checkout. Keep these
+# overrides in sync until the fork is published as hosted packages.
+dependency_overrides:
+  webview_platform_interface:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_platform_interface
+  webview_all_android:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_android
+  webview_all_wkwebview:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_wkwebview
+  webview_all_linux:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_linux
+  webview_all_windows:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_windows
+  webview_all_web:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_web
+  webview_all_ohos:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_ohos
+
 flutter:
   uses-material-design: true
   assets:
     - assets/
+    # Linux runner loads this file directly from flutter_assets at runtime.
+    - path: assets/images/desktop-icon.png
+      platforms:
+        - linux
 
   fonts:
     - family: QAQFont

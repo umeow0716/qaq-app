@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
@@ -30,6 +31,8 @@ class CourseInfoPage extends StatefulWidget {
 
 class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAliveClientMixin {
   static const _cacheMaxAge = Duration(days: 7);
+
+  bool get _isDesktop => Platform.isWindows || Platform.isLinux;
 
   List<CourseStudent> _students = <CourseStudent>[];
   bool _isStudentLoading = true;
@@ -254,6 +257,27 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
   Widget _buildAnimationList() {
     final listItem = _buildListItems();
+    if (_isDesktop) {
+      return AnimationLimiter(
+        child: ListView.builder(
+          itemCount: listItem.length,
+          itemBuilder: (context, index) => AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 180),
+            child: SlideAnimation(
+              verticalOffset: 10,
+              child: FadeInAnimation(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: listItem[index],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return AnimationLimiter(
       child: ListView.builder(
         itemCount: listItem.length,
@@ -295,7 +319,7 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
     final studentError = _studentError;
     if (studentError != null) {
       listItem.add(
-        _StudentListEntrance(
+        _buildStudentRows(
           key: ValueKey('student-error-$studentError'),
           rows: [
             Padding(
@@ -339,7 +363,15 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 
   Widget _buildAnimatedStudentList(List<Widget> rows) {
     final revision = _studentLastUpdated?.microsecondsSinceEpoch ?? 0;
-    return _StudentListEntrance(key: ValueKey('student-list-$revision'), rows: rows);
+    return _buildStudentRows(key: ValueKey('student-list-$revision'), rows: rows);
+  }
+
+  Widget _buildStudentRows({required Key key, required List<Widget> rows}) {
+    return _StudentListEntrance(
+      key: key,
+      rows: rows,
+      paintOnly: _isDesktop,
+    );
   }
 
   List<Widget> _buildCourseData() {
@@ -604,9 +636,10 @@ class _CourseInfoPageState extends State<CourseInfoPage> with AutomaticKeepAlive
 }
 
 class _StudentListEntrance extends StatefulWidget {
-  const _StudentListEntrance({super.key, required this.rows});
+  const _StudentListEntrance({super.key, required this.rows, this.paintOnly = false});
 
   final List<Widget> rows;
+  final bool paintOnly;
 
   @override
   State<_StudentListEntrance> createState() => _StudentListEntranceState();
@@ -617,15 +650,21 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
   static const _rowDelay = Duration(milliseconds: 62);
   static const _verticalOffset = 50.0;
 
+  Duration get _effectiveRowDuration => widget.paintOnly ? const Duration(milliseconds: 180) : _rowDuration;
+  Duration get _effectiveRowDelay => widget.paintOnly ? const Duration(milliseconds: 24) : _rowDelay;
+  double get _effectiveVerticalOffset => widget.paintOnly ? 10.0 : _verticalOffset;
+
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
     final rowCount = widget.rows.length;
+    final rowDuration = _effectiveRowDuration;
+    final rowDelay = _effectiveRowDelay;
     final totalMilliseconds = rowCount <= 1
-        ? _rowDuration.inMilliseconds
-        : _rowDuration.inMilliseconds + ((rowCount - 1) * _rowDelay.inMilliseconds);
+        ? rowDuration.inMilliseconds
+        : rowDuration.inMilliseconds + ((rowCount - 1) * rowDelay.inMilliseconds);
     _controller = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: totalMilliseconds),
@@ -654,8 +693,8 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
     final totalMilliseconds = _controller.duration!.inMilliseconds.toDouble();
     return Column(
       children: List<Widget>.generate(widget.rows.length, (index) {
-        final startMilliseconds = (index * _rowDelay.inMilliseconds).toDouble();
-        final endMilliseconds = startMilliseconds + _rowDuration.inMilliseconds;
+        final startMilliseconds = (index * _effectiveRowDelay.inMilliseconds).toDouble();
+        final endMilliseconds = startMilliseconds + _effectiveRowDuration.inMilliseconds;
         final start = startMilliseconds / totalMilliseconds;
         final end = endMilliseconds / totalMilliseconds;
 
@@ -664,17 +703,27 @@ class _StudentListEntranceState extends State<_StudentListEntrance> with SingleT
           child: widget.rows[index],
           builder: (context, child) {
             final progress = Interval(start, end, curve: Curves.ease).transform(_controller.value);
-            // Unlike the static course rows, this list is inserted after an
-            // async request. Animate layout height as well as paint so the full
-            // table does not occupy its final height in a single frame.
+            final paintedChild = Opacity(
+              opacity: progress,
+              child: Transform.translate(
+                offset: Offset(0, _effectiveVerticalOffset * (1 - progress)),
+                child: child,
+              ),
+            );
+
+            // Desktop keeps the final row geometry from the first frame and
+            // animates paint only. This avoids relayout feedback when the
+            // inspector is opening while async classmate rows arrive.
+            if (widget.paintOnly) {
+              return paintedChild;
+            }
+
+            // Mobile keeps the existing height entrance animation.
             return ClipRect(
               child: Align(
                 alignment: Alignment.topCenter,
                 heightFactor: progress,
-                child: Opacity(
-                  opacity: progress,
-                  child: Transform.translate(offset: Offset(0, _verticalOffset * (1 - progress)), child: child),
-                ),
+                child: paintedChild,
               ),
             );
           },

@@ -2,6 +2,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 
 enum IStudyAccessRoute { direct, blocked, vpn }
 
@@ -16,8 +17,13 @@ class IStudyAccessGuard {
   IStudyAccessGuard._();
 
   static const iStudyHost = 'istudy.ntut.edu.tw';
+  static const iStudyCloudHost = 'istudycloud.ntut.edu.tw';
+  static const List<String> proxyHosts = <String>[
+    iStudyHost,
+    iStudyCloudHost,
+  ];
 
-  static bool isIStudyUri(Uri uri) => uri.host.toLowerCase() == iStudyHost;
+  static bool isIStudyUri(Uri uri) => proxyHosts.contains(uri.host.toLowerCase());
 
   static bool isIStudyUrl(String url) {
     final uri = Uri.tryParse(url);
@@ -55,16 +61,13 @@ class IStudyAccessGuard {
 
   static String get blockedHtml => _messageHtml(blockedTitle, blockedMessage);
 
-  static String vpnFailedHtml([Object? error]) => _messageHtml(
-    'VPN 連線失敗',
-    '目前無法透過實驗性 VPN 連線至 i 學園。\n\n'
-        '請確認帳號密碼仍可登入校務系統，或稍後重試。\n\n'
-        '⚠️ 此功能仍在實驗階段，目前測試樣本有限，穩定性可能因網路環境而異。',
-  );
+  static String vpnFailedHtml([Object? error]) =>
+      _messageHtml(R.current.iStudyVpnFailedTitle, R.current.iStudyVpnFailedMessage);
 
-  static String _messageHtml(String title, String message) =>
-      '''<!doctype html>
-<html lang="zh-Hant">
+  static String _messageHtml(String title, String message) {
+    final htmlLanguage = LanguageUtil.getLangIndex() == LangEnum.en ? 'en' : 'zh-Hant';
+    return '''<!doctype html>
+<html lang="$htmlLanguage">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -84,6 +87,7 @@ class IStudyAccessGuard {
 </div></div>
 </body>
 </html>''';
+  }
 
   static String _escapeHtml(String value) => value
       .replaceAll('&', '&amp;')

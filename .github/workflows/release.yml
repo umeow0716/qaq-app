@@ -1,0 +1,360 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.version.outputs.app-version }}
+      release-tag: ${{ steps.version.outputs.release-tag }}
+      publish-release: ${{ steps.version.outputs.publish-release }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate tag against pubspec
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pubspec_version="$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' pubspec.yaml | head -n 1)"
+          if [[ -z "$pubspec_version" ]]; then
+            echo "Could not read version from pubspec.yaml." >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            app_version="$pubspec_version"
+            release_tag="v${app_version}-dry-run.${GITHUB_RUN_NUMBER}"
+            publish_release=false
+            echo "Manual dry run: artifacts will be built, but no GitHub Release will be created."
+          else
+            tag="${GITHUB_REF_NAME}"
+
+            if [[ "$tag" =~ ^v(.+)-dry-run\.[0-9]+$ ]]; then
+              app_version="${BASH_REMATCH[1]}"
+              release_tag="$tag"
+              publish_release=false
+              echo "Dry-run tag detected: artifacts will be built, but no GitHub Release will be created."
+            elif [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+              app_version="${tag#v}"
+              release_tag="$tag"
+              publish_release=true
+            else
+              echo "Release tag must look like v1.2.3, v1.2.3-beta.1, or v1.2.3-dry-run.1; got: $tag" >&2
+              exit 1
+            fi
+
+            if [[ "$pubspec_version" != "$app_version" ]]; then
+              echo "Tag version ($app_version) does not match pubspec.yaml ($pubspec_version)." >&2
+              exit 1
+            fi
+          fi
+
+          echo "app-version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "release-tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "publish-release=$publish_release" >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android release artifacts
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Configure Android release signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              exit 1
+            fi
+          done
+
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.jks
+          cat > android/key.properties <<EOF_KEY_PROPERTIES
+          storePassword=$ANDROID_STORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=release.jks
+          EOF_KEY_PROPERTIES
+          bash scripts/setup_release.sh
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: bash scripts/codegen.sh
+
+      - name: Build split APKs
+        run: >-
+          flutter build apk
+          --release
+          --flavor real
+          --split-per-abi
+          --android-skip-build-dependency-validation
+
+      - name: Collect split APKs
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          copy_one() {
+            local pattern="$1"
+            local target="$2"
+            mapfile -t matches < <(
+              find build/app/outputs/flutter-apk -maxdepth 1 -type f -name "$pattern" | sort
+            )
+            if [[ ${#matches[@]} -ne 1 ]]; then
+              printf 'Expected exactly one match for %s, got %d:\n' "$pattern" "${#matches[@]}" >&2
+              printf '  %s\n' "${matches[@]:-<none>}" >&2
+              exit 1
+            fi
+            cp "${matches[0]}" "dist/$target"
+          }
+
+          copy_one '*armeabi-v7a*release.apk' "QAQ-$RELEASE_TAG-android-armeabi-v7a.apk"
+          copy_one '*arm64-v8a*release.apk' "QAQ-$RELEASE_TAG-android-arm64-v8a.apk"
+          copy_one '*x86_64*release.apk' "QAQ-$RELEASE_TAG-android-x86_64.apk"
+
+      - name: Build universal APK
+        run: >-
+          flutter build apk
+          --release
+          --flavor real
+          --android-skip-build-dependency-validation
+
+      - name: Collect universal APK
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t matches < <(
+            find build/app/outputs/flutter-apk -maxdepth 1 -type f -name '*real-release.apk' \
+              ! -name '*armeabi-v7a*' ! -name '*arm64-v8a*' ! -name '*x86_64*' | sort
+          )
+          if [[ ${#matches[@]} -ne 1 ]]; then
+            printf 'Expected exactly one universal real release APK, got %d:\n' "${#matches[@]}" >&2
+            printf '  %s\n' "${matches[@]:-<none>}" >&2
+            exit 1
+          fi
+          cp "${matches[0]}" "dist/QAQ-$RELEASE_TAG-android-universal.apk"
+
+      - name: Build Play Store AAB
+        run: >-
+          flutter build appbundle
+          --release
+          --flavor real
+          --android-skip-build-dependency-validation
+
+      - name: Collect AAB
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t matches < <(find build/app/outputs/bundle -type f -name '*.aab' | sort)
+          if [[ ${#matches[@]} -ne 1 ]]; then
+            printf 'Expected exactly one release AAB, got %d:\n' "${#matches[@]}" >&2
+            printf '  %s\n' "${matches[@]:-<none>}" >&2
+            exit 1
+          fi
+          cp "${matches[0]}" "dist/QAQ-$RELEASE_TAG-android.aab"
+          ls -lh dist
+
+      - name: Upload Android release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows x64 release artifact
+    needs: prepare
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        shell: bash
+        run: bash scripts/codegen.sh
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseDir = 'build/windows/x64/runner/Release'
+          if (-not (Test-Path "$releaseDir/QAQ.exe")) {
+            throw "Windows release executable not found: $releaseDir/QAQ.exe"
+          }
+
+          New-Item -ItemType Directory -Force -Path 'dist/QAQ' | Out-Null
+          Copy-Item "$releaseDir/*" 'dist/QAQ/' -Recurse -Force
+          Compress-Archive `
+            -Path 'dist/QAQ' `
+            -DestinationPath "dist/QAQ-$env:RELEASE_TAG-windows-x64.zip" `
+            -CompressionLevel Optimal
+          Remove-Item 'dist/QAQ' -Recurse -Force
+          Get-ChildItem dist
+
+      - name: Upload Windows release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-windows
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Linux x64 release artifacts
+    needs: prepare
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            curl \
+            libgtk-3-dev \
+            libsecret-1-dev \
+            libwebkit2gtk-4.1-dev \
+            ninja-build \
+            pkg-config
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: bash scripts/codegen.sh
+
+      - name: Build Linux release
+        run: flutter build linux --release
+
+      - name: Package DEB and AppImage
+        run: >-
+          bash scripts/package_linux.sh
+          '${{ needs.prepare.outputs.app-version }}'
+          '${{ needs.prepare.outputs.release-tag }}'
+
+      - name: Upload Linux release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: [prepare, android, windows, linux]
+    if: needs.prepare.outputs.publish-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -printf '%f\n' \
+            | sort \
+            | xargs sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "QAQ $RELEASE_TAG" \
+              --generate-notes
+          fi

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -121,6 +123,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
         ),
       ),
       barrierDismissible: true,
+      transitionDuration: Platform.isWindows || Platform.isLinux ? const Duration(milliseconds: 160) : null,
     );
 
     if (urlStr == null) {

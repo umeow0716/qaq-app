@@ -13,6 +13,7 @@ import 'package:qaq_app/src/connector/interceptors/response_cookie_filter.dart';
 import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/providers/category_provider.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_page.dart';
 import 'package:qaq_app/ui/screen/main_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -38,6 +39,7 @@ Future<void> runQAQApp() async {
   }
 
   await LocalStorage.instance.init(httpClientInterceptors: apiInterceptors, cookieJar: cookieJar);
+  await LanguageUtil.init();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   WidgetsBinding.instance.addObserver(_QAQLifeCycleEventHandler(detachedCallBack: handleAppDetached));
 
@@ -56,28 +58,34 @@ class _QAQApp extends StatelessWidget {
   const _QAQApp();
 
   @override
-  Widget build(BuildContext context) => Consumer<AppProvider>(
-    builder: (context, appProvider, child) => GetMaterialApp(
-      title: AppConfig.appName,
-      theme: appProvider.theme,
-      navigatorKey: appProvider.navigatorKey,
-      darkTheme: AppThemes.darkTheme,
-      localizationsDelegates: const [
-        S.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-      ],
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-        child: BotToastInit().call(context, child),
+  Widget build(BuildContext context) => ValueListenableBuilder<Locale?>(
+    valueListenable: LanguageUtil.localeNotifier,
+    builder: (context, locale, child) => Consumer<AppProvider>(
+      builder: (context, appProvider, child) => GetMaterialApp(
+        key: ValueKey(locale?.toLanguageTag()),
+        title: AppConfig.appName,
+        theme: AppThemes.lightTheme,
+        navigatorKey: appProvider.navigatorKey,
+        darkTheme: AppThemes.darkTheme,
+        themeMode: appProvider.themeMode,
+        locale: locale,
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+        ],
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
+          child: BotToastInit().call(context, child),
+        ),
+        navigatorObservers: [BotToastNavigatorObserver()],
+        supportedLocales: S.delegate.supportedLocales,
+        home: const MainScreen(),
+        logWriterCallback: (String text, {bool? isError}) {
+          Log.d(text);
+        },
       ),
-      navigatorObservers: [BotToastNavigatorObserver()],
-      supportedLocales: S.delegate.supportedLocales,
-      home: const MainScreen(),
-      logWriterCallback: (String text, {bool? isError}) {
-        Log.d(text);
-      },
     ),
   );
 }

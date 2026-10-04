@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
+import 'package:qaq_app/src/r.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 
@@ -107,7 +108,7 @@ class _LogConsoleState extends State<LogConsole> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Get.back()),
-      title: const Text("Log Console"),
+      title: Text(R.current.logConsole),
       actions: [
         IconButton(
           icon: const Icon(Icons.clear),
@@ -191,20 +192,20 @@ class _LogConsoleState extends State<LogConsole> {
             style: const TextStyle(fontSize: 20),
             controller: _filterController,
             onChanged: (s) => _refreshFilter(),
-            decoration: const InputDecoration(labelText: "Filter log output", border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: R.current.filterLogOutput, border: const OutlineInputBorder()),
           ),
         ),
         const SizedBox(width: 20),
         DropdownButton(
           value: _filterLevel,
-          items: const [
-            DropdownMenuItem(value: Level.trace, child: Text("Verbose")),
-            DropdownMenuItem(value: Level.debug, child: Text("Debug")),
-            DropdownMenuItem(value: Level.info, child: Text("Info")),
-            DropdownMenuItem(value: Level.warning, child: Text("Warning")),
-            DropdownMenuItem(value: Level.error, child: Text("Error")),
-            DropdownMenuItem(value: Level.fatal, child: Text("WTF")),
-            DropdownMenuItem(value: Level.off, child: Text("Nothing")),
+          items: [
+            DropdownMenuItem(value: Level.trace, child: Text(R.current.logLevelVerbose)),
+            DropdownMenuItem(value: Level.debug, child: Text(R.current.logLevelDebug)),
+            DropdownMenuItem(value: Level.info, child: Text(R.current.logLevelInfo)),
+            DropdownMenuItem(value: Level.warning, child: Text(R.current.logLevelWarning)),
+            DropdownMenuItem(value: Level.error, child: Text(R.current.logLevelError)),
+            DropdownMenuItem(value: Level.fatal, child: Text(R.current.logLevelFatal)),
+            DropdownMenuItem(value: Level.off, child: Text(R.current.logLevelOff)),
           ],
           onChanged: (value) {
             if (value != null) {

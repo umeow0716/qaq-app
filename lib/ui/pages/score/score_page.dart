@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/src/config/app_colors.dart';
@@ -7,7 +9,6 @@ import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
-import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/course/course_system_task.dart';
@@ -25,7 +26,6 @@ import 'package:qaq_app/ui/pages/score/semester_score_grade_metrics.dart';
 import 'package:qaq_app/ui/pages/score/widgets/calculation_warning_widget.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 import 'package:sprintf/sprintf.dart';
 
 class ScoreViewerPage extends StatefulWidget {
@@ -45,9 +45,12 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
   final ScrollController _scrollController = ScrollController();
   final List<Widget> tabLabelList = [];
   final List<Widget> tabChildList = [];
+  final List<String> _desktopSectionLabels = [];
 
   int _currentTabIndex = 0;
   bool _isLoading = true;
+  double? _desktopProgress;
+  String? _desktopProgressText;
 
   Widget get _summaryTile {
     final titleWidget = _buildTile(
@@ -212,14 +215,21 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     final courseIds = missingCourseIds.toList(growable: false);
     final total = courseIds.length;
     int rate = 0;
-    final progressRateDialog = ProgressRateDialog(context);
+    final progressRateDialog = _isDesktop ? null : ProgressRateDialog(context);
 
-    progressRateDialog.update(
-      message: R.current.searchingCredit,
-      nowProgress: 0,
-      progressString: sprintf("%d/%d", [0, total]),
-    );
-    await progressRateDialog.show();
+    if (_isDesktop) {
+      setState(() {
+        _desktopProgress = 0;
+        _desktopProgressText = sprintf("%d/%d", [0, total]);
+      });
+    } else {
+      progressRateDialog!.update(
+        message: R.current.searchingCredit,
+        nowProgress: 0,
+        progressString: sprintf("%d/%d", [0, total]),
+      );
+      await progressRateDialog.show();
+    }
 
     // Authenticate once before parallelizing course-system requests. Running
     // CourseSystemTask.execute() concurrently would race its shared login state
@@ -227,7 +237,16 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     final sessionTask = CourseSystemTask<void>('CourseCategoryBatch')..openLoadingDialog = false;
     final sessionStatus = await sessionTask.execute();
     if (sessionStatus != TaskStatus.success) {
-      await progressRateDialog.hide();
+      if (_isDesktop) {
+        if (mounted) {
+          setState(() {
+            _desktopProgress = null;
+            _desktopProgressText = null;
+          });
+        }
+      } else {
+        await progressRateDialog!.hide();
+      }
       return;
     }
 
@@ -239,7 +258,19 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       shouldRetry: (result) => result == null || result.courseId.isEmpty || result.category.isEmpty,
       onComplete: (index, result) {
         rate++;
-        progressRateDialog.update(nowProgress: rate / total, progressString: sprintf("%d/%d", [rate, total]));
+        if (_isDesktop) {
+          if (mounted) {
+            setState(() {
+              _desktopProgress = rate / total;
+              _desktopProgressText = sprintf("%d/%d", [rate, total]);
+            });
+          }
+        } else {
+          progressRateDialog!.update(
+            nowProgress: rate / total,
+            progressString: sprintf("%d/%d", [rate, total]),
+          );
+        }
 
         if (result == null || result.category.isEmpty) return;
         final courseId = courseIds[index];
@@ -265,22 +296,37 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
       },
     );
     await storage.saveCourseExtraInfoCache();
-    await progressRateDialog.hide();
+    if (_isDesktop) {
+      if (mounted) {
+        setState(() {
+          _desktopProgress = null;
+          _desktopProgressText = null;
+        });
+      }
+    } else {
+      await progressRateDialog!.hide();
+    }
   }
 
   void _addScoreRankTask() async {
-    courseScoreList.clear();
+    final preserveDesktopContent = _isDesktop && courseScoreList.isNotEmpty;
+    if (!preserveDesktopContent) {
+      courseScoreList.clear();
+    }
 
     setState(() => _isLoading = true);
 
     final scoreTaskFlow = TaskFlow();
-    final scoreTask = ScoreRankTask();
+    final scoreTask = ScoreRankTask()..openLoadingDialog = !_isDesktop;
     scoreTaskFlow.addTask(scoreTask);
 
     if (await scoreTaskFlow.start()) {
-      courseScoreList
-        ..clear()
-        ..addAll(scoreTask.result ?? const []);
+      final result = scoreTask.result;
+      if (result != null) {
+        courseScoreList
+          ..clear()
+          ..addAll(result);
+      }
     }
 
     if (courseScoreList.isNotEmpty) {
@@ -319,10 +365,15 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     super.dispose();
   }
 
+  bool get _isDesktop => Platform.isWindows || Platform.isLinux;
+
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-    length: tabLabelList.length,
-    child: Scaffold(
+  Widget build(BuildContext context) {
+    if (_isDesktop) return _buildDesktop(context);
+
+    return DefaultTabController(
+      length: tabLabelList.length,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(R.current.searchScore),
         actions: [
@@ -347,42 +398,148 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
           },
         ),
       ),
-      body: SingleChildScrollView(
-        child: (_isLoading || tabChildList.isEmpty) ? const SizedBox.shrink() : tabChildList[_currentTabIndex],
+        body: SingleChildScrollView(
+          child: (_isLoading || tabChildList.isEmpty) ? const SizedBox.shrink() : tabChildList[_currentTabIndex],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (tabChildList.isEmpty) {
+      return const Center(child: _DesktopScoreLoadingBadge());
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 46,
+            child: Row(
+              children: [
+                const Spacer(),
+                ScorePageAppBarActionButtons(
+                  onRefreshPressed: _addScoreRankTask,
+                  onCalculateCreditPressed: _addSearchCourseTypeTask,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 172,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                    ),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(10),
+                      itemCount: _desktopSectionLabels.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final selected = _currentTabIndex == index;
+                        return Material(
+                          color: selected ? colorScheme.primaryContainer : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => setState(() => _currentTabIndex = index),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                              child: Text(
+                                _desktopSectionLabels[index],
+                                style: TextStyle(
+                                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                                  color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: SingleChildScrollView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: tabChildList[_currentTabIndex],
+                          ),
+                        ),
+                        if (_isLoading || _desktopProgress != null)
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: _DesktopScoreLoadingBadge(
+                              progress: _desktopProgress,
+                              label: _desktopProgressText,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _buildTabBar() {
     tabLabelList.clear();
     tabChildList.clear();
+    _desktopSectionLabels.clear();
 
     try {
       if (courseScoreCredit.graduationInformation.isSelect) {
         tabLabelList.add(_buildTabLabel(R.current.creditSummary));
-        tabChildList.add(
-          AnimationLimiter(
-            child: Column(
-              children: AnimationConfiguration.toStaggeredList(
-                childAnimationBuilder: (widget) =>
-                    SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
-                children: [
-                  _summaryTile,
-                  _generalLessonItemTile,
-                  _otherDepartmentItemTile,
-                  const ScoreCalculationWarning(),
-                  // show disclaimer warning inline when showing this screen
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      R.current.courseDisclaimer,
-                      style: const TextStyle(fontSize: 14, color: Colors.redAccent),
-                    ),
-                  ),
-                ],
-              ),
+        _desktopSectionLabels.add(R.current.creditSummary);
+        final summaryChildren = <Widget>[
+          _summaryTile,
+          _generalLessonItemTile,
+          _otherDepartmentItemTile,
+          const ScoreCalculationWarning(),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              R.current.courseDisclaimer,
+              style: const TextStyle(fontSize: 14, color: Colors.redAccent),
             ),
           ),
+        ];
+        tabChildList.add(
+          _isDesktop
+              ? Column(children: summaryChildren)
+              : AnimationLimiter(
+                  child: Column(
+                    children: AnimationConfiguration.toStaggeredList(
+                      childAnimationBuilder: (widget) =>
+                          SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
+                      children: summaryChildren,
+                    ),
+                  ),
+                ),
         );
       }
     } catch (e, stack) {
@@ -391,7 +548,9 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
 
     for (int i = 0; i < courseScoreList.length; i++) {
       final courseScore = courseScoreList[i];
-      tabLabelList.add(_buildTabLabel("${courseScore.semester.year}-${courseScore.semester.semester}"));
+      final semesterLabel = "${courseScore.semester.year}-${courseScore.semester.semester}";
+      tabLabelList.add(_buildTabLabel(semesterLabel));
+      _desktopSectionLabels.add(semesterLabel);
       tabChildList.add(_buildSemesterScores(courseScore));
     }
 
@@ -420,7 +579,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     margin: const EdgeInsets.symmetric(vertical: 10),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(width: 2, color: context.read<AppProvider>().theme.colorScheme.tertiary),
+      border: Border.all(width: 2, color: Theme.of(context).colorScheme.tertiary),
     ),
     child: Center(child: Text(title, textAlign: TextAlign.center)),
   );
@@ -475,6 +634,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
               ],
             ),
             barrierDismissible: true,
+            transitionDuration: _isDesktop ? const Duration(milliseconds: 160) : null,
           );
         }
       },
@@ -491,33 +651,39 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
     ),
   );
 
-  Widget _buildSemesterScores(SemesterCourseScoreJson courseScore) => Padding(
-    padding: const EdgeInsets.all(24.0),
-    child: AnimationLimiter(
-      child: Column(
-        children: AnimationConfiguration.toStaggeredList(
-          childAnimationBuilder: (widget) =>
-              SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: CourseScoreSection(scoreInfoList: courseScore.courseScoreList),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: SemesterScoreGradeMetrics(
-                totalAverageScoreValue: courseScore.getAverageScoreString(),
-                performanceScoreValue: courseScore.getPerformanceScoreString(),
-                totalCreditValue: courseScore.getTotalCreditString(),
-                creditsEarnedValue: courseScore.getTakeCreditString(),
-              ),
-            ),
-            _buildRankMetrics(courseScore),
-          ],
+  Widget _buildSemesterScores(SemesterCourseScoreJson courseScore) {
+    final children = <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: CourseScoreSection(scoreInfoList: courseScore.courseScoreList),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: SemesterScoreGradeMetrics(
+          totalAverageScoreValue: courseScore.getAverageScoreString(),
+          performanceScoreValue: courseScore.getPerformanceScoreString(),
+          totalCreditValue: courseScore.getTotalCreditString(),
+          creditsEarnedValue: courseScore.getTakeCreditString(),
         ),
       ),
-    ),
-  );
+      _buildRankMetrics(courseScore),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: _isDesktop
+          ? Column(children: children)
+          : AnimationLimiter(
+              child: Column(
+                children: AnimationConfiguration.toStaggeredList(
+                  childAnimationBuilder: (widget) =>
+                      SlideAnimation(verticalOffset: 50.0, child: FadeInAnimation(child: widget)),
+                  children: children,
+                ),
+              ),
+            ),
+    );
+  }
 
   Widget _buildRankMetrics(SemesterCourseScoreJson courseScore) => (courseScore.isRankEmpty)
       ? Text(R.current.noRankInfo, style: const TextStyle(fontSize: 24))
@@ -533,4 +699,44 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
             ),
           ],
         );
+}
+
+class _DesktopScoreLoadingBadge extends StatelessWidget {
+  const _DesktopScoreLoadingBadge({this.progress, this.label});
+
+  final double? progress;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final progressValue = progress;
+    final progressLabel = label?.trim();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: RepaintBoundary(
+                child: CircularProgressIndicator(value: progressValue, strokeWidth: 2.2),
+              ),
+            ),
+            if (progressLabel != null && progressLabel.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(progressLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

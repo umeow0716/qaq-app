@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -29,7 +30,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sprintf/sprintf.dart';
 
 class CourseTablePage extends StatefulWidget {
-  const CourseTablePage({super.key});
+  const CourseTablePage({super.key, this.onCourseSelected, this.onBeforeSemesterChange});
+
+  final ValueChanged<CourseInfoJson>? onCourseSelected;
+  final Future<void> Function()? onBeforeSemesterChange;
 
   @override
   State<CourseTablePage> createState() => _CourseTablePageState();
@@ -38,6 +42,7 @@ class CourseTablePage extends StatefulWidget {
 class _CourseTablePageState extends State<CourseTablePage> {
   final TextEditingController _studentIdControl = TextEditingController();
   final FocusNode _studentFocus = FocusNode();
+  final ScrollController _desktopSemesterScrollController = ScrollController();
   final GlobalKey _key = GlobalKey();
   bool isLoading = true;
   CourseTableJson? courseTableData;
@@ -50,6 +55,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
   CourseTableControl courseTableControl = CourseTableControl();
   bool favorite = false;
   bool loadCourseNotice = true;
+  bool _desktopSemesterListLoading = false;
+  bool _desktopRefreshing = false;
+  String? _desktopSemesterListStudentId;
 
   @override
   void initState() {
@@ -144,6 +152,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
   @override
   void dispose() {
+    _desktopSemesterScrollController.dispose();
     _studentFocus.dispose();
     _studentIdControl.dispose();
     super.dispose();
@@ -164,7 +173,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
   Future<void> _getSemesterList(String studentId) async {
     final taskFlow = TaskFlow();
-    final task = CourseSemesterTask(studentId);
+    final task = CourseSemesterTask(studentId)..openLoadingDialog = !_isDesktop;
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
       final result = task.result;
@@ -174,43 +183,100 @@ class _CourseTablePageState extends State<CourseTablePage> {
     }
   }
 
+  Future<void> _refreshDesktopSemesterList(String studentId) async {
+    final normalizedStudentId = studentId.trim();
+    if (!_isDesktop || normalizedStudentId.isEmpty || normalizedStudentId.length == 5 || _desktopSemesterListLoading) {
+      return;
+    }
+    if (_desktopSemesterListStudentId == normalizedStudentId) return;
+
+    _desktopSemesterListLoading = true;
+    if (mounted) setState(() {});
+
+    final taskFlow = TaskFlow();
+    final task = CourseSemesterTask(normalizedStudentId)
+      ..openLoadingDialog = false
+      ..openErrorDialog = false;
+    taskFlow.addTask(task);
+
+    bool success = false;
+    try {
+      success = await taskFlow.start();
+    } catch (_) {
+      success = false;
+    }
+
+    final result = task.result;
+    if (success && result != null && result.isNotEmpty) {
+      LocalStorage.instance.setSemesterJsonList(result);
+      _desktopSemesterListStudentId = normalizedStudentId;
+    }
+
+    _desktopSemesterListLoading = false;
+    if (mounted) setState(() {});
+  }
+
   void _getCourseTable({SemesterJson? semesterSetting, String? studentId, bool refresh = false}) async {
     await Future.delayed(const Duration(microseconds: 100)); //等待頁面刷新
     final userData = LocalStorage.instance.getUserData();
     var effectiveStudentId = studentId?.trim() ?? '';
     if (effectiveStudentId.isEmpty) effectiveStudentId = userData.account;
 
-    if (courseTableData?.studentId != effectiveStudentId) {
-      LocalStorage.instance.clearSemesterJsonList(); //需重設因為更換了studentId
+    if (_isDesktop && mounted) {
+      setState(() => _desktopRefreshing = true);
     }
 
-    SemesterJson? semesterJson;
-    if (semesterSetting == null || semesterSetting.semester.isEmpty || semesterSetting.year.isEmpty) {
-      await _getSemesterList(effectiveStudentId);
-      semesterJson = LocalStorage.instance.getSemesterJsonItem(0);
-    } else {
-      semesterJson = semesterSetting;
-    }
-    if (semesterJson == null) return;
+    try {
+      if (courseTableData?.studentId != effectiveStudentId) {
+        LocalStorage.instance.clearSemesterJsonList(); //需重設因為更換了studentId
+      }
 
-    CourseTableJson? courseTable;
-    if (!refresh) {
-      courseTable = LocalStorage.instance.getCourseTable(effectiveStudentId, semesterJson); //去取找是否已經暫存
-    }
-    if (courseTable == null) {
-      final taskFlow = TaskFlow();
-      final task = CourseTableTask(effectiveStudentId, semesterJson);
-      taskFlow.addTask(task);
-      if (await taskFlow.start()) {
-        courseTable = task.result;
+      SemesterJson? semesterJson;
+      if (semesterSetting == null || semesterSetting.semester.isEmpty || semesterSetting.year.isEmpty) {
+        await _getSemesterList(effectiveStudentId);
+        semesterJson = LocalStorage.instance.getSemesterJsonItem(0);
+      } else {
+        semesterJson = semesterSetting;
+      }
+      if (semesterJson == null) return;
+
+      CourseTableJson? courseTable;
+      if (!refresh) {
+        courseTable = LocalStorage.instance.getCourseTable(effectiveStudentId, semesterJson); //去取找是否已經暫存
+      }
+      if (courseTable == null) {
+        final taskFlow = TaskFlow();
+        final task = CourseTableTask(effectiveStudentId, semesterJson)..openLoadingDialog = !_isDesktop;
+        taskFlow.addTask(task);
+        if (await taskFlow.start()) {
+          courseTable = task.result;
+        }
+      }
+
+      if (courseTable != null) {
+        LocalStorage.instance.getCourseSetting().info = courseTable;
+        await LocalStorage.instance.saveCourseSetting();
+        _showCourseTable(courseTable);
+      }
+    } finally {
+      if (_isDesktop && mounted) {
+        setState(() => _desktopRefreshing = false);
       }
     }
+  }
 
-    if (courseTable != null) {
-      LocalStorage.instance.getCourseSetting().info = courseTable;
-      await LocalStorage.instance.saveCourseSetting();
-      _showCourseTable(courseTable);
+  Future<void> _changeSemester(SemesterJson semester) async {
+    if (semester == courseTableData?.courseSemester) return;
+
+    if (_isDesktop) {
+      await widget.onBeforeSemesterChange?.call();
+      if (!mounted) return;
     }
+
+    _getCourseTable(
+      semesterSetting: semester,
+      studentId: _studentIdControl.text,
+    );
   }
 
   Widget _getSemesterItem(SemesterJson semester) {
@@ -219,7 +285,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
       child: Text(semesterString),
       onPressed: () {
         Get.back();
-        _getCourseTable(semesterSetting: semester, studentId: _studentIdControl.text); //取得課表
+        unawaited(_changeSemester(semester)); //取得課表
       },
     );
   }
@@ -363,8 +429,12 @@ class _CourseTablePageState extends State<CourseTablePage> {
     });
   }
 
+  bool get _isDesktop => Platform.isWindows || Platform.isLinux;
+
   @override
   Widget build(BuildContext context) {
+    if (_isDesktop) return _buildDesktop(context);
+
     final semesterSetting = courseTableData?.courseSemester ?? SemesterJson();
     final semesterString = "${semesterSetting.year}-${semesterSetting.semester}";
 
@@ -467,43 +537,179 @@ class _CourseTablePageState extends State<CourseTablePage> {
     );
   }
 
+  Widget _buildDesktop(BuildContext context) {
+    final semester = courseTableData?.courseSemester ?? SemesterJson();
+    final studentId = (courseTableData?.studentId ?? _studentIdControl.text).trim();
+    final totalCredit = courseTableData?.getTotalCredit();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sectionCount = courseTableControl.getSectionIntList.length;
+        if (!isLoading && sectionCount > 0) {
+          final available = constraints.maxHeight - 64 - 58 - dayHeight;
+          courseHeight = (available / sectionCount).clamp(44.0, 72.0).toDouble();
+        }
+
+        return Column(
+          key: _key,
+          children: [
+            SizedBox(
+              height: 64,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Icon(Icons.badge_outlined, size: 18, color: colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        studentId.isEmpty ? R.current.pleaseEnterStudentId : studentId,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (totalCredit != null) ...[
+                      Text(
+                        '$totalCredit ${R.current.credit}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Tooltip(
+                      message: R.current.refresh,
+                      child: IconButton(
+                        onPressed: isLoading || _desktopRefreshing
+                            ? null
+                            : () => _getCourseTable(
+                                  semesterSetting: courseTableData?.courseSemester,
+                                  studentId: studentId,
+                                  refresh: true,
+                                ),
+                        icon: const Icon(EvaIcons.refreshOutline),
+                      ),
+                    ),
+                    Tooltip(
+                      message: R.current.switchCourseTableLayout,
+                      child: IconButton(
+                        onPressed: isLoading || _desktopRefreshing ? null : () => _onPopupMenuSelect(0),
+                        icon: const Icon(Icons.view_week_outlined),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _buildListViewWithScreenshot()),
+                  if (_desktopRefreshing && !isLoading)
+                    const Positioned(
+                      top: 12,
+                      right: 12,
+                      child: _DesktopCourseLoadingBadge(),
+                    ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.45)),
+            SizedBox(height: 57, child: _buildSemesterChips(semester)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSemesterChips(SemesterJson selectedSemester) {
+    final semesters = <SemesterJson>[];
+    for (final semester in LocalStorage.instance.getSemesterList()) {
+      if (!semesters.contains(semester)) semesters.add(semester);
+    }
+    if (!selectedSemester.isEmpty && !semesters.contains(selectedSemester)) {
+      semesters.insert(0, selectedSemester);
+    }
+
+    return Scrollbar(
+      controller: _desktopSemesterScrollController,
+      thumbVisibility: true,
+      interactive: true,
+      scrollbarOrientation: ScrollbarOrientation.bottom,
+      child: SingleChildScrollView(
+        controller: _desktopSemesterScrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_desktopSemesterListLoading) ...[
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: RepaintBoundary(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            for (final semester in semesters) ...[
+              _SemesterChip(
+                label: "${semester.year}-${semester.semester}",
+                selected: semester == selectedSemester,
+                onPressed: () => unawaited(_changeSemester(semester)),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseGridContent() => (isLoading)
+      ? Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: courseHeight * showCourseTableNum,
+                    child: _isDesktop
+                        ? const Center(child: _DesktopCourseLoadingBadge())
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        )
+      : LocalStorage.instance.getOtherSetting().useConnectedCourseTableLayout
+      ? Column(children: [_buildDay(), _buildConnectedCourseTable()])
+      : Column(
+          children: List.generate(1 + courseTableControl.getSectionIntList.length, (index) {
+            final widget = (index == 0) ? _buildDay() : _buildCourseTable(index - 1);
+            return AnimationConfiguration.staggeredList(
+              position: index,
+              duration: const Duration(milliseconds: 375),
+              child: ScaleAnimation(child: FadeInAnimation(child: widget)),
+            );
+          }),
+        );
+
   final GlobalKey<OverRepaintBoundaryState> overRepaintKey = GlobalKey();
 
   Widget _buildListViewWithScreenshot() => SingleChildScrollView(
     child: OverRepaintBoundary(
       key: overRepaintKey,
-      child: RepaintBoundary(
-        child: (isLoading)
-            ? Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        //makes the red row full width
-                        child: SizedBox(
-                          height: courseHeight * showCourseTableNum,
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              )
-            : LocalStorage.instance.getOtherSetting().useConnectedCourseTableLayout
-            ? Column(children: [_buildDay(), _buildConnectedCourseTable()])
-            : Column(
-                children: List.generate(1 + courseTableControl.getSectionIntList.length, (index) {
-                  final widget = (index == 0) ? _buildDay() : _buildCourseTable(index - 1);
-                  return AnimationConfiguration.staggeredList(
-                    position: index,
-                    duration: const Duration(milliseconds: 375),
-                    child: ScaleAnimation(child: FadeInAnimation(child: widget)),
-                  );
-                }),
-              ),
-      ),
+      child: RepaintBoundary(child: _buildCourseGridContent()),
     ),
   );
 
@@ -553,7 +759,9 @@ class _CourseTablePageState extends State<CourseTablePage> {
                       child: InkWell(
                         borderRadius: const BorderRadius.all(Radius.circular(5)),
                         highlightColor: isDarkMode ? Colors.white : Colors.black12,
-                        onTap: () => showCourseDetailDialog(day, section, courseInfo),
+                        onTap: () => widget.onCourseSelected != null
+                            ? _showCourseDetail(courseInfo)
+                            : showCourseDetailDialog(day, section, courseInfo),
                         child: Stack(
                           children: [
                             Align(
@@ -853,7 +1061,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     final v = await Get.dialog<String>(
       AlertDialog(
         contentPadding: const EdgeInsets.all(16.0),
-        title: const Text('Edit'),
+        title: Text(R.current.edit),
         content: Row(
           children: [
             Expanded(
@@ -887,6 +1095,17 @@ class _CourseTablePageState extends State<CourseTablePage> {
 
   void _showCourseDetail(CourseInfoJson courseInfo) {
     final course = courseInfo.main.course;
+    if (_isDesktop && course.id.trim().isEmpty) {
+      MyToast.show(course.name + R.current.noSupport);
+      return;
+    }
+
+    final callback = widget.onCourseSelected;
+    if (callback != null) {
+      callback(courseInfo);
+      return;
+    }
+
     Get.back();
     final studentId = LocalStorage.instance.getCourseSetting().info.studentId;
     if (course.id.isEmpty) {
@@ -907,9 +1126,14 @@ class _CourseTablePageState extends State<CourseTablePage> {
   }
 
   void _showCourseTable(CourseTableJson courseTable) async {
-    getCourseNotice(); //查詢訂閱的課程是否有公告
+    if (!_isDesktop) {
+      getCourseNotice(); // Desktop intentionally omits IPlus announcement checks.
+    }
     courseTableData = courseTable;
     _studentIdControl.text = courseTable.studentId;
+    if (_isDesktop) {
+      unawaited(_refreshDesktopSemesterList(courseTable.studentId));
+    }
     _unFocusStudentInput();
     setState(() {
       isLoading = true;
@@ -975,5 +1199,60 @@ class _CourseTablePageState extends State<CourseTablePage> {
     } else {
       MyToast.show(R.current.settingCompleteWithError);
     }
+  }
+}
+
+class _DesktopCourseLoadingBadge extends StatelessWidget {
+  const _DesktopCourseLoadingBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.55)),
+      ),
+      child: const SizedBox(
+        width: 42,
+        height: 42,
+        child: Padding(
+          padding: EdgeInsets.all(11),
+          child: RepaintBoundary(
+            child: CircularProgressIndicator(strokeWidth: 2.2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SemesterChip extends StatelessWidget {
+  const _SemesterChip({required this.label, required this.selected, required this.onPressed});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? colorScheme.primaryContainer : colorScheme.surface.withValues(alpha: 0.7),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.7)),
+          ),
+          child: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+        ),
+      ),
+    );
   }
 }
