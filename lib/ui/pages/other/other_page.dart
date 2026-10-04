@@ -36,6 +36,7 @@ enum OnListViewPress {
   about,
   login,
   subSystem,
+  installDesktopApp,
 }
 
 class OtherPage extends StatefulWidget {
@@ -108,6 +109,13 @@ class _OtherPageState extends State<OtherPage> {
         "onPress": OnListViewPress.localUploadHtmlTest,
       },
     ],
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+      {
+        "icon": Icons.desktop_windows_outlined,
+        "color": Colors.blueGrey,
+        "title": R.current.installDesktopApp,
+        "onPress": OnListViewPress.installDesktopApp,
+      },
   ];
 
   @override
@@ -296,6 +304,9 @@ class _OtherPageState extends State<OtherPage> {
       case OnListViewPress.localUploadHtmlTest:
         final link = await _writeLocalUploadDebugHtml();
         await Get.to(() => QAQWebView(initialUrl: link, title: R.current.localUploadHtmlTest));
+        break;
+      case OnListViewPress.installDesktopApp:
+        await launchUrl(AppLink.githubLatestReleaseUrl, mode: LaunchMode.externalApplication);
         break;
     }
   }

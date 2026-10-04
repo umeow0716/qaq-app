@@ -3,6 +3,7 @@ class AppLink {
   static const String repoName = "qaq-app";
 
   static const String githubRepoUrlString = "https://github.com/$githubOwnerName/$repoName";
+  static final Uri githubLatestReleaseUrl = Uri.parse("$githubRepoUrlString/releases/latest");
   static const String privacyPolicyUrlString =
       'https://raw.githubusercontent.com/$githubOwnerName/$repoName/main/privacy-policy.md';
 
