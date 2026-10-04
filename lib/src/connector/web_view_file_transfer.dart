@@ -46,6 +46,7 @@ class WebViewFileTransfer {
     String? cookie,
     String? referer,
     required bool keepAlive,
+    String? filenameHint,
   }) async {
     if (!Platform.isAndroid) {
       throw UnsupportedError('System WebView downloads are currently implemented on Android only.');
@@ -60,6 +61,7 @@ class WebViewFileTransfer {
       'cookie': cookie,
       'referer': referer,
       'keepAlive': keepAlive,
+      'filenameHint': filenameHint,
     });
     if (id == null) throw StateError('Android DownloadManager did not return a download id.');
     return id;
@@ -70,6 +72,7 @@ class WebViewFileTransfer {
     required String contentDisposition,
     required String mimeType,
     required int totalBytes,
+    String? filenameHint,
   }) async {
     if (!Platform.isAndroid) {
       throw UnsupportedError('Blob WebView downloads are currently implemented on Android only.');
@@ -80,6 +83,7 @@ class WebViewFileTransfer {
       'contentDisposition': contentDisposition,
       'mimeType': mimeType,
       'totalBytes': totalBytes,
+      'filenameHint': filenameHint,
     });
     if (token == null || token.isEmpty) {
       throw StateError('Android did not create a destination for the blob download.');

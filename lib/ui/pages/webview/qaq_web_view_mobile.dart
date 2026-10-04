@@ -15,6 +15,7 @@ import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
+import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
@@ -197,6 +198,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     required String contentDisposition,
     required String mimeType,
     required int contentLength,
+    String? filenameHint,
   }) async {
     final requestId = 'android-blob-${DateTime.now().microsecondsSinceEpoch}-${++_blobDownloadSequence}';
     _blobDownloads[requestId] = _AndroidBlobDownloadSession(
@@ -204,6 +206,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       contentDisposition: contentDisposition,
       mimeType: mimeType,
       contentLength: contentLength,
+      filenameHint: filenameHint,
     );
 
     try {
@@ -232,12 +235,16 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       switch (type) {
         case 'start':
           final reportedMimeType = message['mimeType'] as String?;
+          final reportedFilenameHint = message['filenameHint'] as String?;
           final total = (message['total'] as num?)?.toInt() ?? session.contentLength;
           session.nativeToken = await WebViewFileTransfer.beginBlobDownload(
             sourceUrl: session.sourceUrl,
             contentDisposition: session.contentDisposition,
             mimeType: reportedMimeType?.isNotEmpty == true ? reportedMimeType! : session.mimeType,
             totalBytes: total,
+            filenameHint: reportedFilenameHint?.trim().isNotEmpty == true
+                ? sanitizeWebViewDownloadFilename(reportedFilenameHint!)
+                : session.filenameHint,
           );
           GlobalProtectDebug.log('Android WebView blob download started bytes=$total');
           break;
@@ -292,12 +299,14 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   }) async {
     if (!Platform.isAndroid) return;
     final sourceUri = Uri.tryParse(url);
+    final filenameHint = await _downloadFilenameHint(url);
     if (sourceUri?.scheme == 'blob') {
       await _startAndroidBlobDownload(
         url: url,
         contentDisposition: contentDisposition,
         mimeType: mimeType,
         contentLength: contentLength,
+        filenameHint: filenameHint,
       );
       return;
     }
@@ -342,6 +351,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
         cookie: keepAlive ? null : cookieHeader,
         referer: referer,
         keepAlive: keepAlive,
+        filenameHint: filenameHint,
       );
       GlobalProtectDebug.log(
         'WebView download enqueued id=$downloadId bytes=$contentLength '
@@ -424,7 +434,29 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     }
   }
 
+  Future<void> _installDownloadFilenameCapture() async {
+    try {
+      await _controller.runJavaScript(buildWebViewDownloadFilenameCaptureScript());
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView download filename capture install', error, stackTrace);
+    }
+  }
+
+  Future<String?> _downloadFilenameHint(String url) async {
+    try {
+      final result = await _controller.runJavaScriptReturningResult(
+        buildWebViewDownloadFilenameLookupScript(url),
+      );
+      final hint = parseWebViewDownloadFilenameLookupResult(result);
+      return hint == null ? null : sanitizeWebViewDownloadFilename(hint);
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView download filename lookup', error, stackTrace);
+      return null;
+    }
+  }
+
   Future<void> _onPageFinished(String url) async {
+    await _installDownloadFilenameCapture();
     if (!kDebugMode) return;
 
     debugPrint('[WebView] onPageFinished: $url');
@@ -488,12 +520,14 @@ class _AndroidBlobDownloadSession {
     required this.contentDisposition,
     required this.mimeType,
     required this.contentLength,
+    required this.filenameHint,
   });
 
   final String sourceUrl;
   final String contentDisposition;
   final String mimeType;
   final int contentLength;
+  final String? filenameHint;
   String? nativeToken;
   int receivedBytes = 0;
 }

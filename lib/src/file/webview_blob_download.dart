@@ -2,6 +2,71 @@ import 'dart:convert';
 
 const String webViewBlobDownloadJavaScriptChannel = 'QAQBlobDownload';
 
+
+/// Installs a lightweight page-side filename tracker for WebView downloads.
+///
+/// Sites that create `blob:` URLs often set the real filename on an
+/// `<a download="...">` element. Native download callbacks may only receive the
+/// opaque blob UUID, so remember the anchor's filename synchronously before the
+/// browser starts the download.
+String buildWebViewDownloadFilenameCaptureScript() => r'''
+(() => {
+  if (window.__qaqDownloadFilenameCaptureInstalled) return;
+  window.__qaqDownloadFilenameCaptureInstalled = true;
+  window.__qaqDownloadFilenameHints ??= Object.create(null);
+
+  const remember = (anchor) => {
+    try {
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const href = String(anchor.href || '').trim();
+      const filename = String(anchor.getAttribute('download') || '').trim();
+      if (!href || !filename) return;
+      window.__qaqDownloadFilenameHints[href] = filename;
+    } catch (_) {}
+  };
+
+  const originalClick = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function(...args) {
+    remember(this);
+    return originalClick.apply(this, args);
+  };
+
+  document.addEventListener('click', (event) => {
+    let target = event.target;
+    if (target && target.nodeType === Node.TEXT_NODE) target = target.parentElement;
+    const anchor = target && target.closest ? target.closest('a[download]') : null;
+    if (anchor) remember(anchor);
+  }, true);
+})();
+''';
+
+/// Looks up the filename captured for [downloadUrl] in the current page.
+String buildWebViewDownloadFilenameLookupScript(String downloadUrl) {
+  final encodedUrl = jsonEncode(downloadUrl);
+  return '''
+(() => {
+  const value = window.__qaqDownloadFilenameHints?.[$encodedUrl];
+  return typeof value === 'string' ? value : '';
+})()
+''';
+}
+
+/// Normalizes JavaScript return values from the different WebView backends.
+String? parseWebViewDownloadFilenameLookupResult(Object? result) {
+  if (result == null) return null;
+  var value = '$result'.trim();
+  if (value.isEmpty || value == 'null' || value == 'undefined') return null;
+
+  try {
+    final decoded = jsonDecode(value);
+    if (decoded is String) value = decoded.trim();
+  } on FormatException {
+    // Some backends already return the unquoted string.
+  }
+
+  return value.isEmpty ? null : value;
+}
+
 /// Builds JavaScript that copies a page-owned blob URL to Flutter in bounded
 /// base64 chunks. The blob is read inside the document that created it because
 /// blob: URLs cannot be downloaded by an external HTTP client.
@@ -16,6 +81,14 @@ String buildWebViewBlobDownloadScript({
 (() => {
   const requestId = $encodedRequestId;
   const blobUrl = $encodedBlobUrl;
+  const matchingAnchor = Array.from(document.querySelectorAll('a[download]'))
+    .reverse()
+    .find((anchor) => anchor.href === blobUrl);
+  const filenameHint = String(
+    window.__qaqDownloadFilenameHints?.[blobUrl] ||
+    matchingAnchor?.getAttribute('download') ||
+    '',
+  ).trim();
   const channel = window.$webViewBlobDownloadJavaScriptChannel;
   const send = (payload) => {
     if (!channel || typeof channel.postMessage !== 'function') return;
@@ -40,7 +113,12 @@ String buildWebViewBlobDownloadScript({
       const response = await fetch(blobUrl);
       const blob = await response.blob();
       const total = blob.size;
-      send({type: 'start', total, mimeType: blob.type || ''});
+      send({
+        type: 'start',
+        total,
+        mimeType: blob.type || '',
+        filenameHint,
+      });
 
       let received = 0;
       if (blob.stream) {

@@ -430,10 +430,11 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
 
     final destination = File(resultFilePath);
+    final filenameHint = await _downloadFilenameHint(request.url);
     final overlayId = ++_downloadOverlaySequence;
     final reportedTotal = request.totalBytesToReceive;
     final total = reportedTotal != null && reportedTotal > 0 ? reportedTotal : -1;
-    final displayFilename = sanitizeWebViewDownloadFilename(path.basename(resultFilePath));
+    final displayFilename = filenameHint ?? sanitizeWebViewDownloadFilename(path.basename(resultFilePath));
     await _showDownloadOverlayItem(
       id: overlayId,
       filename: displayFilename,
@@ -484,7 +485,10 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       }
 
       if (!mounted) return;
-      final completedDestination = await _normalizeWindowsDownloadFilename(destination);
+      final completedDestination = await _normalizeWindowsDownloadFilename(
+        destination,
+        filenameHint: filenameHint,
+      );
       await _finishDownloadOverlayItem(
         id: overlayId,
         status: _DownloadOverlayStatus.completed,
@@ -504,11 +508,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
-  Future<File> _normalizeWindowsDownloadFilename(File destination) async {
+  Future<File> _normalizeWindowsDownloadFilename(
+    File destination, {
+    String? filenameHint,
+  }) async {
     if (!await destination.exists()) return destination;
 
     final originalName = path.basename(destination.path);
-    final safeName = sanitizeWebViewDownloadFilename(originalName);
+    final safeName = sanitizeWebViewDownloadFilename(filenameHint ?? originalName);
     if (safeName == originalName) return destination;
 
     final safeDestination = await _nextAvailableDownloadFile(destination.parent, safeName);
@@ -543,8 +550,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<void> _startLinuxBlobDownload(
-    linux_webview.LinuxDownloadStartRequest request,
-  ) async {
+    linux_webview.LinuxDownloadStartRequest request, {
+    String? filenameHint,
+  }) async {
     int? overlayId;
     String? requestId;
     File? destination;
@@ -552,7 +560,11 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     try {
       final downloadsDirectory = await _linuxDownloadsDirectory();
       final sourceUri = Uri.parse(request.url);
-      final filename = _linuxDownloadFilename(request, sourceUri);
+      final filename = _linuxDownloadFilename(
+        request,
+        sourceUri,
+        filenameHint: filenameHint,
+      );
       destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
       overlayId = ++_downloadOverlaySequence;
       requestId = 'linux-blob-${DateTime.now().microsecondsSinceEpoch}-${++_blobDownloadSequence}';
@@ -696,8 +708,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     linux_webview.LinuxDownloadStartRequest request,
   ) async {
     final sourceUri = Uri.tryParse(request.url);
+    final filenameHint = await _downloadFilenameHint(request.url);
     if (sourceUri?.scheme == 'blob') {
-      await _startLinuxBlobDownload(request);
+      await _startLinuxBlobDownload(request, filenameHint: filenameHint);
       return;
     }
     if (sourceUri == null || (sourceUri.scheme != 'http' && sourceUri.scheme != 'https')) {
@@ -709,7 +722,11 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     try {
       final downloadsDirectory = await _linuxDownloadsDirectory();
-      final filename = _linuxDownloadFilename(request, sourceUri);
+      final filename = _linuxDownloadFilename(
+        request,
+        sourceUri,
+        filenameHint: filenameHint,
+      );
       final destination = await _nextAvailableDownloadFile(downloadsDirectory, filename);
       overlayId = ++_downloadOverlaySequence;
       await _showDownloadOverlayItem(
@@ -1113,8 +1130,14 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
   String _linuxDownloadFilename(
     linux_webview.LinuxDownloadStartRequest request,
-    Uri sourceUri,
-  ) {
+    Uri sourceUri, {
+    String? filenameHint,
+  }) {
+    final hinted = filenameHint?.trim();
+    if (hinted != null && hinted.isNotEmpty) {
+      return sanitizeWebViewDownloadFilename(hinted);
+    }
+
     final suggested = request.suggestedFilename?.trim();
     if (suggested != null && suggested.isNotEmpty) {
       return sanitizeWebViewDownloadFilename(suggested);
@@ -1245,7 +1268,29 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
+  Future<void> _installDownloadFilenameCapture() async {
+    try {
+      await _requiredController.runJavaScript(buildWebViewDownloadFilenameCaptureScript());
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView download filename capture install', error, stackTrace);
+    }
+  }
+
+  Future<String?> _downloadFilenameHint(String url) async {
+    try {
+      final result = await _requiredController.runJavaScriptReturningResult(
+        buildWebViewDownloadFilenameLookupScript(url),
+      );
+      final hint = parseWebViewDownloadFilenameLookupResult(result);
+      return hint == null ? null : sanitizeWebViewDownloadFilename(hint);
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('WebView download filename lookup', error, stackTrace);
+      return null;
+    }
+  }
+
   Future<void> _onPageFinished(String url) async {
+    await _installDownloadFilenameCapture();
     if (!kDebugMode) return;
 
     debugPrint('[WebView] onPageFinished: $url');

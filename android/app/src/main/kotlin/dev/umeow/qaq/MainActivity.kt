@@ -217,7 +217,13 @@ class MainActivity : FlutterActivity() {
             val cookie = call.argument<String>("cookie")
             val referer = call.argument<String>("referer")
             val keepAlive = call.argument<Boolean>("keepAlive") == true
-            val filename = resolveBrowserLikeFilename(sourceUrl, contentDisposition, mimeType)
+            val filenameHint = call.argument<String>("filenameHint")
+            val filename = resolveBrowserLikeFilename(
+                sourceUrl,
+                contentDisposition,
+                mimeType,
+                filenameHint,
+            )
 
             val request = DownloadManager.Request(requestUri)
                 .setTitle(filename)
@@ -257,8 +263,14 @@ class MainActivity : FlutterActivity() {
 
         val contentDisposition = call.argument<String>("contentDisposition")
         val mimeType = call.argument<String>("mimeType")
+        val filenameHint = call.argument<String>("filenameHint")
         val totalBytes = (call.argument<Number>("totalBytes")?.toLong() ?: -1L).coerceAtLeast(-1L)
-        val filename = resolveBrowserLikeFilename(sourceUrl, contentDisposition, mimeType)
+        val filename = resolveBrowserLikeFilename(
+            sourceUrl,
+            contentDisposition,
+            mimeType,
+            filenameHint,
+        )
         val token = UUID.randomUUID().toString()
 
         try {
@@ -496,9 +508,12 @@ class MainActivity : FlutterActivity() {
         sourceUrl: String,
         contentDisposition: String?,
         mimeType: String?,
+        filenameHint: String? = null,
     ): String {
+        val hintedName = filenameHint?.trim()?.takeIf { it.isNotEmpty() }
         val dispositionName = parseContentDispositionFilename(contentDisposition)
-        val candidate = dispositionName
+        val candidate = hintedName
+            ?: dispositionName
             ?: decodeFilenameValue(URLUtil.guessFileName(sourceUrl, null, mimeType))
         return sanitizeDownloadFilename(candidate)
     }
