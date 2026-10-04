@@ -4,6 +4,18 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 
+class AndroidBlobDownloadResult {
+  const AndroidBlobDownloadResult({
+    required this.filename,
+    required this.bytes,
+    required this.uri,
+  });
+
+  final String filename;
+  final int bytes;
+  final String uri;
+}
+
 class WebViewFileTransfer {
   const WebViewFileTransfer._();
 
@@ -86,11 +98,27 @@ class WebViewFileTransfer {
     });
   }
 
-  static Future<void> finishBlobDownload(String token) async {
-    if (!Platform.isAndroid) return;
-    await _channel.invokeMethod<void>('finish_webview_blob_download', <String, Object?>{
-      'token': token,
-    });
+  static Future<AndroidBlobDownloadResult> finishBlobDownload(
+    String token, {
+    required String completionTitle,
+  }) async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError('Blob WebView downloads are currently implemented on Android only.');
+    }
+    final result = await _channel.invokeMapMethod<String, Object?>(
+      'finish_webview_blob_download',
+      <String, Object?>{
+        'token': token,
+        'completionTitle': completionTitle,
+      },
+    );
+    final filename = result?['filename'] as String?;
+    final bytes = result?['bytes'] as int?;
+    final uri = result?['uri'] as String?;
+    if (filename == null || bytes == null || uri == null) {
+      throw StateError('Android did not confirm the completed blob download.');
+    }
+    return AndroidBlobDownloadResult(filename: filename, bytes: bytes, uri: uri);
   }
 
   static Future<void> abortBlobDownload(String token) async {

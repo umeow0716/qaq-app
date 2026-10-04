@@ -15,6 +15,8 @@ import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
+import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -254,9 +256,15 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
           if (token == null) {
             throw StateError('Blob download completed before Android destination creation.');
           }
-          await WebViewFileTransfer.finishBlobDownload(token);
+          final completed = await WebViewFileTransfer.finishBlobDownload(
+            token,
+            completionTitle: R.current.downloadComplete,
+          );
           _blobDownloads.remove(requestId);
-          GlobalProtectDebug.log('Android WebView blob download completed bytes=${session.receivedBytes}');
+          MyToast.show('${completed.filename} ${R.current.downloadComplete}');
+          GlobalProtectDebug.log(
+            'Android WebView blob download completed bytes=${completed.bytes} uri=${completed.uri}',
+          );
           break;
         case 'error':
           final token = session.nativeToken;
@@ -265,7 +273,9 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
           GlobalProtectDebug.log('Android WebView blob download failed: ${message['message']}');
           break;
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      MyToast.show(R.current.downloadError);
+      GlobalProtectDebug.error('Android WebView blob download finalize', error, stackTrace);
       final token = session.nativeToken;
       if (token != null) await WebViewFileTransfer.abortBlobDownload(token);
       _blobDownloads.remove(requestId);

@@ -2,6 +2,9 @@ package dev.umeow.qaq
 
 import android.app.Activity
 import android.app.DownloadManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -39,11 +42,16 @@ class MainActivity : FlutterActivity() {
     private val filePickerRequestCode = 0x5141
     private var pendingFilePickerResult: MethodChannel.Result? = null
     private val pendingBlobDownloads = mutableMapOf<String, PendingBlobDownload>()
+    private var blobDownloadNotificationSequence = 0
 
     private data class PendingBlobDownload(
         val output: OutputStream,
+        val filename: String,
+        val mimeType: String?,
+        val expectedBytes: Long,
         val contentUri: Uri? = null,
         val file: File? = null,
+        var receivedBytes: Long = 0,
     )
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
@@ -249,6 +257,7 @@ class MainActivity : FlutterActivity() {
 
         val contentDisposition = call.argument<String>("contentDisposition")
         val mimeType = call.argument<String>("mimeType")
+        val totalBytes = (call.argument<Number>("totalBytes")?.toLong() ?: -1L).coerceAtLeast(-1L)
         val filename = resolveBrowserLikeFilename(sourceUrl, contentDisposition, mimeType)
         val token = UUID.randomUUID().toString()
 
@@ -267,13 +276,25 @@ class MainActivity : FlutterActivity() {
                         contentResolver.delete(uri, null, null)
                         throw IllegalStateException("Unable to open the Downloads entry for $filename")
                     }
-                PendingBlobDownload(output = output, contentUri = uri)
+                PendingBlobDownload(
+                    output = output,
+                    filename = filename,
+                    mimeType = mimeType,
+                    expectedBytes = totalBytes,
+                    contentUri = uri,
+                )
             } else {
                 val directory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                     ?: File(filesDir, Environment.DIRECTORY_DOWNLOADS)
                 directory.mkdirs()
                 val file = nextAvailableDownloadFile(directory, filename)
-                PendingBlobDownload(output = file.outputStream(), file = file)
+                PendingBlobDownload(
+                    output = file.outputStream(),
+                    filename = filename,
+                    mimeType = mimeType,
+                    expectedBytes = totalBytes,
+                    file = file,
+                )
             }
 
             pendingBlobDownloads[token] = pending
@@ -295,6 +316,7 @@ class MainActivity : FlutterActivity() {
 
         try {
             pending.output.write(bytes)
+            pending.receivedBytes += bytes.size
             result.success(null)
         } catch (e: Exception) {
             Log.e(logTag, "Unable to write WebView blob download", e)
@@ -311,8 +333,15 @@ class MainActivity : FlutterActivity() {
         }
 
         try {
-            cleanupBlobDownload(token, publish = true)
-            result.success(null)
+            val completed = publishBlobDownload(token)
+            val completionTitle = call.argument<String>("completionTitle")
+                ?.takeIf { it.isNotBlank() }
+                ?: "QAQ"
+            showBlobDownloadCompletedNotification(
+                title = completionTitle,
+                filename = completed["filename"] as String,
+            )
+            result.success(completed)
         } catch (e: Exception) {
             Log.e(logTag, "Unable to finish WebView blob download", e)
             result.error("WEBVIEW_BLOB_DOWNLOAD_ERROR", e.message, null)
@@ -325,7 +354,77 @@ class MainActivity : FlutterActivity() {
         result.success(null)
     }
 
+    private fun publishBlobDownload(token: String): Map<String, Any> {
+        val pending = pendingBlobDownloads.remove(token)
+            ?: throw IllegalStateException("Unknown blob download.")
+
+        try {
+            pending.output.flush()
+            pending.output.close()
+
+            val uri = pending.contentUri
+            val publishedBytes = if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }
+                val updated = contentResolver.update(uri, values, null, null)
+                if (updated != 1) {
+                    throw IllegalStateException("Unable to publish ${pending.filename} to Downloads.")
+                }
+                queryMediaStoreSize(uri)
+            } else {
+                pending.file?.length() ?: -1L
+            }
+
+            val expectedBytes = pending.expectedBytes.takeIf { it >= 0 } ?: pending.receivedBytes
+            val verifiedBytes = publishedBytes.takeIf { it >= 0 } ?: pending.receivedBytes
+            if (verifiedBytes != pending.receivedBytes ||
+                (expectedBytes >= 0 && verifiedBytes != expectedBytes)
+            ) {
+                throw IllegalStateException(
+                    "Published blob size mismatch for ${pending.filename}: " +
+                        "expected=$expectedBytes received=${pending.receivedBytes} published=$verifiedBytes",
+                )
+            }
+
+            return mapOf(
+                "filename" to pending.filename,
+                "bytes" to verifiedBytes,
+                "uri" to (uri?.toString() ?: pending.file?.toURI()?.toString().orEmpty()),
+            )
+        } catch (e: Exception) {
+            val uri = pending.contentUri
+            if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentResolver.delete(uri, null, null)
+            } else {
+                pending.file?.delete()
+            }
+            throw e
+        }
+    }
+
+    private fun queryMediaStoreSize(uri: Uri): Long {
+        contentResolver.query(
+            uri,
+            arrayOf(MediaStore.MediaColumns.SIZE),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                if (index >= 0 && !cursor.isNull(index)) return cursor.getLong(index)
+            }
+        }
+        return -1L
+    }
+
     private fun cleanupBlobDownload(token: String, publish: Boolean) {
+        if (publish) {
+            publishBlobDownload(token)
+            return
+        }
+
         val pending = pendingBlobDownloads.remove(token) ?: return
         try {
             pending.output.flush()
@@ -338,16 +437,44 @@ class MainActivity : FlutterActivity() {
 
         val uri = pending.contentUri
         if (uri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (publish) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
-                }
-                contentResolver.update(uri, values, null, null)
-            } else {
-                contentResolver.delete(uri, null, null)
-            }
-        } else if (!publish) {
+            contentResolver.delete(uri, null, null)
+        } else {
             pending.file?.delete()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showBlobDownloadCompletedNotification(title: String, filename: String) {
+        val manager = getSystemService(NotificationManager::class.java)
+        val channelId = "qaq_webview_blob_download"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    channelId,
+                    "WebView downloads",
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
+            )
+        }
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            Notification.Builder(this)
+        }
+        builder
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(title)
+            .setContentText(filename)
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_STATUS)
+
+        try {
+            blobDownloadNotificationSequence =
+                if (blobDownloadNotificationSequence >= 0x4FFF) 1 else blobDownloadNotificationSequence + 1
+            manager.notify(0x5200 + blobDownloadNotificationSequence, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(logTag, "Notification permission unavailable for completed blob download", e)
         }
     }
 
