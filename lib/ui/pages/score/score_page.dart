@@ -440,7 +440,7 @@ class _ScoreViewerPageState extends State<ScoreViewerPage> with TickerProviderSt
                     child: ListView.separated(
                       padding: const EdgeInsets.all(10),
                       itemCount: _desktopSectionLabels.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
                       itemBuilder: (context, index) {
                         final selected = _currentTabIndex == index;
                         return Material(

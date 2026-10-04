@@ -98,28 +98,20 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     });
   }
 
-  Future<bool> _handleRouteWillPop() async {
-    if (!Platform.isLinux) return true;
-    if (_allowNextLinuxPop) return true;
-
-    unawaited(_popAfterDetachingLinuxNativeWebView());
-    return false;
-  }
-
   Future<void> _popAfterDetachingLinuxNativeWebView() async {
     if (!mounted) return;
 
-    _allowNextLinuxPop = true;
-    if (!_linuxNativeWebViewDetachedForPop) {
+    final shouldWaitForDetach = !_linuxNativeWebViewDetachedForPop && _showNativeWebView;
+    setState(() {
+      _allowNextLinuxPop = true;
       _linuxNativeWebViewDetachedForPop = true;
-      if (_showNativeWebView) {
-        setState(() {
-          _showNativeWebView = false;
-        });
-        await Future<void>.delayed(_linuxNativeWebViewDetachDelay);
-      } else {
-        await Future<void>.delayed(Duration.zero);
-      }
+      _showNativeWebView = false;
+    });
+
+    if (shouldWaitForDetach) {
+      await Future<void>.delayed(_linuxNativeWebViewDetachDelay);
+    } else {
+      await Future<void>.delayed(Duration.zero);
     }
 
     if (!mounted) return;
@@ -862,7 +854,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 (function () {
   if (window.__qaqDownloadPanel) return;
   const labels = $labels;
-''' +
+'''
         r'''
 
   const rootId = 'qaq-download-panel-root';
@@ -1345,8 +1337,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   );
 
   @override
-  Widget build(BuildContext context) => WillPopScope(
-    onWillPop: _handleRouteWillPop,
+  Widget build(BuildContext context) => PopScope(
+    canPop: !Platform.isLinux || _allowNextLinuxPop,
+    onPopInvokedWithResult: (didPop, _) {
+      if (didPop || !Platform.isLinux || _allowNextLinuxPop) return;
+      unawaited(_popAfterDetachingLinuxNativeWebView());
+    },
     child: Scaffold(
       appBar: widget.showAppBar ? _buildDesktopAppBar() : null,
       body: SafeArea(
