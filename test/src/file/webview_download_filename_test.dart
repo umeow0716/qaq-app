@@ -13,6 +13,10 @@ void main() {
       expect(sanitizeWebViewDownloadFilename('%27book.pdf%27'), 'book.pdf');
     });
 
+    test('preserves malformed percent encoding', () {
+      expect(sanitizeWebViewDownloadFilename('report%final.pdf'), 'report%final.pdf');
+    });
+
     test('replaces cross-platform unsafe characters', () {
       expect(sanitizeWebViewDownloadFilename(r'report:2026/10\04?.pdf'), 'report_2026_10_04_.pdf');
     });

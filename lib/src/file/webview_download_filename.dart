@@ -25,8 +25,14 @@ String sanitizeWebViewDownloadFilename(String value, {String fallback = 'downloa
 }
 
 String _decodeFilename(String value) {
+  if (!value.contains('%')) {
+    return value;
+  }
+
   try {
     return Uri.decodeComponent(value);
+  } on ArgumentError {
+    return value;
   } on FormatException {
     return value;
   }
