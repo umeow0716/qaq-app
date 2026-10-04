@@ -217,7 +217,7 @@ class _CalendarPageState extends State<CalendarPage> {
                               )
                             : ListView.separated(
                                 itemCount: selectedEvents.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                separatorBuilder: (_, _) => const SizedBox(height: 8),
                                 itemBuilder: (context, index) {
                                   final event = selectedEvents[index];
                                   final selected = identical(event, _selectedDesktopEvent);
