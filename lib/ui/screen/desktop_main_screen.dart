@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -376,17 +377,32 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.65)),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: QAQWebView(
-              initialUrl: target,
-              title: title.isEmpty ? _courseSystemLabel : title,
-              showAppBar: true,
-              onDesktopClose: _closeFocusWebView,
-            ),
-          ),
+          child: _buildFocusWebView(target, title),
         ),
       ),
+    );
+  }
+
+  Widget _buildFocusWebView(Uri target, String title) {
+    final webView = QAQWebView(
+      initialUrl: target,
+      title: title.isEmpty ? _courseSystemLabel : title,
+      showAppBar: true,
+      onDesktopClose: _closeFocusWebView,
+    );
+
+    if (Platform.isLinux) {
+      // webview_all_linux hosts WebKitGTK as a native GTK overlay. A rounded
+      // Flutter clip cannot be represented by that overlay, so the plugin
+      // deliberately hides the native WebView instead of rendering it outside
+      // the clip. Keep the Linux WebView rectangular; Windows keeps the
+      // existing rounded ClipRRect path unchanged.
+      return webView;
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: webView,
     );
   }
 

@@ -116,6 +116,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    # Linux runner loads this file directly from flutter_assets at runtime.
+    - path: assets/images/desktop-icon.png
+      platforms:
+        - linux
 
   fonts:
     - family: QAQFont
