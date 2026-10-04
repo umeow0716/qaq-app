@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -13,6 +14,7 @@ import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/file_store.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
@@ -96,13 +98,13 @@ class _OtherPageState extends State<OtherPage> {
       {
         "icon": EvaIcons.uploadOutline,
         "color": Colors.deepPurpleAccent,
-        "title": "測試上傳表單",
+        "title": R.current.feedbackUploadTest,
         "onPress": OnListViewPress.feedbackUploadTest,
       },
       {
         "icon": EvaIcons.fileAddOutline,
         "color": Colors.indigoAccent,
-        "title": "測試本機上傳 HTML",
+        "title": R.current.localUploadHtmlTest,
         "onPress": OnListViewPress.localUploadHtmlTest,
       },
     ],
@@ -289,11 +291,11 @@ class _OtherPageState extends State<OtherPage> {
         break;
       case OnListViewPress.feedbackUploadTest:
         final link = await _buildFeedbackUrl();
-        await Get.to(() => QAQWebView(initialUrl: link, title: "測試上傳表單"));
+        await Get.to(() => QAQWebView(initialUrl: link, title: R.current.feedbackUploadTest));
         break;
       case OnListViewPress.localUploadHtmlTest:
         final link = await _writeLocalUploadDebugHtml();
-        await Get.to(() => QAQWebView(initialUrl: link, title: "測試本機上傳 HTML"));
+        await Get.to(() => QAQWebView(initialUrl: link, title: R.current.localUploadHtmlTest));
         break;
     }
   }
@@ -306,13 +308,16 @@ class _OtherPageState extends State<OtherPage> {
     return file.uri;
   }
 
-  static const String _localUploadDebugHtml = r'''
-<!doctype html>
-<html lang="zh-Hant">
+  String get _localUploadDebugHtml {
+    const htmlEscape = HtmlEscape();
+    final htmlLanguage = LanguageUtil.getLangIndex() == LangEnum.en ? 'en' : 'zh-Hant';
+    final noFileSelected = jsonEncode(R.current.noFileSelected);
+    return '''<!doctype html>
+<html lang="$htmlLanguage">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QAQ Linux Upload Debug</title>
+  <title>${htmlEscape.convert(R.current.localUploadDebugHeading)}</title>
   <style>
     body { font-family: system-ui, sans-serif; padding: 24px; line-height: 1.5; }
     label { display: block; margin: 18px 0 8px; font-weight: 700; }
@@ -322,33 +327,34 @@ class _OtherPageState extends State<OtherPage> {
   </style>
 </head>
 <body>
-  <h1>QAQ Linux Upload Debug</h1>
-  <p class="hint">這個頁面是本機 HTML，只測 WebKitGTK 的 file input / native file chooser，不會連 Google Forms。</p>
+  <h1>${htmlEscape.convert(R.current.localUploadDebugHeading)}</h1>
+  <p class="hint">${htmlEscape.convert(R.current.localUploadDebugHint)}</p>
 
-  <label for="single">單檔</label>
+  <label for="single">${htmlEscape.convert(R.current.singleFile)}</label>
   <input id="single" type="file">
 
-  <label for="multiple">多檔</label>
+  <label for="multiple">${htmlEscape.convert(R.current.multipleFiles)}</label>
   <input id="multiple" type="file" multiple>
 
-  <label for="image">圖片 accept=image/*</label>
+  <label for="image">${htmlEscape.convert(R.current.imageFile)}</label>
   <input id="image" type="file" accept="image/*">
 
-  <h2>選檔結果</h2>
-  <pre id="result">尚未選檔</pre>
+  <h2>${htmlEscape.convert(R.current.selectedFiles)}</h2>
+  <pre id="result">${htmlEscape.convert(R.current.noFileSelected)}</pre>
 
   <script>
     const result = document.getElementById('result');
+    const noFileSelected = $noFileSelected;
     for (const input of document.querySelectorAll('input[type=file]')) {
       input.addEventListener('change', () => {
         const names = Array.from(input.files || []).map((file) => file.name + ' (' + file.size + ' bytes)');
-        result.textContent = input.id + ':\n' + (names.length ? names.join('\n') : '未選檔');
+        result.textContent = input.id + ':\\n' + (names.length ? names.join('\\n') : noFileSelected);
       });
     }
   </script>
 </body>
-</html>
-''';
+</html>''';
+  }
 
   Future<Uri> _buildFeedbackUrl() async {
     try {

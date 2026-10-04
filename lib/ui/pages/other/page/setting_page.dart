@@ -12,7 +12,6 @@ import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/other/list_view_animator.dart';
 import "package:lucide_icons_flutter/lucide_icons.dart";
-import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 class SettingPage extends StatefulWidget {
@@ -86,13 +85,7 @@ class _SettingPageState extends State<SettingPage> {
       ),
       value: (LanguageUtil.getLangIndex() == LangEnum.en),
       onChanged: (value) async {
-        setState(() {
-          final int langIndex = 1 - LanguageUtil.getLangIndex().index;
-          LanguageUtil.setLangByIndex(LangEnum.values.toList()[langIndex]).then((_) {
-            widget.pageController.jumpToPage(0);
-            Get.back();
-          });
-        });
+        await LanguageUtil.setLangByIndex(value ? LangEnum.en : LangEnum.zh);
       },
     );
   }

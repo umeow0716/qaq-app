@@ -240,7 +240,7 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
               ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => addDialog(context, path),
-          tooltip: "Add Folder",
+          tooltip: R.current.addFolder,
           child: const Icon(LucideIcons.plus),
         ),
       ),

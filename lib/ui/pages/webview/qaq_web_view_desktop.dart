@@ -15,6 +15,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
@@ -512,7 +513,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
               'path': filePath,
               'percent': 0,
               'status': 'downloading',
-              'statusText': '準備下載',
+              'statusText': R.current.prepareDownload,
             },
           ),
     );
@@ -532,7 +533,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
             'id': id,
             'percent': percent,
             'status': 'downloading',
-            'statusText': percent == null ? '下載中' : '下載中 $percent%',
+            'statusText': percent == null ? R.current.downloading : '${R.current.downloading} $percent%',
             'received': received,
             'total': total,
           },
@@ -554,8 +555,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
           'percent': status == _LinuxDownloadOverlayStatus.completed ? 100 : null,
           'status': status.name,
           'statusText': switch (status) {
-            _LinuxDownloadOverlayStatus.completed => '下載完成',
-            _LinuxDownloadOverlayStatus.failed => '下載失敗',
+            _LinuxDownloadOverlayStatus.completed => R.current.downloadComplete,
+            _LinuxDownloadOverlayStatus.failed => R.current.downloadError,
           },
           'message': ?message,
         },
@@ -581,9 +582,19 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     return 'window.__qaqDownloadPanel?.$method($encodedPayload);';
   }
 
-  String _linuxDownloadOverlayBootstrapScript() => r'''
+  String _linuxDownloadOverlayBootstrapScript() {
+    final labels = jsonEncode({
+      'downloading': R.current.downloading,
+      'prepareDownload': R.current.prepareDownload,
+      'downloadComplete': R.current.downloadComplete,
+      'downloadError': R.current.downloadError,
+      'closeDownloadNotification': R.current.closeDownloadNotification,
+    });
+    return '''
 (function () {
   if (window.__qaqDownloadPanel) return;
+  const labels = $labels;
+''' + r'''
 
   const rootId = 'qaq-download-panel-root';
   const styleId = 'qaq-download-panel-style';
@@ -706,9 +717,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
       <div class="qaq-download-card-inner">
         <div class="qaq-download-head">
           <span class="qaq-download-dot"></span>
-          <div class="qaq-download-title">下載中</div>
-          <div class="qaq-download-status">準備下載</div>
-          <button class="qaq-download-close" type="button" aria-label="關閉下載通知">×</button>
+          <div class="qaq-download-title">${labels.downloading}</div>
+          <div class="qaq-download-status">${labels.prepareDownload}</div>
+          <button class="qaq-download-close" type="button" aria-label="${labels.closeDownloadNotification}">×</button>
         </div>
         <div class="qaq-download-file"></div>
         <div class="qaq-download-path"></div>
@@ -727,9 +738,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   function paint(card, data) {
     const percent = boundedPercent(data.percent);
     const status = text(data.status) || 'downloading';
-    const statusText = text(data.statusText) || (status === 'completed' ? '下載完成' : '下載中');
+    const statusText = text(data.statusText) || (status === 'completed' ? labels.downloadComplete : labels.downloading);
     card.dataset.status = status;
-    card.querySelector('.qaq-download-title').textContent = status === 'completed' ? '下載完成' : status === 'failed' ? '下載失敗' : '下載中';
+    card.querySelector('.qaq-download-title').textContent = status === 'completed' ? labels.downloadComplete : status === 'failed' ? labels.downloadError : labels.downloading;
     card.querySelector('.qaq-download-status').textContent = statusText;
     if (data.filename != null) card.querySelector('.qaq-download-file').textContent = text(data.filename);
     if (data.path != null) card.querySelector('.qaq-download-path').textContent = text(data.path);
@@ -758,6 +769,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   };
 })();
 ''';
+  }
 
   Future<Directory> _linuxDownloadsDirectory() async {
     final desktopDownloadsDirectory = await getDownloadsDirectory();
@@ -945,7 +957,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
   Widget _buildWebViewContent(AsyncSnapshot<void> snapshot) {
     if (snapshot.connectionState != ConnectionState.done) {
-      return _buildLinuxNativeWebViewCover('準備開啟瀏覽器');
+      return _buildLinuxNativeWebViewCover(R.current.preparingBrowser);
     }
 
     if (snapshot.hasError) {
@@ -954,7 +966,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
     if (Platform.isLinux && !_showNativeWebView) {
       return _buildLinuxNativeWebViewCover(
-        _linuxNativeWebViewDetachedForPop ? '正在關閉瀏覽器' : '正在開啟瀏覽器',
+        _linuxNativeWebViewDetachedForPop ? R.current.closingBrowser : R.current.openingBrowser,
       );
     }
 

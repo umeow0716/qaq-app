@@ -6,7 +6,6 @@ import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task.dart';
-import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/pages/calendar/calendar_page.dart';
 import 'package:qaq_app/ui/pages/coursetable/course_table_page.dart';
@@ -35,7 +34,6 @@ class _MainScreenState extends State<MainScreen> {
 
   void appInit() async {
     try {
-      await initLanguage();
       initNotifications();
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
@@ -65,11 +63,6 @@ class _MainScreenState extends State<MainScreen> {
 
   void initNotifications() async {
     await Notifications.instance.init();
-  }
-
-  Future<void> initLanguage() async {
-    await LanguageUtil.init(context);
-    setState(() {});
   }
 
   @override

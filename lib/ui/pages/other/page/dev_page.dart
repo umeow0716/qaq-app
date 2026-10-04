@@ -8,8 +8,8 @@ enum OnListViewPress { appLog }
 class DevPage extends StatelessWidget {
   const DevPage({super.key});
 
-  final List<Map> listViewData = const [
-    {"icon": Icons.info_outline, "title": "App Log", "color": Colors.yellow, "onPress": OnListViewPress.appLog},
+  List<Map> get listViewData => [
+    {"icon": Icons.info_outline, "title": R.current.appLog, "color": Colors.yellow, "onPress": OnListViewPress.appLog},
   ];
 
   void _onListViewPress(OnListViewPress value) async {

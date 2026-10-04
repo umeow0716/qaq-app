@@ -853,7 +853,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
     final v = await Get.dialog<String>(
       AlertDialog(
         contentPadding: const EdgeInsets.all(16.0),
-        title: const Text('Edit'),
+        title: Text(R.current.edit),
         content: Row(
           children: [
             Expanded(
