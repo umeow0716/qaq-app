@@ -4,6 +4,8 @@
 // This file is an independent Flutter implementation for QAQ and does
 // not include or depend on Rive / rive_native.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/navigation/app_navigator.dart';
 import 'package:qaq_app/src/r.dart';
@@ -58,14 +60,17 @@ class MsgDialog {
     final dialogContext = context ?? AppNavigator.key.currentContext;
     if (dialogContext == null) return Future<void>.value();
 
+    final disableTransition = Platform.isWindows || Platform.isLinux;
+
     return showGeneralDialog<void>(
       context: dialogContext,
       useRootNavigator: true,
       barrierDismissible: false,
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: disableTransition ? const Duration(milliseconds: 160) : const Duration(milliseconds: 300),
       pageBuilder: (_, _, _) => _MsgDialogView(parameter: parameter),
       transitionBuilder: (_, animation, _, child) {
+        if (disableTransition) return child;
         final curvedAnimation = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,

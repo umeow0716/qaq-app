@@ -18,7 +18,6 @@ import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
-import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_linux/webview_all_linux.dart' as linux_webview;
@@ -28,10 +27,18 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 class QAQWebViewDesktop extends StatefulWidget {
-  const QAQWebViewDesktop({super.key, required this.initialUrl, this.title});
+  const QAQWebViewDesktop({
+    super.key,
+    required this.initialUrl,
+    this.title,
+    this.showAppBar = true,
+    this.onClose,
+  });
 
   final Uri initialUrl;
   final String? title;
+  final bool showAppBar;
+  final VoidCallback? onClose;
 
   @override
   State<QAQWebViewDesktop> createState() => _QAQWebViewDesktopState();
@@ -56,10 +63,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   Future<void> _blobDownloadMessageQueue = Future<void>.value();
 
   final progress = ValueNotifier(0.0);
+  String? _pageTitle;
 
   @override
   void initState() {
     super.initState();
+    _pageTitle = widget.title;
     _initialLoadFuture = _prepareControllerAndLoadInitialContent();
     if (Platform.isLinux) {
       unawaited(_showLinuxNativeWebViewAfterRouteTransition());
@@ -1291,6 +1300,12 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
   Future<void> _onPageFinished(String url) async {
     await _installDownloadFilenameCapture();
+
+    final title = await _requiredController.getTitle();
+    if (mounted && title != null && title.trim().isNotEmpty) {
+      setState(() => _pageTitle = widget.title ?? title.trim());
+    }
+
     if (!kDebugMode) return;
 
     debugPrint('[WebView] onPageFinished: $url');
@@ -1298,8 +1313,6 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final uri = Uri.tryParse(url);
     final cookieLabels = uri == null ? const <String>[] : await WebViewCookieStore.debugLabels(uri);
     debugPrint('[WebView] cookies: $cookieLabels');
-
-    final title = await _requiredController.getTitle();
     debugPrint('[WebView] title: $title');
 
     final bodyText = await _requiredController.runJavaScriptReturningResult(
@@ -1308,19 +1321,54 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     debugPrint('[WebView] body: $bodyText');
   }
 
-  Widget _buildButtonBar() => WebViewButtonBar(
-    onBackPressed: () {
-      final controller = _controller;
-      if (controller != null) unawaited(controller.goBack());
-    },
-    onForwardPressed: () {
-      final controller = _controller;
-      if (controller != null) unawaited(controller.goForward());
-    },
-    onRefreshPressed: () {
-      final controller = _controller;
-      if (controller != null) unawaited(controller.reload());
-    },
+  PreferredSizeWidget _buildDesktopAppBar() => AppBar(
+    automaticallyImplyLeading: false,
+    titleSpacing: 8,
+    title: Row(
+      children: [
+        IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () {
+            final controller = _controller;
+            if (controller != null) unawaited(controller.goBack());
+          },
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        IconButton(
+          tooltip: 'Forward',
+          onPressed: () {
+            final controller = _controller;
+            if (controller != null) unawaited(controller.goForward());
+          },
+          icon: const Icon(Icons.arrow_forward_rounded),
+        ),
+        IconButton(
+          tooltip: R.current.refresh,
+          onPressed: () {
+            final controller = _controller;
+            if (controller != null) unawaited(controller.reload());
+          },
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            _pageTitle ?? widget.title ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+    actions: [
+      IconButton(
+        tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+        onPressed: widget.onClose ?? () => Navigator.of(context).maybePop(),
+        icon: const Icon(Icons.close_rounded),
+      ),
+      const SizedBox(width: 4),
+    ],
   );
 
   Widget _buildProgressBar() => ValueListenableBuilder<double>(
@@ -1397,7 +1445,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   Widget build(BuildContext context) => WillPopScope(
     onWillPop: _handleRouteWillPop,
     child: Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? '')),
+      appBar: widget.showAppBar ? _buildDesktopAppBar() : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -1408,7 +1456,6 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
                 builder: (context, snapshot) => _buildWebViewContent(snapshot),
               ),
             ),
-            _buildButtonBar(),
           ],
         ),
       ),

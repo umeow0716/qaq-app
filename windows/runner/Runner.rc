@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.umeow" "\0"
-            VALUE "FileDescription", "qaq_app" "\0"
+            VALUE "CompanyName", "umeow" "\0"
+            VALUE "FileDescription", "QAQ" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "qaq_app" "\0"
+            VALUE "InternalName", "QAQ" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.umeow. All rights reserved." "\0"
-            VALUE "OriginalFilename", "qaq_app.exe" "\0"
-            VALUE "ProductName", "qaq_app" "\0"
+            VALUE "OriginalFilename", "QAQ.exe" "\0"
+            VALUE "ProductName", "QAQ" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

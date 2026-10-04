@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
@@ -88,6 +90,7 @@ class CourseSemesterTask extends CourseSystemTask<List<SemesterJson>> {
               ],
             ),
           ),
+          transitionDuration: Platform.isWindows || Platform.isLinux ? Duration.zero : null,
         ) ??
         before;
     value.add(select);

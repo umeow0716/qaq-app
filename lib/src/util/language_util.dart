@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/generated/l10n.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
@@ -63,6 +65,18 @@ class LanguageUtil {
 
   static Future<void> setLangByIndex(LangEnum langEnum) async {
     final locale = getSupportLocale[langEnum.index];
+    final portalLocale = langEnum == LangEnum.zh ? 'zh_TW' : 'en';
+
+    // Keep nPortal in the same language as QAQ. This request intentionally
+    // happens before the local locale is committed so SSO pages opened right
+    // after the switch already render in the requested language. Network or
+    // session failures must not prevent the user from changing QAQ's UI.
+    try {
+      await NTUTConnector.reloadLocale(portalLocale);
+    } catch (error, stackTrace) {
+      Log.eWithStack('nPortal locale switch failed: $error', stackTrace);
+    }
+
     await load(locale);
   }
 

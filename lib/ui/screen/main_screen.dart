@@ -1,16 +1,21 @@
+import 'dart:io';
+
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/notifications/notifications.dart';
 import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/pages/calendar/calendar_page.dart';
 import 'package:qaq_app/ui/pages/coursetable/course_table_page.dart';
 import 'package:qaq_app/ui/pages/other/other_page.dart';
 import 'package:qaq_app/ui/pages/score/score_page.dart';
+import 'package:qaq_app/ui/screen/desktop_main_screen.dart';
 import 'package:provider/provider.dart';
 
 class MainScreen extends StatefulWidget {
@@ -47,6 +52,17 @@ class _MainScreenState extends State<MainScreen> {
       return;
     }
 
+    if (checkLoginTaskResult == TaskStatus.success) {
+      try {
+        final portalLocale = LanguageUtil.getLangIndex() == LangEnum.zh ? 'zh_TW' : 'en';
+        await NTUTConnector.reloadLocale(portalLocale);
+      } catch (error, stackTrace) {
+        // Locale synchronization is best-effort. A portal locale endpoint
+        // failure must not prevent the app from entering offline mode.
+        Log.eWithStack('nPortal locale reload failed: $error', stackTrace);
+      }
+    }
+
     setState(() {
       _pageList = [];
       _pageList.add(const CourseTablePage());
@@ -68,6 +84,16 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) => Consumer<AppProvider>(
     builder: (context, appProvider, child) {
+      if (Platform.isWindows || Platform.isLinux) {
+        if (_pageList.isEmpty) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        return const DesktopMainScreen();
+      }
+
       return PopScope<void>(
         canPop: _closeAppCount > 0,
         onPopInvokedWithResult: (didPop, result) {

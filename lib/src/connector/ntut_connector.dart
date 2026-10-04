@@ -19,6 +19,7 @@ class NTUTConnector {
   static const host = "https://nportal.ntut.edu.tw/";
   static const _loginUrl = "${host}login.do";
   static const _checkSessionUrl = "${host}myPortal.do";
+  static const _localeReloadUrl = "${host}localeReload.do";
   static const _portalApiUserAgent = "Direk android App";
   static const _getPictureUrl = "${host}photoView.do";
   static const _uploadPictureUrl = "${host}photoUpload.do";
@@ -84,6 +85,22 @@ class NTUTConnector {
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
       return false;
+    }
+  }
+
+  static Future<void> reloadLocale(String locale) async {
+    if (locale != 'en' && locale != 'zh_TW') {
+      throw ArgumentError.value(locale, 'locale', 'Unsupported nPortal locale');
+    }
+
+    final uri = Uri.parse(_localeReloadUrl).replace(queryParameters: {'locale': locale});
+    final parameter = ConnectorParameter(uri.toString())
+      ..userAgent = _portalApiUserAgent
+      ..referer = "${host}index.do";
+    final response = await Connector.getDataByGetResponse(parameter);
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw StateError('NTUT locale reload failed with HTTP ${response.statusCode}.');
     }
   }
 

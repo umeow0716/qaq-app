@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_windows/webview_all_windows.dart' as windows_webview;
@@ -18,6 +19,22 @@ class WebViewCookieStore {
   static final WebViewCookieManager _manager = WebViewCookieManager();
 
   static Future<void> clearAll() async {
+    // On Windows, webview_all's cookie manager creates a native WebView
+    // controller in order to access the WebView2 cookie manager. If this runs
+    // during the unauthenticated startup/logout path, it would implicitly
+    // create the process-wide WebView2 environment with default options. QAQ
+    // would then be unable to install its PAC proxy arguments when the first
+    // actual WebView is opened after login.
+    //
+    // Before the first real QAQ WebView there cannot be any QAQ WebView cookies
+    // to clear, so skipping this initialization is both safe and necessary.
+    // Once a WebView environment has been prepared, logout still clears cookies
+    // exactly as before.
+    if (Platform.isWindows &&
+        !GlobalProtectWebViewProxyController.isWindowsEnvironmentPrepared) {
+      return;
+    }
+
     await _manager.clearCookies();
   }
 

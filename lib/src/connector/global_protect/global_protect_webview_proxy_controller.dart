@@ -25,6 +25,16 @@ class GlobalProtectWebViewProxyController {
   static const MethodChannel _channel = MethodChannel(AppConfig.methodChannelName);
   static String? _windowsAdditionalArguments;
 
+  /// Whether QAQ has explicitly created the process-scoped Windows WebView2
+  /// environment with its stable proxy configuration.
+  ///
+  /// Windows cookie-manager operations create a native WebView controller
+  /// internally. Calling them before this becomes true would create the shared
+  /// WebView2 environment with default options, preventing QAQ from installing
+  /// its PAC arguments when the first real WebView is opened later.
+  static bool get isWindowsEnvironmentPrepared =>
+      Platform.isWindows && _windowsAdditionalArguments != null;
+
   /// Applies the loopback proxy and returns whether Android reverse-bypass
   /// allow-list mode is supported.
   static Future<bool> setProxyOverride({required int port, required List<String> hosts}) async {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/r.dart';
@@ -55,22 +57,26 @@ class GraduationPicker {
     if (!_isShowing) {
       try {
         const dialog = GraduationPickerWidget();
+        final isDesktop = Platform.isWindows || Platform.isLinux;
         Get.dialog<GraduationInformationJson>(
           PopScope<void>(
             canPop: _barrierDismissible,
-            child: const Dialog(
-              insetAnimationDuration: Duration(milliseconds: 100),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+            child: Dialog(
+              insetAnimationDuration: isDesktop ? const Duration(milliseconds: 140) : const Duration(milliseconds: 100),
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
               child: dialog,
             ),
           ),
           barrierDismissible: false,
+          transitionDuration: isDesktop ? const Duration(milliseconds: 160) : null,
         ).then((value) {
           if (value != null) finishCallBack(value);
         });
-        // Delaying the function for 200 milliseconds
-        // [Default transitionDuration of DialogRoute]
-        await Future.delayed(const Duration(milliseconds: 200));
+        // Mobile keeps the existing dialog transition. Desktop dialogs are
+        // intentionally immediate to avoid expensive compositor transitions.
+        if (!isDesktop) {
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
         _isShowing = true;
         return true;
       } catch (_) {
