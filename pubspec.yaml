@@ -66,6 +66,8 @@ dependencies:
   meta: ^1.18.0
   android_intent_plus: ^6.1.0
   package_info_plus: ^10.2.1
+  webview_flutter_android: ^4.14.1
+  webview_flutter_platform_interface: ^2.15.1
 
 dev_dependencies:
   flutter_test:
