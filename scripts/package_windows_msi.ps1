@@ -13,8 +13,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$wixVersion = '6.0.2'
+$uiExtension = "WixToolset.UI.wixext/$wixVersion"
+
 $ReleaseDir = (Resolve-Path $ReleaseDir).Path
 $WixSource = (Resolve-Path $WixSource).Path
+$AppIconPath = (Resolve-Path (Join-Path $PSScriptRoot '..\windows\runner\resources\app_icon.ico')).Path
 
 if (-not (Test-Path (Join-Path $ReleaseDir 'QAQ.exe'))) {
   throw "Windows release executable not found in: $ReleaseDir"
@@ -34,8 +38,8 @@ Write-Host "MSI ProductVersion: $msiVersion"
 
 $dotnetTools = Join-Path $HOME '.dotnet\tools'
 if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
-  Write-Host 'Installing WiX Toolset 6.0.2...'
-  dotnet tool install --global wix --version 6.0.2
+  Write-Host "Installing WiX Toolset $wixVersion..."
+  dotnet tool install --global wix --version $wixVersion
 }
 if ($env:PATH -notlike "*$dotnetTools*") {
   $env:PATH = "$dotnetTools;$env:PATH"
@@ -43,6 +47,12 @@ if ($env:PATH -notlike "*$dotnetTools*") {
 
 if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
   throw 'WiX CLI is not available after installation.'
+}
+
+Write-Host "Ensuring WiX UI extension $uiExtension is available..."
+& wix extension add -g $uiExtension
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to install WiX UI extension: $uiExtension"
 }
 
 $outputDirectory = Split-Path -Parent $OutputPath
@@ -54,6 +64,8 @@ if ($outputDirectory) {
   -arch x64 `
   -bindpath $ReleaseDir `
   -define "MsiVersion=$msiVersion" `
+  -define "AppIconPath=$AppIconPath" `
+  -ext $uiExtension `
   -pdbtype none `
   -out $OutputPath `
   $WixSource
