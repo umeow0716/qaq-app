@@ -304,14 +304,15 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                 // (notably TableCalendar's internal AnimatedSize) to relayout in
                 // the middle of their own animation/layout pass.
                 const preferredWidth = 1120.0;
-                final desiredWidth = showPortalRail
-                    ? (preferredWidth < maxWorkspaceWidth ? preferredWidth : maxWorkspaceWidth)
-                    : (preferredWidth < rawWorkspaceWidth * 0.80 ? preferredWidth : rawWorkspaceWidth * 0.80);
-                final workspaceWidth =
-                    (maxWorkspaceWidth < 680.0 ? maxWorkspaceWidth : desiredWidth.clamp(680.0, maxWorkspaceWidth))
-                        .toDouble();
+                final desiredWidth =
+                    preferredWidth < rawWorkspaceWidth * 0.80 ? preferredWidth : rawWorkspaceWidth * 0.80;
+                final workspaceWidth = showPortalRail
+                    ? maxWorkspaceWidth
+                    : (maxWorkspaceWidth < 680.0
+                          ? maxWorkspaceWidth
+                          : desiredWidth.clamp(680.0, maxWorkspaceWidth).toDouble());
                 final availableWorkspaceHeight = constraints.maxHeight - _workspaceTop - _workspaceBottomClearance;
-                final workspaceHeight = availableWorkspaceHeight.clamp(520.0, 780.0).toDouble();
+                final workspaceHeight = availableWorkspaceHeight < 520.0 ? 520.0 : availableWorkspaceHeight;
 
                 return Stack(
                   children: [
