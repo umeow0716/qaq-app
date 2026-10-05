@@ -1,0 +1,36 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Id="io.github.umeow0716.qaq"
+    Name="QAQ"
+    Manufacturer="QAQ Project"
+    Version="$(MsiVersion)"
+    Scope="perMachine"
+    InstallerVersion="500">
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="QAQ">
+        <Component Id="MainExecutable" Guid="*">
+          <File Id="QAQExe" Source="QAQ.exe" KeyPath="yes">
+            <Shortcut
+              Id="StartMenuShortcut"
+              Directory="ApplicationProgramsFolder"
+              Name="QAQ"
+              Description="QAQ"
+              WorkingDirectory="INSTALLFOLDER"
+              Advertise="no" />
+          </File>
+        </Component>
+
+        <Files Include="**">
+          <Exclude Files="QAQ.exe" />
+        </Files>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="QAQ" />
+    </StandardDirectory>
+  </Package>
+</Wix>

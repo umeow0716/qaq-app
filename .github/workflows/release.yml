@@ -235,10 +235,11 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
-      - name: Package Windows ZIP
+      - name: Package Windows ZIP and MSI
         shell: pwsh
         env:
           RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+          APP_VERSION: ${{ needs.prepare.outputs.app-version }}
         run: |
           $ErrorActionPreference = 'Stop'
           $releaseDir = 'build/windows/x64/runner/Release'
@@ -253,6 +254,12 @@ jobs:
             -DestinationPath "dist/QAQ-$env:RELEASE_TAG-windows-x64.zip" `
             -CompressionLevel Optimal
           Remove-Item 'dist/QAQ' -Recurse -Force
+
+          & './scripts/package_windows_msi.ps1' `
+            -ReleaseDir $releaseDir `
+            -AppVersion $env:APP_VERSION `
+            -OutputPath "dist/QAQ-$env:RELEASE_TAG-windows-x64.msi"
+
           Get-ChildItem dist
 
       - name: Upload Windows release artifact

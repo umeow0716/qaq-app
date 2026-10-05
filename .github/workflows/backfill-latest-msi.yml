@@ -1,0 +1,116 @@
+name: Backfill latest Windows MSI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/backfill-latest-msi.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    name: Build and upload MSI to latest release
+    runs-on: windows-latest
+
+    steps:
+      - name: Resolve latest release tag
+        id: latest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = gh release view --repo "$env:GITHUB_REPOSITORY" --json tagName --jq .tagName
+          if (-not $tag) {
+            throw 'Could not resolve latest GitHub Release tag.'
+          }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Checkout packaging tooling
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: tooling
+
+      - name: Checkout latest release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.latest.outputs.tag }}
+          path: app
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Generate code
+        working-directory: app
+        shell: bash
+        run: bash scripts/codegen.sh
+
+      - name: Build Windows release
+        working-directory: app
+        run: flutter build windows --release
+
+      - name: Package unsigned MSI
+        id: package
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_TAG
+          if ($version.StartsWith('v')) {
+            $version = $version.Substring(1)
+          }
+
+          $dist = Join-Path $env:GITHUB_WORKSPACE 'dist'
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $msi = Join-Path $dist "QAQ-$env:RELEASE_TAG-windows-x64.msi"
+
+          & "$env:GITHUB_WORKSPACE\tooling\scripts\package_windows_msi.ps1" `
+            -ReleaseDir "$env:GITHUB_WORKSPACE\app\build\windows\x64\runner\Release" `
+            -AppVersion $version `
+            -OutputPath $msi `
+            -WixSource "$env:GITHUB_WORKSPACE\tooling\windows\installer\Package.wxs"
+
+          "msi=$msi" >> $env:GITHUB_OUTPUT
+
+      - name: Upload MSI and refresh checksums
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.latest.outputs.tag }}
+          MSI_PATH: ${{ steps.package.outputs.msi }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dist = Split-Path -Parent $env:MSI_PATH
+          $checksums = Join-Path $dist 'SHA256SUMS.txt'
+
+          gh release download "$env:RELEASE_TAG" `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --pattern 'SHA256SUMS.txt' `
+            --dir $dist `
+            --clobber
+
+          $fileName = Split-Path -Leaf $env:MSI_PATH
+          $hash = (Get-FileHash $env:MSI_PATH -Algorithm SHA256).Hash.ToLowerInvariant()
+          $lines = @(Get-Content $checksums)
+          $escapedName = [regex]::Escape($fileName)
+          $lines = @($lines | Where-Object { $_ -notmatch "\s+$escapedName$" })
+          $lines += "$hash  $fileName"
+          $lines | Sort-Object | Set-Content -Encoding ascii $checksums
+
+          gh release upload "$env:RELEASE_TAG" `
+            "$env:MSI_PATH" `
+            $checksums `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --clobber
