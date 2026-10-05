@@ -306,7 +306,7 @@ class _OtherPageState extends State<OtherPage> {
         await Get.to(() => QAQWebView(initialUrl: link, title: R.current.localUploadHtmlTest));
         break;
       case OnListViewPress.installDesktopApp:
-        await launchUrl(AppLink.githubLatestReleaseUrl, mode: LaunchMode.externalApplication);
+        await launchUrl(AppLink.websiteUrl, mode: LaunchMode.externalApplication);
         break;
     }
   }

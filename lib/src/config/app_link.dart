@@ -4,6 +4,7 @@ class AppLink {
 
   static const String githubRepoUrlString = "https://github.com/$githubOwnerName/$repoName";
   static final Uri githubLatestReleaseUrl = Uri.parse("$githubRepoUrlString/releases/latest");
+  static final Uri websiteUrl = Uri.parse("https://qaq.umeow.eu.org/");
   static const String privacyPolicyUrlString =
       'https://raw.githubusercontent.com/$githubOwnerName/$repoName/main/privacy-policy.md';
 
