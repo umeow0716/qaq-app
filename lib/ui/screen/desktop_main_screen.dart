@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qaq_app/src/config/app_link.dart';
 import 'package:qaq_app/src/config/app_themes.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
@@ -15,6 +16,7 @@ import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
+import 'package:qaq_app/src/update/app_update_checker.dart';
 import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/desktop/desktop_download_panel.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
@@ -26,6 +28,7 @@ import 'package:qaq_app/ui/pages/coursetable/course_table_page.dart';
 import 'package:qaq_app/ui/pages/score/score_page.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_web_view.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DesktopMainScreen extends StatefulWidget {
   const DesktopMainScreen({super.key});
@@ -51,6 +54,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
   Future<Uint8List?>? _avatarFuture;
   Uint8List? _lastAvatarBytes;
   bool _avatarUploading = false;
+  bool _updateAvailable = false;
   Uri? _focusWebViewUri;
   String? _focusWebViewTitle;
 
@@ -68,6 +72,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
       reverseDuration: const Duration(milliseconds: 180),
     );
     _avatarFuture = _loadAvatar();
+    unawaited(_checkForUpdates());
   }
 
   @override
@@ -78,6 +83,12 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
 
   Future<void> _openPortalShortcut(DesktopPortalShortcut shortcut) async {
     await _openCourseSystemLink(shortcut.uri, shortcut.label(english: _isEnglish));
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateAvailable = await AppUpdateChecker.isUpdateAvailable();
+    if (!mounted || updateAvailable == _updateAvailable) return;
+    setState(() => _updateAvailable = updateAvailable);
   }
 
   Future<Uint8List?> _loadAvatar() async {
@@ -293,14 +304,16 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                 // (notably TableCalendar's internal AnimatedSize) to relayout in
                 // the middle of their own animation/layout pass.
                 const preferredWidth = 1120.0;
-                final desiredWidth = showPortalRail
-                    ? (preferredWidth < maxWorkspaceWidth ? preferredWidth : maxWorkspaceWidth)
-                    : (preferredWidth < rawWorkspaceWidth * 0.80 ? preferredWidth : rawWorkspaceWidth * 0.80);
-                final workspaceWidth =
-                    (maxWorkspaceWidth < 680.0 ? maxWorkspaceWidth : desiredWidth.clamp(680.0, maxWorkspaceWidth))
-                        .toDouble();
+                final desiredWidth = preferredWidth < rawWorkspaceWidth * 0.80
+                    ? preferredWidth
+                    : rawWorkspaceWidth * 0.80;
+                final workspaceWidth = showPortalRail
+                    ? maxWorkspaceWidth
+                    : (maxWorkspaceWidth < 680.0
+                          ? maxWorkspaceWidth
+                          : desiredWidth.clamp(680.0, maxWorkspaceWidth).toDouble());
                 final availableWorkspaceHeight = constraints.maxHeight - _workspaceTop - _workspaceBottomClearance;
-                final workspaceHeight = availableWorkspaceHeight.clamp(520.0, 780.0).toDouble();
+                final workspaceHeight = availableWorkspaceHeight < 520.0 ? 520.0 : availableWorkspaceHeight;
 
                 return Stack(
                   children: [
@@ -718,6 +731,35 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.info_outline),
+            ),
+            IconButton(
+              tooltip: _updateAvailable
+                  ? (_isEnglish ? 'Update available' : '有新版本')
+                  : (_isEnglish ? 'Official website' : '官方網站'),
+              onPressed: () => unawaited(launchUrl(AppLink.websiteUrl, mode: LaunchMode.externalApplication)),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+              visualDensity: VisualDensity.compact,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.cloud_outlined),
+                  if (_updateAvailable)
+                    Positioned(
+                      top: 1,
+                      right: 0,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Theme.of(context).colorScheme.surfaceContainerLow, width: 1.2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),

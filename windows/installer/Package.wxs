@@ -6,6 +6,8 @@
     Manufacturer="QAQ Project"
     Version="$(MsiVersion)"
     Scope="perMachine"
+    Language="1028"
+    Codepage="950"
     InstallerVersion="500">
 
     <MediaTemplate EmbedCab="yes" />

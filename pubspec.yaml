@@ -2,7 +2,7 @@ name: qaq_app
 description: QAQ, an independent campus life assistant for NTUT students.
 publish_to: 'none'
 
-version: 1.8.0+5278
+version: 1.8.1+5279
 
 environment:
   flutter: ">=3.44.7 <4.0.0"
@@ -32,6 +32,7 @@ dependencies:
   file_selector: ^1.0.3
   dio: ^5.11.1
   dio_cookie_manager: ^3.5.0
+  win_http: ^0.2.2
   cookie_jar: ^4.0.9
   html: ^0.15.7
   xml: ^7.0.1
