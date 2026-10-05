@@ -76,7 +76,7 @@
             Advertise="no" />
 
           <RegistryValue
-            Root="HKCU"
+            Root="HKLM"
             Key="Software\QAQ Project\QAQ"
             Name="DesktopShortcut"
             Type="integer"
