@@ -62,6 +62,7 @@ if ($outputDirectory) {
 
 & wix build `
   -arch x64 `
+  -culture 'zh-TW' `
   -bindpath $ReleaseDir `
   -define "MsiVersion=$msiVersion" `
   -define "AppIconPath=$AppIconPath" `
