@@ -304,8 +304,9 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                 // (notably TableCalendar's internal AnimatedSize) to relayout in
                 // the middle of their own animation/layout pass.
                 const preferredWidth = 1120.0;
-                final desiredWidth =
-                    preferredWidth < rawWorkspaceWidth * 0.80 ? preferredWidth : rawWorkspaceWidth * 0.80;
+                final desiredWidth = preferredWidth < rawWorkspaceWidth * 0.80
+                    ? preferredWidth
+                    : rawWorkspaceWidth * 0.80;
                 final workspaceWidth = showPortalRail
                     ? maxWorkspaceWidth
                     : (maxWorkspaceWidth < 680.0
@@ -735,9 +736,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
               tooltip: _updateAvailable
                   ? (_isEnglish ? 'Update available' : '有新版本')
                   : (_isEnglish ? 'Official website' : '官方網站'),
-              onPressed: () => unawaited(
-                launchUrl(AppLink.websiteUrl, mode: LaunchMode.externalApplication),
-              ),
+              onPressed: () => unawaited(launchUrl(AppLink.websiteUrl, mode: LaunchMode.externalApplication)),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints.tightFor(width: 36, height: 36),
               visualDensity: VisualDensity.compact,
@@ -755,10 +754,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.error,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
-                            width: 1.2,
-                          ),
+                          border: Border.all(color: Theme.of(context).colorScheme.surfaceContainerLow, width: 1.2),
                         ),
                       ),
                     ),

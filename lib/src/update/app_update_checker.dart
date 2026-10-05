@@ -41,11 +41,7 @@ class AppUpdateChecker {
     final match = RegExp(r'(\d+)\.(\d+)\.(\d+)').firstMatch(value);
     if (match == null) return null;
 
-    return <int>[
-      int.parse(match.group(1)!),
-      int.parse(match.group(2)!),
-      int.parse(match.group(3)!),
-    ];
+    return <int>[int.parse(match.group(1)!), int.parse(match.group(2)!), int.parse(match.group(3)!)];
   }
 
   static int _compareVersions(List<int> left, List<int> right) {
