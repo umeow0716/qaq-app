@@ -62,8 +62,8 @@ class CourseConnector {
       final redirectHref = tagNode.getElementsByTagName("a").first.attributes["href"];
       if (redirectHref == null) throw StateError("Course SSO redirect is missing");
       jumpUrl = redirectHref;
+      if (!jumpUrl.startsWith("http")) jumpUrl = "${NTUTConnector.host}$jumpUrl";
       parameter = ConnectorParameter(jumpUrl);
-
       await Connector.getDataByPostResponse(parameter);
       return CourseConnectorStatus.loginSuccess;
     } catch (e, stack) {

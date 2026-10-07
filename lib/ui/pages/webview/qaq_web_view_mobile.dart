@@ -12,6 +12,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
@@ -150,6 +151,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
         onNavigationRequest: _onNavigationRequest,
         onPageStarted: _onPageStarted,
         onPageFinished: (url) => unawaited(_onPageFinished(url)),
+        onSslAuthError: (error) => unawaited(_onAndroidSslAuthError(error)),
       );
     }
 
@@ -159,6 +161,27 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
       onPageStarted: _onPageStarted,
       onPageFinished: (url) => unawaited(_onPageFinished(url)),
     );
+  }
+
+  Future<void> _onAndroidSslAuthError(SslAuthError error) async {
+    final platformError = error.platform;
+    if (platformError is AndroidSslAuthError) {
+      final uri = Uri.tryParse(platformError.url);
+      final isUntrustedAuthority =
+          platformError.description ==
+          'The certificate authority is not trusted.';
+      if (uri != null &&
+          isUntrustedAuthority &&
+          NtutCertificatePolicy.trustsHost(uri.host)) {
+        GlobalProtectDebug.log(
+          'Allowing Android WebView untrusted CA for ${uri.host}',
+        );
+        await error.proceed();
+        return;
+      }
+    }
+
+    await error.cancel();
   }
 
   Future<void> _configurePlatformFilePicker() async {

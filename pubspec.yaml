@@ -31,8 +31,8 @@ dependencies:
   flutter_cache_manager: ^3.4.2
   file_selector: ^1.0.3
   dio: ^5.11.1
+  native_dio_adapter: ^1.8.0
   dio_cookie_manager: ^3.5.0
-  win_http: ^0.2.2
   cookie_jar: ^4.0.9
   html: ^0.15.7
   xml: ^7.0.1

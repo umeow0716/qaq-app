@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 
 import 'global_protect_connector.dart';
@@ -16,7 +17,11 @@ import 'global_protect_session_cache.dart';
 /// Credentials are never copied into this object. Every connection attempt
 /// reads the account/password already held by [LocalStorage] at that moment.
 class GlobalProtectAppSession {
-  GlobalProtectAppSession._() : _connector = GlobalProtectConnector() {
+  GlobalProtectAppSession._()
+    : _connector = GlobalProtectConnector(
+        httpClient: HttpClient()
+          ..badCertificateCallback = NtutCertificatePolicy.allowBadCertificate,
+      ) {
     _idleController = GlobalProtectIdleController(timeout: idleTimeout, onIdle: _disconnectForIdle);
     _manager = GlobalProtectSessionManager(connect: _connectUsingCachedSessionOrPassword);
   }
@@ -121,7 +126,10 @@ class GlobalProtectAppSession {
     }
 
     GlobalProtectDebug.log('creating GP-backed HttpClient');
-    final next = GlobalProtectHttpClient.fromConnection(connection);
+    final next = GlobalProtectHttpClient.fromConnection(
+      connection,
+      badCertificateCallback: NtutCertificatePolicy.allowBadCertificate,
+    );
     _httpClient = next;
     _httpConnection = connection;
     return next;

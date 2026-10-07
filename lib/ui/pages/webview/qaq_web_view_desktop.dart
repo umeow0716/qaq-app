@@ -14,6 +14,7 @@ import 'package:qaq_app/src/connector/global_protect/global_protect_webview_prox
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
@@ -384,7 +385,26 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     onNavigationRequest: _onNavigationRequest,
     onPageStarted: _onPageStarted,
     onPageFinished: (url) => unawaited(_onPageFinished(url)),
+    onSslAuthError: (error) => unawaited(_onSslAuthError(error)),
   );
+
+  Future<void> _onSslAuthError(SslAuthError error) async {
+    if (Platform.isWindows &&
+        NtutCertificatePolicy.allowsWindowsWebViewCertificateError(
+          error.platform.description,
+        )) {
+      final uri = NtutCertificatePolicy.webViewRequestUri(
+        error.platform.description,
+      );
+      GlobalProtectDebug.log(
+        'Allowing Windows WebView untrusted CA for ${uri?.host}',
+      );
+      await error.proceed();
+      return;
+    }
+
+    await error.cancel();
+  }
 
   Future<void> _configureWindowsFileTransfer(WebViewController controller) async {
     if (!Platform.isWindows) return;
@@ -730,6 +750,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     final dio = Dio(DioConnector.dioOptions)
       ..httpClientAdapter = EarlyInterceptorAdapter(
         headerDecorators: DioConnector.headerDecorators,
+        badCertificateCallback: NtutCertificatePolicy.allowBadCertificate,
         httpClientProvider: (options) async {
           if (!IStudyAccessGuard.isIStudyUri(options.uri)) return null;
 
