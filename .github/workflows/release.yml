@@ -85,6 +85,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Rust for native HTTP transport
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -216,6 +219,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Setup Rust for native HTTP transport
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -288,6 +294,9 @@ jobs:
             libwebkit2gtk-4.1-dev \
             ninja-build \
             pkg-config
+
+      - name: Setup Rust for native HTTP transport
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

@@ -29,6 +29,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Rust for native HTTP transport
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:

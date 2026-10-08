@@ -8,6 +8,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_routing.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
@@ -546,7 +548,10 @@ class LocalStorage {
         }
         return route;
       },
-      tunnelClient: () async => (await GlobalProtectAppSession.instance.ensureHttpClient()).client,
+      tunnelAdapter: () => GlobalProtectAppSession.instance.ensureDioAdapter(
+        proxyPort: () =>
+            GlobalProtectProxyBridge.instance.ensureStarted(vpnHosts: GlobalProtectRouting.webViewProxyHosts),
+      ),
     );
     await _loadUserData();
     _loadCourseTableList();

@@ -1,13 +1,11 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
 
 import 'global_protect_routing.dart';
 
 typedef StudyRouteResolver = Future<IStudyAccessRoute> Function();
-typedef TunnelHttpClientProvider = Future<HttpClient> Function();
+typedef TunnelAdapterProvider = Future<HttpClientAdapter> Function();
 
 /// Selects the transport for each request, including every redirect hop.
 /// The app session owns GP clients; this adapter owns only the direct adapter.
@@ -15,12 +13,12 @@ class GlobalProtectDioAdapter implements HttpClientAdapter {
   GlobalProtectDioAdapter({
     required this.directAdapter,
     required this.resolveRoute,
-    TunnelHttpClientProvider? tunnelClient,
-  }) : _tunnelClient = tunnelClient ?? (() async => throw StateError('No GP tunnel client was configured.'));
+    TunnelAdapterProvider? tunnelAdapter,
+  }) : _tunnelAdapter = tunnelAdapter ?? (() async => throw StateError('No GP tunnel client was configured.'));
 
   final HttpClientAdapter directAdapter;
   final StudyRouteResolver resolveRoute;
-  final TunnelHttpClientProvider _tunnelClient;
+  final TunnelAdapterProvider _tunnelAdapter;
   bool _closed = false;
 
   @override
@@ -46,10 +44,10 @@ class GlobalProtectDioAdapter implements HttpClientAdapter {
       case IStudyAccessRoute.blocked:
         throw const IStudyAccessBlockedException();
       case IStudyAccessRoute.vpn:
-        final client = await _tunnelClient();
+        final client = await _tunnelAdapter();
         _checkActive(options);
         // Resolve afresh so a reconnect never reuses the previous session client.
-        return IOHttpClientAdapter(createHttpClient: () => client).fetch(options, requestStream, cancelFuture);
+        return client.fetch(options, requestStream, cancelFuture);
     }
   }
 

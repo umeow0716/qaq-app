@@ -32,6 +32,10 @@ dependencies:
   file_selector: ^1.0.3
   dio: ^5.11.1
   native_dio_adapter: ^1.8.0
+  native_dio_adapter_desktop:
+    git:
+      url: https://github.com/umeow0716/native_dio_adapter_desktop.git
+      ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
   dio_cookie_manager: ^3.5.0
   cookie_jar: ^4.0.9
   html: ^0.15.7

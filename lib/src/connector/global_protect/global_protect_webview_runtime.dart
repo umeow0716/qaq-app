@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'global_protect_debug.dart';
 import 'global_protect_routing.dart';
-import 'global_protect_webview_proxy.dart';
+import 'global_protect_proxy.dart';
 import 'global_protect_webview_proxy_controller.dart';
 
 /// Owns process-wide WebView proxy cleanup for GlobalProtect.
@@ -21,7 +21,7 @@ class GlobalProtectWebViewRuntime {
   static Future<void> prepareWindowsEnvironment() async {
     if (!Platform.isWindows || GlobalProtectWebViewProxyController.isWindowsEnvironmentPrepared) return;
     final currentGeneration = generation;
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(
+    final port = await GlobalProtectProxyBridge.instance.ensureListening(
       vpnHosts: GlobalProtectRouting.webViewProxyHosts,
     );
     if (!isCurrent(currentGeneration)) throw StateError('WebView proxy preparation was reset.');
@@ -53,9 +53,9 @@ class GlobalProtectWebViewRuntime {
     final currentGeneration = generation;
     if (Platform.isWindows) {
       await prepareWindowsEnvironment();
-      await GlobalProtectWebViewProxyBridge.instance.enableVpnRouting();
+      await GlobalProtectProxyBridge.instance.enableVpnRouting();
     } else {
-      final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(
+      final port = await GlobalProtectProxyBridge.instance.ensureStarted(
         vpnHosts: GlobalProtectRouting.webViewProxyHosts,
       );
       if (!isCurrent(currentGeneration)) throw StateError('WebView proxy setup was reset.');
@@ -77,7 +77,7 @@ class GlobalProtectWebViewRuntime {
   static Future<void> reset() async {
     _generation++;
     _enableInFlight = null;
-    GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+    GlobalProtectProxyBridge.instance.disableVpnRouting();
     var closeLoopbackBridge = true;
     try {
       closeLoopbackBridge = await GlobalProtectWebViewProxyController.clearProxyOverride();
@@ -92,7 +92,7 @@ class GlobalProtectWebViewRuntime {
     }
 
     try {
-      await GlobalProtectWebViewProxyBridge.instance.close();
+      await GlobalProtectProxyBridge.instance.close();
     } catch (error, stackTrace) {
       GlobalProtectDebug.error('WebView GP proxy bridge cleanup', error, stackTrace);
     }

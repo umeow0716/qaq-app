@@ -7,6 +7,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/io.dart';
 import 'package:dio_redirect_interceptor/dio_redirect_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:native_dio_adapter_desktop/native_dio_adapter_desktop.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_dio_adapter.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_routing.dart';
 import 'package:qaq_app/src/connector/http_client_adapter.dart';
@@ -30,11 +31,11 @@ class RecordingAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  test('desktop uses the default IO adapter', () {
+  test('Windows and Linux use native desktop TLS', () {
     final adapter = createPlatformHttpClientAdapter();
     addTearDown(adapter.close);
-    expect(adapter, isA<IOHttpClientAdapter>());
-  }, skip: Platform.isAndroid || Platform.isIOS);
+    expect(adapter, isA<NativeDesktopAdapter>());
+  }, skip: !Platform.isWindows && !Platform.isLinux);
 
   test('normal hosts bypass route lookup even with study redirect data', () async {
     final direct = RecordingAdapter((_) => ResponseBody.fromString('direct', 200));
@@ -126,9 +127,9 @@ void main() {
     final adapter = GlobalProtectDioAdapter(
       directAdapter: direct,
       resolveRoute: () async => IStudyAccessRoute.vpn,
-      tunnelClient: () async {
+      tunnelAdapter: () async {
         provided++;
-        return tunnel;
+        return IOHttpClientAdapter(createHttpClient: () => tunnel);
       },
     );
     final client = createDio(directAdapter: adapter, useGlobalProtect: false, cookies: CookieJar());
@@ -154,7 +155,7 @@ void main() {
         lookupStarted.complete();
         return lookup.future;
       },
-      tunnelClient: () async {
+      tunnelAdapter: () async {
         tunnelRequested = true;
         throw StateError('unexpected');
       },

@@ -24,22 +24,22 @@ final Dio dio = createDio();
 CookieJar _cookieJar = CookieJar();
 CookieJar get cookieJar => _cookieJar;
 StudyRouteResolver _studyRoute = () async => IStudyAccessRoute.blocked;
-TunnelHttpClientProvider _tunnelClient = () async => throw StateError('Network has not been initialized.');
+TunnelAdapterProvider _tunnelAdapter = () async => throw StateError('Network has not been initialized.');
 
 /// Rebind persistent cookies after startup/logout without stacking interceptors.
 void configureNetwork({
   required CookieJar cookies,
   StudyRouteResolver? resolveStudyRoute,
-  TunnelHttpClientProvider? tunnelClient,
+  TunnelAdapterProvider? tunnelAdapter,
 }) {
   _cookieJar = cookies;
   if (resolveStudyRoute != null) _studyRoute = resolveStudyRoute;
-  if (tunnelClient != null) _tunnelClient = tunnelClient;
+  if (tunnelAdapter != null) _tunnelAdapter = tunnelAdapter;
   _configureInterceptors(dio, cookies);
 }
 
-/// Direct traffic uses the platform TLS stack on mobile and Dio's default
-/// adapter on desktop. GP is a transport adapter, never another Dio client.
+/// Direct traffic uses native TLS on Android, iOS, Windows and Linux.
+/// GP selects a transport adapter without nesting another Dio client.
 Dio createDio({CookieJar? cookies, HttpClientAdapter? directAdapter, bool useGlobalProtect = true}) {
   final client = Dio(
     BaseOptions(
@@ -58,7 +58,7 @@ Dio createDio({CookieJar? cookies, HttpClientAdapter? directAdapter, bool useGlo
     client.httpClientAdapter = GlobalProtectDioAdapter(
       directAdapter: client.httpClientAdapter,
       resolveRoute: () => _studyRoute(),
-      tunnelClient: () => _tunnelClient(),
+      tunnelAdapter: () => _tunnelAdapter(),
     );
   }
   client.transformer = CampusResponseTransformer();

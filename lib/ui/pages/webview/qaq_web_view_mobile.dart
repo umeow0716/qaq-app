@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/network.dart';
@@ -396,7 +396,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   }
 
   Future<void> _enableWebViewProxy() async {
-    if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
+    if (_vpnProxyEnabled && GlobalProtectProxyBridge.instance.isRunning) return;
     await GlobalProtectWebViewRuntime.enable();
     _vpnProxyEnabled = true;
   }

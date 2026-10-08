@@ -8,18 +8,18 @@ import 'global_protect_debug.dart';
 import 'virtual_byte_socket.dart';
 import 'virtual_tcp_socket.dart';
 
-/// A loopback HTTP proxy used as an adapter between platform WebView proxy
-/// configuration and the app's userspace GlobalProtect TCP implementation.
+/// Shared loopback HTTP/CONNECT proxy for native Dio and platform WebViews.
+/// Upstream sockets use the app's userspace GlobalProtect TCP implementation.
 ///
 /// Requests that enter this proxy route only the configured VPN target hosts
 /// through GlobalProtect; other destinations can still be forwarded directly.
 /// Windows normally avoids the bridge entirely for non-iStudy hosts via PAC.
-/// HTTPS remains end-to-end between WebView and the destination; CONNECT bytes
+/// HTTPS remains end-to-end between each client and the destination; CONNECT bytes
 /// are forwarded without TLS interception or a custom CA.
-class GlobalProtectWebViewProxyBridge {
-  GlobalProtectWebViewProxyBridge._();
+class GlobalProtectProxyBridge {
+  GlobalProtectProxyBridge._();
 
-  static final GlobalProtectWebViewProxyBridge instance = GlobalProtectWebViewProxyBridge._();
+  static final GlobalProtectProxyBridge instance = GlobalProtectProxyBridge._();
 
   static const String windowsPacPath = '/qaq-webview-proxy.pac';
   static const Duration upstreamConnectTimeout = Duration(seconds: 20);

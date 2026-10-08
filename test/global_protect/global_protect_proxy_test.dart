@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_routing.dart';
 
 void main() {
@@ -11,33 +11,27 @@ void main() {
 
     test('routes configured study and portal SSO hosts through GlobalProtect', () {
       expect(
-        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudy.ntut.edu.tw', vpnHosts: vpnHosts),
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudy.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
       );
       expect(
-        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
-          host: 'ISTUDY.NTUT.EDU.TW.',
-          vpnHosts: vpnHosts,
-        ),
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'ISTUDY.NTUT.EDU.TW.', vpnHosts: vpnHosts),
         isTrue,
       );
       expect(
-        GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(
-          host: 'istudycloud.ntut.edu.tw',
-          vpnHosts: vpnHosts,
-        ),
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudycloud.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
       );
     });
 
     test('includes source downloads and portal SSO in the production proxy policy', () {
       for (final host in ['istudycloud.ntut.edu.tw', 'nportal.ntut.edu.tw']) {
-        expect(GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts), isTrue);
+        expect(GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts), isTrue);
       }
     });
 
     test('can bind the loopback listener before VPN routing is enabled', () async {
-      final bridge = GlobalProtectWebViewProxyBridge.instance;
+      final bridge = GlobalProtectProxyBridge.instance;
       addTearDown(bridge.close);
 
       final port = await bridge.ensureListening(vpnHosts: vpnHosts);
@@ -48,13 +42,13 @@ void main() {
     });
 
     test('serves a Windows PAC with the shared study and SSO host policy', () async {
-      final bridge = GlobalProtectWebViewProxyBridge.instance;
+      final bridge = GlobalProtectProxyBridge.instance;
       addTearDown(bridge.close);
 
       final port = await bridge.ensureListening(vpnHosts: vpnHosts);
       final socket = await Socket.connect(InternetAddress.loopbackIPv4, port);
       socket.write(
-        'GET http://127.0.0.1:$port${GlobalProtectWebViewProxyBridge.windowsPacPath} HTTP/1.1\r\n'
+        'GET http://127.0.0.1:$port${GlobalProtectProxyBridge.windowsPacPath} HTTP/1.1\r\n'
         'Host: 127.0.0.1:$port\r\n'
         'Connection: close\r\n'
         '\r\n',
@@ -79,7 +73,7 @@ void main() {
         'istudy.ntut.edu.tw.example.com',
       ]) {
         expect(
-          GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts),
+          GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts),
           isFalse,
           reason: host,
         );

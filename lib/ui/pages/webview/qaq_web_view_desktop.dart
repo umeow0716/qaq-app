@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
@@ -1072,13 +1072,13 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     switch (route) {
       case IStudyAccessRoute.direct:
         if (Platform.isWindows) {
-          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          GlobalProtectProxyBridge.instance.disableVpnRouting();
           _vpnProxyEnabled = false;
         }
         return NavigationDecision.navigate;
       case IStudyAccessRoute.blocked:
         if (Platform.isWindows) {
-          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          GlobalProtectProxyBridge.instance.disableVpnRouting();
           _vpnProxyEnabled = false;
         }
         await _requiredController.loadHtmlString(IStudyAccessGuard.blockedHtml);
@@ -1113,7 +1113,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<void> _enableWebViewProxy() async {
-    if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
+    if (_vpnProxyEnabled && GlobalProtectProxyBridge.instance.isRunning) return;
     await GlobalProtectWebViewRuntime.enable();
     _vpnProxyEnabled = true;
   }

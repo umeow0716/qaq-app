@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+
 import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
+
+import '../http_client_adapter.dart';
 
 import 'global_protect_connector.dart';
 import 'global_protect_debug.dart';
@@ -38,6 +43,8 @@ class GlobalProtectAppSession {
   late final GlobalProtectSessionManager _manager;
 
   GlobalProtectHttpClient? _httpClient;
+  HttpClientAdapter? _dioAdapter;
+  int? _dioProxyPort;
   GlobalProtectConnection? _httpConnection;
   Future<GlobalProtectHttpClient>? _httpInFlight;
   Future<void>? _disconnectInFlight;
@@ -250,7 +257,29 @@ class GlobalProtectAppSession {
     return addresses.first;
   }
 
+  Future<HttpClientAdapter> ensureDioAdapter({required Future<int> Function() proxyPort}) async {
+    if (Platform.isWindows || Platform.isLinux) {
+      await ensureConnected();
+      final generation = _runtimeGeneration;
+      final port = await proxyPort();
+      if (generation != _runtimeGeneration) {
+        throw StateError('GlobalProtect runtime was reset while preparing the proxy.');
+      }
+      if (_dioProxyPort != port || _dioAdapter == null) {
+        _dioAdapter?.close(force: true);
+        _dioAdapter = createDesktopProxyAdapter(port);
+        _dioProxyPort = port;
+      }
+      return _dioAdapter!;
+    }
+    final http = await ensureHttpClient();
+    return IOHttpClientAdapter(createHttpClient: () => http.client);
+  }
+
   Future<void> _closeHttpClient() async {
+    _dioAdapter?.close(force: true);
+    _dioAdapter = null;
+    _dioProxyPort = null;
     final http = _httpClient;
     _httpClient = null;
     _httpConnection = null;

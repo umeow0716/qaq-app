@@ -89,6 +89,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.11"
+  build_cli_annotations:
+    dependency: transitive
+    description:
+      name: build_cli_annotations
+      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -547,6 +555,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.35"
+  flutter_rust_bridge:
+    dependency: transitive
+    description:
+      name: flutter_rust_bridge
+      sha256: ec69331e2335ab4d456c0a9fc700892c2c85b72b9c0cb39df3ecfe8833d5d5c8
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.13.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -645,6 +661,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.0.2"
+  freezed_annotation:
+    dependency: transitive
+    description:
+      name: freezed_annotation
+      sha256: "7294967ff0a6d98638e7acb774aac3af2550777accd8149c90af5b014e6d44d8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
   get:
     dependency: "direct main"
     description:
@@ -989,6 +1013,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.0"
+  native_dio_adapter_desktop:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
+      resolved-ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
+      url: "https://github.com/umeow0716/native_dio_adapter_desktop.git"
+    source: git
+    version: "0.1.0"
   native_toolchain_c:
     dependency: transitive
     description:
@@ -1197,6 +1230,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  rhttp:
+    dependency: transitive
+    description:
+      name: rhttp
+      sha256: "954d5a9aa5a4f1e2a8612e8cb9ecbe4fc0826fcbf0406f40115573e2e92b7dde"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.18.0"
   rxdart:
     dependency: "direct main"
     description:
@@ -1738,6 +1779,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.4.0"
+  win_http:
+    dependency: transitive
+    description:
+      name: win_http
+      sha256: "82a9270dccdffcda42e162e036079f522fec319227d18c9049cfa7a4f958408f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.3"
   xdg_directories:
     dependency: transitive
     description:
