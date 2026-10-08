@@ -559,10 +559,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_rust_bridge
-      sha256: ec69331e2335ab4d456c0a9fc700892c2c85b72b9c0cb39df3ecfe8833d5d5c8
+      sha256: e87d6b9ee934dcd24a128ccb2bd91905d2d5fe5c06245d6a8f5477d4907a437a
       url: "https://pub.dev"
     source: hosted
-    version: "2.13.0"
+    version: "2.12.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -1017,11 +1017,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
-      resolved-ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
+      ref: "87f1673c1189fc979c34300dfc417835fc8e6e4b"
+      resolved-ref: "87f1673c1189fc979c34300dfc417835fc8e6e4b"
       url: "https://github.com/umeow0716/native_dio_adapter_desktop.git"
     source: git
-    version: "0.1.0"
+    version: "0.2.0"
   native_toolchain_c:
     dependency: transitive
     description:
@@ -1230,14 +1230,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  rhttp:
-    dependency: transitive
-    description:
-      name: rhttp
-      sha256: "954d5a9aa5a4f1e2a8612e8cb9ecbe4fc0826fcbf0406f40115573e2e92b7dde"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.18.0"
   rxdart:
     dependency: "direct main"
     description:

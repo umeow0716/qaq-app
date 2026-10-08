@@ -31,12 +31,6 @@ subprojects { subproject ->
     }
 }
 
-// CargoKit 0.18 parses the legacy SDK string as an integer. AGP 9.4 adds
-// a minor component (android-37.0); keep that legacy getter compatible while
-// leaving the typed compileSdk setting unchanged.
-def appAndroid = project(':app').android
-appAndroid.metaClass.getCompileSdkVersion = { -> "android-${appAndroid.compileSdk}" }
-
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

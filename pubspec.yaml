@@ -35,7 +35,7 @@ dependencies:
   native_dio_adapter_desktop:
     git:
       url: https://github.com/umeow0716/native_dio_adapter_desktop.git
-      ref: c9b73345bdbc0c99d792b2542f3f2a586deef95e
+      ref: 87f1673c1189fc979c34300dfc417835fc8e6e4b
   dio_cookie_manager: ^3.5.0
   cookie_jar: ^4.0.9
   html: ^0.15.7
