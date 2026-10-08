@@ -42,8 +42,6 @@ class GlobalProtectEspTransport implements GlobalProtectTransport {
   @override
   Stream<Uint8List> get packets => _packets.stream;
 
-  bool get isEstablished => _established.isCompleted && !_closed;
-
   static Future<GlobalProtectEspTransport> connect({
     required Uri gateway,
     required GlobalProtectTunnelConfig config,

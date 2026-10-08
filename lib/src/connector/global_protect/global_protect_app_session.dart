@@ -1,20 +1,25 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+
+import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
+
+import '../http_client_adapter.dart';
 
 import 'global_protect_connector.dart';
 import 'global_protect_debug.dart';
 import 'global_protect_http_client.dart';
 import 'global_protect_idle.dart';
 import 'global_protect_models.dart';
-import 'global_protect_session_manager.dart';
 import 'global_protect_session_cache.dart';
+import 'global_protect_session_manager.dart';
 
 /// Process-local owner for the app's experimental GlobalProtect connection.
 ///
 /// Credentials are never copied into this object. Every connection attempt
-/// reads the account/password already held by [LocalStorage] at that moment.
+/// reads the account/password through the callbacks supplied by app initialization.
 class GlobalProtectAppSession {
   GlobalProtectAppSession._() : _connector = GlobalProtectConnector() {
     _idleController = GlobalProtectIdleController(timeout: idleTimeout, onIdle: _disconnectForIdle);
@@ -24,12 +29,22 @@ class GlobalProtectAppSession {
   static const idleTimeout = Duration(minutes: 5);
   static final GlobalProtectAppSession instance = GlobalProtectAppSession._();
 
+  String Function() _account = () => '';
+  String Function() _password = () => '';
+
+  void configureCredentials({required String Function() account, required String Function() password}) {
+    _account = account;
+    _password = password;
+  }
+
   final GlobalProtectConnector _connector;
   final GlobalProtectSessionCache _sessionCache = GlobalProtectSessionCache.instance;
   late final GlobalProtectIdleController _idleController;
   late final GlobalProtectSessionManager _manager;
 
   GlobalProtectHttpClient? _httpClient;
+  HttpClientAdapter? _dioAdapter;
+  int? _dioProxyPort;
   GlobalProtectConnection? _httpConnection;
   Future<GlobalProtectHttpClient>? _httpInFlight;
   Future<void>? _disconnectInFlight;
@@ -46,7 +61,7 @@ class GlobalProtectAppSession {
     final disconnecting = _disconnectInFlight;
     if (disconnecting != null) await disconnecting;
 
-    final account = LocalStorage.instance.getAccount().trim();
+    final account = _account().trim();
     GlobalProtectDebug.log('ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}');
     if (account.isEmpty) {
       GlobalProtectDebug.log('account unavailable; refusing GP connection');
@@ -121,7 +136,10 @@ class GlobalProtectAppSession {
     }
 
     GlobalProtectDebug.log('creating GP-backed HttpClient');
-    final next = GlobalProtectHttpClient.fromConnection(connection);
+    final next = GlobalProtectHttpClient.fromConnection(
+      connection,
+      badCertificateCallback: Platform.isAndroid ? null : NtutCertificatePolicy.allowBadCertificate,
+    );
     _httpClient = next;
     _httpConnection = connection;
     return next;
@@ -129,7 +147,7 @@ class GlobalProtectAppSession {
 
   Future<GlobalProtectConnection> _connectUsingCachedSessionOrPassword() async {
     final runtimeGeneration = _runtimeGeneration;
-    final username = LocalStorage.instance.getAccount().trim();
+    final username = _account().trim();
     if (username.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
     }
@@ -165,7 +183,7 @@ class GlobalProtectAppSession {
       throw StateError('GlobalProtect runtime was reset before password login.');
     }
 
-    final password = LocalStorage.instance.getPassword();
+    final password = _password();
     GlobalProtectDebug.log('starting GP password login; passwordPresent=${password.isNotEmpty}');
     if (password.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
@@ -239,7 +257,30 @@ class GlobalProtectAppSession {
     return addresses.first;
   }
 
+  Future<HttpClientAdapter> ensureDioAdapter({required Future<int> Function() proxyPort}) async {
+    if (Platform.isWindows || Platform.isLinux) {
+      await ensureConnected();
+      final generation = _runtimeGeneration;
+      final port = await proxyPort();
+      if (generation != _runtimeGeneration) {
+        throw StateError('GlobalProtect runtime was reset while preparing the proxy.');
+      }
+      if (_dioProxyPort != port || _dioAdapter == null) {
+        _dioAdapter?.close(force: true);
+        // Mixed-version rustls ClientHello succeeds inside the ESP tunnel.
+        _dioAdapter = createDesktopProxyAdapter(port, linuxAllowTls12: true);
+        _dioProxyPort = port;
+      }
+      return _dioAdapter!;
+    }
+    final http = await ensureHttpClient();
+    return IOHttpClientAdapter(createHttpClient: () => http.client);
+  }
+
   Future<void> _closeHttpClient() async {
+    _dioAdapter?.close(force: true);
+    _dioAdapter = null;
+    _dioProxyPort = null;
     final http = _httpClient;
     _httpClient = null;
     _httpConnection = null;

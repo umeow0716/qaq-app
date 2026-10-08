@@ -4,28 +4,14 @@ import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/util/language_util.dart';
 
-enum IStudyAccessRoute { direct, blocked, vpn }
+import 'global_protect/global_protect_routing.dart';
 
-class IStudyAccessBlockedException implements Exception {
-  const IStudyAccessBlockedException();
-
-  @override
-  String toString() => IStudyAccessGuard.blockedMessage;
-}
+export 'global_protect/global_protect_routing.dart' show IStudyAccessRoute, IStudyAccessBlockedException;
 
 class IStudyAccessGuard {
   IStudyAccessGuard._();
 
-  static const iStudyHost = 'istudy.ntut.edu.tw';
-  static const iStudyCloudHost = 'istudycloud.ntut.edu.tw';
-  static const List<String> proxyHosts = <String>[iStudyHost, iStudyCloudHost];
-
-  static bool isIStudyUri(Uri uri) => proxyHosts.contains(uri.host.toLowerCase());
-
-  static bool isIStudyUrl(String url) {
-    final uri = Uri.tryParse(url);
-    return uri != null && isIStudyUri(uri);
-  }
+  static bool isIStudyUri(Uri uri) => GlobalProtectRouting.requiresStudyRoute(uri);
 
   /// Decides how an iStudy request should leave the app.
   ///
@@ -43,13 +29,6 @@ class IStudyAccessGuard {
   static IStudyAccessRoute routeFor({required bool directReachable, required bool autoConnectVpn}) {
     if (directReachable) return IStudyAccessRoute.direct;
     return autoConnectVpn ? IStudyAccessRoute.vpn : IStudyAccessRoute.blocked;
-  }
-
-  static Future<bool> shouldBlock() async => await route() == IStudyAccessRoute.blocked;
-
-  static Future<void> ensureUrlAllowed(String url) async {
-    if (!isIStudyUrl(url)) return;
-    if (await shouldBlock()) throw const IStudyAccessBlockedException();
   }
 
   static String get blockedTitle => R.current.iStudyNetworkUnavailableTitle;

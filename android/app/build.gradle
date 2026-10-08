@@ -1,5 +1,6 @@
 plugins {
     id "com.android.application"
+    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -72,12 +73,25 @@ android {
     }
 }
 
-// Built-in Kotlin uses android.compileOptions.targetCompatibility as its JVM target.
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 flutter {
     source = '../..'
 }
 
 dependencies {
+    constraints {
+        // Cronet 141.x publishes multiple AARs with the same Android namespace,
+        // which AGP 9 rejects during manifest merging. 143.7445.0 fixes the
+        // namespace split while keeping native_dio_adapter on Cronet.
+        implementation('org.chromium.net:cronet-api:143.7445.0')
+        implementation('org.chromium.net:cronet-shared:143.7445.0')
+    }
+
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     implementation 'androidx.webkit:webkit:1.17.0'
 }

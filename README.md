@@ -76,6 +76,14 @@ indicate current project ownership or affiliation.
   flutter pub get
   ```
 
+Desktop HTTP uses [native_dio_adapter_desktop](https://github.com/umeow0716/native_dio_adapter_desktop):
+WinHTTP on Windows and rhttp on Linux. GP traffic uses the same local CONNECT proxy as WebView;
+Dio continues to manage cookies and redirects. Android/iOS retain `native_dio_adapter`.
+
+Linux builds require the stable Rust toolchain installed with [rustup](https://rustup.rs/).
+Only Linux compiles the adapter’s bundled rhttp backend. Windows uses system WinHTTP, and mobile
+builds do not compile or bundle this Rust library. The Linux release CI installs Rust automatically.
+
 ## Contributing
 
 Contributions to QAQ are welcome. Please keep changes compatible with the project's GPL-3.0 licensing requirements

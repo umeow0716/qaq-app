@@ -2,7 +2,7 @@ name: qaq_app
 description: QAQ, an independent campus life assistant for NTUT students.
 publish_to: 'none'
 
-version: 1.8.1+5279
+version: 1.8.2+5280
 
 environment:
   flutter: ">=3.44.7 <4.0.0"
@@ -31,8 +31,12 @@ dependencies:
   flutter_cache_manager: ^3.4.2
   file_selector: ^1.0.3
   dio: ^5.11.1
+  native_dio_adapter: ^1.8.0
+  native_dio_adapter_desktop:
+    git:
+      url: https://github.com/umeow0716/native_dio_adapter_desktop.git
+      ref: 87f1673c1189fc979c34300dfc417835fc8e6e4b
   dio_cookie_manager: ^3.5.0
-  win_http: ^0.2.2
   cookie_jar: ^4.0.9
   html: ^0.15.7
   xml: ^7.0.1
@@ -44,10 +48,17 @@ dependencies:
     git:
       url: https://github.com/umeow0716/webview_all.git
       path: webview_all
+  webview_all_linux:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_linux
+  webview_all_windows:
+    git:
+      url: https://github.com/umeow0716/webview_all.git
+      path: webview_all_windows
   eva_icons_flutter: ^4.0.0
   lucide_icons_flutter: ^3.1.18
   json_annotation: ^4.12.0
-  dart_big5: ^0.0.5
   flutter_widget_from_html_core: ^0.17.3
   flutter_staggered_animations: ^1.1.1
   mime: ^2.1.0
@@ -69,6 +80,7 @@ dependencies:
   package_info_plus: ^10.2.1
   webview_flutter_android: ^4.14.1
   webview_flutter_platform_interface: ^2.15.1
+  dio_redirect_interceptor: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -116,6 +128,7 @@ dependency_overrides:
       path: webview_all_ohos
 
 flutter:
+  default-flavor: beta
   uses-material-design: true
   assets:
     - assets/

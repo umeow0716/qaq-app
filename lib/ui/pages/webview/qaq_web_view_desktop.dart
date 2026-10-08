@@ -2,18 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:qaq_app/src/connector/adapters/early_interceptor_adapter.dart';
-import 'package:qaq_app/src/connector/core/dio_connector.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
@@ -39,7 +36,6 @@ class QAQWebViewDesktop extends StatefulWidget {
 }
 
 class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
-  final cookieJar = DioConnector.instance.cookiesManager;
   WebViewController? _controller;
   late final Future<void> _initialLoadFuture;
   static const _linuxNativeWebViewMountDelay = Duration(milliseconds: 220);
@@ -173,20 +169,8 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   Future<void> _prepareWindowsWebViewProxyEnvironment() async {
     if (!Platform.isWindows || _windowsProxyEnvironmentPrepared) return;
 
-    final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureListening(vpnHosts: IStudyAccessGuard.proxyHosts);
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      throw StateError('WebView GlobalProtect runtime was reset before Windows WebView2 setup.');
-    }
-
-    await GlobalProtectWebViewProxyController.setProxyOverride(port: port, hosts: IStudyAccessGuard.proxyHosts);
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      await GlobalProtectWebViewRuntime.reset();
-      throw StateError('WebView GlobalProtect runtime was reset during Windows WebView2 setup.');
-    }
-
+    await GlobalProtectWebViewRuntime.prepareWindowsEnvironment();
     _windowsProxyEnvironmentPrepared = true;
-    GlobalProtectDebug.log('Windows WebView2 proxy environment prepared on loopback port=$port; VPN routing disabled');
   }
 
   Future<IStudyAccessRoute?> _prepareLinuxVpnProxyBeforeWebViewEnvironment() async {
@@ -384,7 +368,19 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     onNavigationRequest: _onNavigationRequest,
     onPageStarted: _onPageStarted,
     onPageFinished: (url) => unawaited(_onPageFinished(url)),
+    onSslAuthError: (error) => unawaited(_onSslAuthError(error)),
   );
+
+  Future<void> _onSslAuthError(SslAuthError error) async {
+    if (Platform.isWindows && NtutCertificatePolicy.allowsWindowsWebViewCertificateError(error.platform.description)) {
+      final uri = NtutCertificatePolicy.webViewRequestUri(error.platform.description);
+      GlobalProtectDebug.log('Allowing Windows WebView untrusted CA for ${uri?.host}');
+      await error.proceed();
+      return;
+    }
+
+    await error.cancel();
+  }
 
   Future<void> _configureWindowsFileTransfer(WebViewController controller) async {
     if (!Platform.isWindows) return;
@@ -677,7 +673,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
 
       final referer = await _requiredController.currentUrl();
       final cookieHeader = await WebViewCookieStore.cookieHeaderFor(sourceUri);
-      final userAgent = DioConnector.instance.headers[HttpHeaders.userAgentHeader];
+      final userAgent = dio.options.headers[HttpHeaders.userAgentHeader];
       final headers = <String, dynamic>{
         if (userAgent != null && userAgent.isNotEmpty) HttpHeaders.userAgentHeader: userAgent,
         if (referer != null && referer.isNotEmpty) HttpHeaders.refererHeader: referer,
@@ -727,25 +723,7 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     required Map<String, dynamic> headers,
     required void Function(int received, int total) onProgress,
   }) async {
-    final dio = Dio(DioConnector.dioOptions)
-      ..httpClientAdapter = EarlyInterceptorAdapter(
-        headerDecorators: DioConnector.headerDecorators,
-        httpClientProvider: (options) async {
-          if (!IStudyAccessGuard.isIStudyUri(options.uri)) return null;
-
-          final route = await IStudyAccessGuard.route();
-          GlobalProtectDebug.log('Linux WebView download iStudy route=${route.name}');
-          switch (route) {
-            case IStudyAccessRoute.direct:
-              return null;
-            case IStudyAccessRoute.blocked:
-              throw const IStudyAccessBlockedException();
-            case IStudyAccessRoute.vpn:
-              GlobalProtectDebug.log('Linux WebView download requesting GP-backed HttpClient');
-              return (await GlobalProtectAppSession.instance.ensureHttpClient()).client;
-          }
-        },
-      );
+    final dio = createDio();
 
     try {
       await dio.downloadUri(
@@ -1094,13 +1072,13 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     switch (route) {
       case IStudyAccessRoute.direct:
         if (Platform.isWindows) {
-          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          GlobalProtectProxyBridge.instance.disableVpnRouting();
           _vpnProxyEnabled = false;
         }
         return NavigationDecision.navigate;
       case IStudyAccessRoute.blocked:
         if (Platform.isWindows) {
-          GlobalProtectWebViewProxyBridge.instance.disableVpnRouting();
+          GlobalProtectProxyBridge.instance.disableVpnRouting();
           _vpnProxyEnabled = false;
         }
         await _requiredController.loadHtmlString(IStudyAccessGuard.blockedHtml);
@@ -1135,42 +1113,9 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
   }
 
   Future<void> _enableWebViewProxy() async {
-    if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
-    final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    if (!Platform.isWindows && !Platform.isLinux) {
-      throw UnsupportedError(
-        'The experimental iStudy WebView VPN bridge currently supports desktop WebViews on Windows and Linux only.',
-      );
-    }
-
-    if (Platform.isWindows) {
-      await _prepareWindowsWebViewProxyEnvironment();
-      await GlobalProtectWebViewProxyBridge.instance.enableVpnRouting();
-      if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-        await GlobalProtectWebViewRuntime.reset();
-        throw StateError('WebView GlobalProtect runtime was reset while enabling Windows VPN routing.');
-      }
-      _vpnProxyEnabled = true;
-      GlobalProtectDebug.log('Windows WebView GP routing active');
-      return;
-    }
-
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(vpnHosts: IStudyAccessGuard.proxyHosts);
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
-    }
-    GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
-    final reverseBypassSupported = await GlobalProtectWebViewProxyController.setProxyOverride(
-      port: port,
-      hosts: IStudyAccessGuard.proxyHosts,
-    );
-    GlobalProtectDebug.log('WebView ProxyOverride applied reverseBypass=$reverseBypassSupported');
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      await GlobalProtectWebViewRuntime.reset();
-      throw StateError('WebView GlobalProtect runtime was reset during ProxyOverride setup.');
-    }
+    if (_vpnProxyEnabled && GlobalProtectProxyBridge.instance.isRunning) return;
+    await GlobalProtectWebViewRuntime.enable();
     _vpnProxyEnabled = true;
-    GlobalProtectDebug.log('WebView ProxyOverride active');
   }
 
   Future<void> _clearWebViewProxy() async {

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_windows/webview_all_windows.dart';
@@ -112,6 +112,6 @@ class GlobalProtectWebViewProxyController {
     // iStudy host; every other destination is DIRECT. This avoids forcing sites
     // such as Google through the Dart CONNECT tunnel while keeping the immutable
     // WebView2 environment ready for a later iStudy VPN redirect.
-    return '--proxy-pac-url=http://127.0.0.1:$port${GlobalProtectWebViewProxyBridge.windowsPacPath}';
+    return '--proxy-pac-url=http://127.0.0.1:$port${GlobalProtectProxyBridge.windowsPacPath}';
   }
 }

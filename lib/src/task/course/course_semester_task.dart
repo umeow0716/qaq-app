@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:numberpicker/numberpicker.dart';
 import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/r.dart';
-import 'package:get/get.dart';
-import 'package:numberpicker/numberpicker.dart';
 
 import '../task.dart';
 import 'course_system_task.dart';

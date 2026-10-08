@@ -1,17 +1,15 @@
-import 'package:dio/dio.dart';
+import 'package:html/dom.dart';
+import 'package:html/parser.dart';
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/connector/core/connector.dart';
-import 'package:qaq_app/src/connector/core/connector_parameter.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
-import 'package:html/dom.dart';
-import 'package:html/parser.dart';
 
-enum CourseConnectorStatus { loginSuccess, loginFail, unknownError }
+enum CourseConnectorStatus { loginSuccess, loginFail }
 
 class CourseMainInfo {
   List<CourseMainInfoJson> json = <CourseMainInfoJson>[];
@@ -37,9 +35,8 @@ class CourseConnector {
         "sso": "true",
         "datetime1": DateTime.now().millisecondsSinceEpoch.toString(),
       };
-      var parameter = ConnectorParameter(_ssoLoginUrl);
-      parameter.data = data;
-      final result = await Connector.getDataByGet(parameter);
+
+      final result = (await dio.get<String>(_ssoLoginUrl, queryParameters: data)).data!.trim();
 
       var tagNode = parse(result);
       final nodes = tagNode.getElementsByTagName("input");
@@ -53,18 +50,31 @@ class CourseConnector {
       }
       final action = tagNode.getElementsByTagName("form")[0].attributes["action"];
       if (action == null) throw StateError("SSO form action is missing");
-      String jumpUrl = "${NTUTConnector.host}$action";
-      parameter = ConnectorParameter(jumpUrl);
-      parameter.data = data;
-      final response = await Connector.getDataByPostResponse(parameter);
+      String jumpUrl = Uri.parse(_ssoLoginUrl).resolve(action).toString();
 
-      tagNode = parse(response.toString());
-      final redirectHref = tagNode.getElementsByTagName("a").first.attributes["href"];
+      final response = await dio.post<String>(jumpUrl, data: data);
+
+      if (response.statusCode == 200 &&
+          response.realUri.host == Uri.parse(_courseCNHost).host &&
+          !(response.data ?? '').contains('中斷連線')) {
+        return CourseConnectorStatus.loginSuccess;
+      }
+      tagNode = parse(response.data);
+      final redirectHref = tagNode
+          .querySelectorAll('a[href]')
+          .map((a) => a.attributes['href']!)
+          .where((href) => response.realUri.resolve(href).host == Uri.parse(_courseCNHost).host)
+          .firstOrNull;
       if (redirectHref == null) throw StateError("Course SSO redirect is missing");
       jumpUrl = redirectHref;
-      parameter = ConnectorParameter(jumpUrl);
+      jumpUrl = response.realUri.resolve(jumpUrl).toString();
 
-      await Connector.getDataByPostResponse(parameter);
+      final destination = await dio.get<String>(jumpUrl);
+      if (destination.statusCode != 200 ||
+          destination.realUri.host != Uri.parse(_courseCNHost).host ||
+          (destination.data ?? '').contains('中斷連線')) {
+        return CourseConnectorStatus.loginFail;
+      }
       return CourseConnectorStatus.loginSuccess;
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
@@ -75,9 +85,10 @@ class CourseConnector {
   // It should use code with key (59 -> CSIE, 32 -> Electric), and department name with value.
   static Future<Map<String, String>?> getDepartmentMap(String year, String semester) async {
     try {
-      ConnectorParameter parameter = ConnectorParameter(_getCourseDepartmentUrl);
-      parameter.data = {"format": "-2", "year": year, "sem": semester};
-      String result = await Connector.getDataByGet(parameter);
+      String result = (await dio.get<String>(
+        _getCourseDepartmentUrl,
+        queryParameters: {"format": "-2", "year": year, "sem": semester},
+      )).data!.trim();
 
       Document tagNode = parse(result);
       List<Element> departmentNodes = tagNode.getElementsByTagName("a");
@@ -88,11 +99,10 @@ class CourseConnector {
         if (href == null || href.isEmpty) {
           continue;
         }
-        String codeParameter = href.split("&").firstWhere((parameter) => parameter.contains("code"), orElse: () => "");
-        if (codeParameter == "") {
+        final code = Uri.tryParse(href)?.queryParameters['code'];
+        if (code == null || code.isEmpty) {
           continue;
         }
-        String code = codeParameter.split("=")[1];
         String departmentName = element.text;
         departmentMap.putIfAbsent(code, () => departmentName);
       }
@@ -106,9 +116,10 @@ class CourseConnector {
 
   static Future<Map<String, String>?> getTwoYearUndergraduateDepartmentMap(String year) async {
     try {
-      ConnectorParameter parameter = ConnectorParameter(_creditUrl);
-      parameter.data = {"format": "-3", "year": year, "matric": "6"};
-      String result = await Connector.getDataByGet(parameter);
+      String result = (await dio.get<String>(
+        _creditUrl,
+        queryParameters: {"format": "-3", "year": year, "matric": "6"},
+      )).data!.trim();
 
       Document tagNode = parse(result);
       List<Element> departmentNodes = tagNode.getElementsByTagName("a");
@@ -119,13 +130,10 @@ class CourseConnector {
         if (href == null || href.isEmpty) {
           continue;
         }
-        String divisionParameter = href
-            .split("&")
-            .firstWhere((parameter) => parameter.contains("division"), orElse: () => "");
-        if (divisionParameter == "") {
+        final code = Uri.tryParse(href)?.queryParameters['division'];
+        if (code == null || code.isEmpty) {
           continue;
         }
-        final String code = divisionParameter.split("=")[1];
         final RegExp regExp = RegExp(".+【(.+)】");
         final RegExpMatch? matches = regExp.firstMatch(element.text);
         if (matches == null || matches.groupCount == 0) {
@@ -148,8 +156,11 @@ class CourseConnector {
   static Future<Map<Day, Map<SectionNumber, Set<String>>>?> getClassroomUsage(String url, {Duration? timeout}) async {
     try {
       final classroomUsageUrl = url.replaceFirst('/course/en/', '/course/tw/');
-      final parameter = ConnectorParameter(classroomUsageUrl)..timeout = timeout;
-      final result = await Connector.getDataByGet(parameter);
+
+      final result = (await dio.get<String>(
+        classroomUsageUrl,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      )).data!.trim();
       final document = parse(result);
       final tables = document.getElementsByTagName('table');
       if (tables.length < 2) return null;
@@ -260,9 +271,12 @@ class CourseConnector {
   static Future<CourseExtraInfoJson?> getCourseExtraInfo(String courseId, {Duration? timeout}) async {
     try {
       Map<String, String> data = {"code": courseId, "format": "-1"};
-      var parameter = ConnectorParameter(_postCourseCNUrl)..timeout = timeout;
-      parameter.data = data;
-      var result = await Connector.getDataByPost(parameter);
+
+      var result = (await dio.post<String>(
+        _postCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      )).data!.trim();
       var tagNode = parse(result);
       final courseNodes = tagNode.getElementsByTagName("table");
 
@@ -299,25 +313,32 @@ class CourseConnector {
       CourseExtraJson courseExtra = CourseExtraJson();
 
       nodes = courseNodes[1].getElementsByTagName("tr");
-      final List<String> courseIds = nodes.skip(2).map((node) => node.getElementsByTagName("td")[0].text).toList();
-      final courseIdPosition = courseIds.indexWhere((element) => element.contains(courseId));
-      if (courseIdPosition == -1) {
+      final courseRows = nodes.skip(2).where((node) => node.getElementsByTagName('td').length >= 19);
+      final node = courseRows
+          .where(
+            (row) =>
+                _normalizeCourseIdentifier(row.getElementsByTagName('td')[0].text) ==
+                _normalizeCourseIdentifier(courseId),
+          )
+          .firstOrNull;
+      if (node == null) {
         throw StateError('[QAQ] course_connector.dart: CourseId not found: $courseId');
       }
-      final node = nodes[courseIdPosition + 2];
       final classExtraInfoNodes = node.getElementsByTagName("td");
       courseExtra.id = strQ2B(classExtraInfoNodes[0].text).replaceAll(RegExp(r"\s"), "");
-      courseExtra.name = classExtraInfoNodes[1].getElementsByTagName("a")[0].text;
-      courseExtra.openClass = classExtraInfoNodes[7].getElementsByTagName("a")[0].text;
+      courseExtra.name = classExtraInfoNodes[1].text.trim();
+      courseExtra.openClass = classExtraInfoNodes[7].text.trim();
 
       // if the courseExtraInfo.herf (課程大綱連結) is empty,
       // the category of the course will be set to ▲ (校訂專業必修) as default
-      if (classExtraInfoNodes[18].text.trim() != "" &&
-          classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes.containsKey("href")) {
-        courseExtra.href =
-            _courseCNHost + (classExtraInfoNodes[18].getElementsByTagName("a")[0].attributes["href"] ?? "");
-        parameter = ConnectorParameter(courseExtra.href)..timeout = timeout;
-        result = await Connector.getDataByPost(parameter);
+      final syllabusHref = classExtraInfoNodes[18].querySelector('a[href]')?.attributes['href'];
+      if (syllabusHref != null && syllabusHref.isNotEmpty) {
+        courseExtra.href = Uri.parse(_courseCNHost).resolve(syllabusHref).toString();
+
+        result = (await dio.post<String>(
+          courseExtra.href,
+          options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+        )).data!.trim();
         tagNode = parse(result);
         nodes = tagNode.getElementsByTagName("tr");
         final syllabusCells = nodes[1].getElementsByTagName("td");
@@ -361,9 +382,12 @@ class CourseConnector {
   static Future<CourseSyllabusJson> getCourseCategory(String courseId, {Duration? timeout}) async {
     try {
       Map<String, String> data = {"snum": courseId};
-      ConnectorParameter parameter = ConnectorParameter(_getSyllabusCNUrl)..timeout = timeout;
-      parameter.data = data;
-      String result = await Connector.getDataByGet(parameter);
+
+      String result = (await dio.get<String>(
+        _getSyllabusCNUrl,
+        queryParameters: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      )).data!.trim();
       Document tagNode = parse(result);
 
       var tables = tagNode.getElementsByTagName("table");
@@ -394,15 +418,13 @@ class CourseConnector {
 
   static Future<List<SemesterJson>?> getCourseSemester(String studentId) async {
     try {
-      ConnectorParameter parameter;
       Document tagNode;
       Element node;
       List<Element> nodes;
 
       Map<String, String> data = {"code": studentId, "format": "-3"};
-      parameter = ConnectorParameter(_postCourseCNUrl);
-      parameter.data = data;
-      Response response = await Connector.getDataByPostResponse(parameter);
+
+      Response response = await dio.post<String>(_postCourseCNUrl, data: data);
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[0];
       nodes = node.getElementsByTagName("tr");
@@ -426,7 +448,6 @@ class CourseConnector {
     for (int c in input.codeUnits) {
       if (c == 12288) {
         c = 32;
-        continue;
       }
       if (c > 65280 && c < 65375) {
         c = (c - 65248);
@@ -439,15 +460,12 @@ class CourseConnector {
   static Future<CourseMainInfo?> getENCourseMainInfoList(String studentId, SemesterJson semester) async {
     var info = CourseMainInfo();
     try {
-      ConnectorParameter parameter;
       Document tagNode;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
-      parameter = ConnectorParameter(_postCourseENUrl);
-      parameter.data = data;
-      parameter.charsetName = 'utf-8';
-      Response response = await Connector.getDataByPostResponse(parameter);
+
+      Response response = await dio.post<String>(_postCourseENUrl, data: data);
       tagNode = parse(response.toString());
       nodes = tagNode.getElementsByTagName("table");
       courseNodes = nodes[1].getElementsByTagName("tr");
@@ -465,6 +483,8 @@ class CourseConnector {
         CourseMainInfoJson courseMainInfo = CourseMainInfoJson();
         CourseMainJson courseMain = CourseMainJson();
         nodesOne = courseNodes[i].getElementsByTagName("td");
+        // Class meetings have no course ID; only an empty name marks a layout row.
+        if (nodesOne.length < 17 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("Withdraw")) {
           continue;
         }
@@ -475,7 +495,7 @@ class CourseConnector {
         if (nodes.isNotEmpty) {
           courseMain.name = nodes[0].text;
           final href = nodes[0].attributes["href"] ?? "";
-          courseMain.href = href.startsWith("http") ? href : _courseENHost + href;
+          courseMain.href = Uri.parse(_courseENHost).resolve(href).toString();
         } else {
           courseMain.name = nodesOne[1].text;
         }
@@ -509,7 +529,7 @@ class CourseConnector {
             final classroom = ClassroomJson();
             classroom.name = node.text.replaceAll("\n", "");
             final href = node.attributes["href"] ?? "";
-            classroom.href = href.startsWith("http") ? href : _courseENHost + href;
+            classroom.href = Uri.parse(_courseENHost).resolve(href).toString();
             courseMainInfo.classroom.add(classroom);
           }
         } else {
@@ -525,7 +545,7 @@ class CourseConnector {
         for (Element node in nodesOne[5].getElementsByTagName("a")) {
           ClassJson classInfo = ClassJson();
           classInfo.name = node.text;
-          classInfo.href = _courseCNHost + (node.attributes["href"] ?? "");
+          classInfo.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.openClass.add(classInfo);
         }
         courseMainInfoList.add(courseMainInfo);
@@ -541,15 +561,13 @@ class CourseConnector {
   static Future<CourseMainInfo?> getTWCourseMainInfoList(String studentId, SemesterJson semester) async {
     var info = CourseMainInfo();
     try {
-      ConnectorParameter parameter;
       Document tagNode;
       Element node;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
-      parameter = ConnectorParameter(_postCourseCNUrl);
-      parameter.data = data;
-      Response response = await Connector.getDataByPostResponse(parameter);
+
+      Response response = await dio.post<String>(_postCourseCNUrl, data: data);
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[1];
       courseNodes = node.getElementsByTagName("tr");
@@ -566,6 +584,8 @@ class CourseConnector {
         CourseMainJson courseMain = CourseMainJson();
 
         nodesOne = courseNodes[i].getElementsByTagName("td");
+        // 班週會及導師時間 has a name/time but no course ID.
+        if (nodesOne.length < 20 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("撤選")) {
           continue;
         }
@@ -577,7 +597,7 @@ class CourseConnector {
         if (nodes.isNotEmpty) {
           courseMain.name = nodes[0].text;
           final href = nodes[0].attributes["href"] ?? "";
-          courseMain.href = href.startsWith("http") ? href : _courseCNHost + href;
+          courseMain.href = Uri.parse(_courseCNHost).resolve(href).toString();
         } else {
           courseMain.name = nodesOne[1].text;
         }
@@ -586,8 +606,9 @@ class CourseConnector {
         courseMain.hours = nodesOne[4].text.replaceAll("\n", ""); //時數
         courseMain.note = nodesOne[19].text.replaceAll("\n", ""); //備註
         if (nodesOne[18].getElementsByTagName("a").isNotEmpty) {
-          courseMain.scheduleHref =
-              _courseCNHost + (nodesOne[18].getElementsByTagName("a")[0].attributes["href"] ?? ""); //教學進度大綱
+          courseMain.scheduleHref = Uri.parse(
+            _courseCNHost,
+          ).resolve(nodesOne[18].getElementsByTagName("a")[0].attributes["href"] ?? "").toString(); //教學進度大綱
         }
 
         //時間
@@ -604,7 +625,7 @@ class CourseConnector {
         for (Element node in nodesOne[6].getElementsByTagName("a")) {
           TeacherJson teacher = TeacherJson();
           teacher.name = node.text;
-          teacher.href = _courseCNHost + (node.attributes["href"] ?? "");
+          teacher.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.teacher.add(teacher);
         }
 
@@ -612,7 +633,7 @@ class CourseConnector {
         for (Element node in nodesOne[15].getElementsByTagName("a")) {
           ClassroomJson classroom = ClassroomJson();
           classroom.name = node.text;
-          classroom.href = _courseCNHost + (node.attributes["href"] ?? "");
+          classroom.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.classroom.add(classroom);
         }
 
@@ -620,7 +641,7 @@ class CourseConnector {
         for (Element node in nodesOne[7].getElementsByTagName("a")) {
           ClassJson classInfo = ClassJson();
           classInfo.name = node.text;
-          classInfo.href = _courseCNHost + (node.attributes["href"] ?? "");
+          classInfo.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.openClass.add(classInfo);
         }
 
@@ -637,16 +658,13 @@ class CourseConnector {
   static Future<CourseMainInfo?> getTWTeacherCourseMainInfoList(String studentId, SemesterJson semester) async {
     var info = CourseMainInfo();
     try {
-      ConnectorParameter parameter;
       Document tagNode;
       Element node;
       List<Element> courseNodes, nodesOne, nodes;
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-3", "year": semester.year, "sem": semester.semester};
-      parameter = ConnectorParameter(_postTeacherCourseCNUrl);
-      parameter.data = data;
-      parameter.charsetName = 'big5';
-      Response response = await Connector.getDataByPostResponse(parameter);
+
+      Response response = await dio.post<String>(_postTeacherCourseCNUrl, data: data);
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[0];
       courseNodes = node.getElementsByTagName("tr");
@@ -663,14 +681,15 @@ class CourseConnector {
         CourseMainJson courseMain = CourseMainJson();
 
         nodesOne = courseNodes[i].getElementsByTagName("td");
+        if (nodesOne.length < 21 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("撤選")) {
           continue;
         }
         //取得課號
         nodes = nodesOne[0].getElementsByTagName("a"); //確定是否有課號
         if (nodes.isNotEmpty) {
-          courseMain.id = nodes[0].text;
-          courseMain.href = _courseCNHost + (nodes[0].attributes["href"] ?? "");
+          courseMain.id = strQ2B(nodes[0].text).trim();
+          courseMain.href = Uri.parse(_courseCNHost).resolve(nodes[0].attributes["href"] ?? "").toString();
         }
         //取的課程名稱/課程連結
         nodes = nodesOne[1].getElementsByTagName("a"); //確定是否有連結
@@ -684,8 +703,9 @@ class CourseConnector {
         courseMain.hours = nodesOne[4].text.replaceAll("\n", ""); //時數
         courseMain.note = nodesOne[20].text.replaceAll("\n", ""); //備註
         if (nodesOne[19].getElementsByTagName("a").isNotEmpty) {
-          courseMain.scheduleHref =
-              _courseCNHost + (nodesOne[19].getElementsByTagName("a")[0].attributes["href"] ?? ""); //教學進度大綱
+          courseMain.scheduleHref = Uri.parse(
+            _courseCNHost,
+          ).resolve(nodesOne[19].getElementsByTagName("a")[0].attributes["href"] ?? "").toString(); //教學進度大綱
         }
 
         //時間
@@ -708,7 +728,7 @@ class CourseConnector {
         for (Element node in nodesOne[15].getElementsByTagName("a")) {
           ClassroomJson classroom = ClassroomJson();
           classroom.name = node.text;
-          classroom.href = _courseCNHost + (node.attributes["href"] ?? "");
+          classroom.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.classroom.add(classroom);
         }
 
@@ -716,7 +736,7 @@ class CourseConnector {
         for (Element node in nodesOne[7].getElementsByTagName("a")) {
           ClassJson classInfo = ClassJson();
           classInfo.name = node.text;
-          classInfo.href = _courseCNHost + (node.attributes["href"] ?? "");
+          classInfo.href = Uri.parse(_courseCNHost).resolve(node.attributes["href"] ?? "").toString();
           courseMainInfo.openClass.add(classInfo);
         }
 
@@ -731,21 +751,23 @@ class CourseConnector {
   }
 
   static Future<List<String>?> getYearList() async {
-    ConnectorParameter parameter;
     String result;
     Document tagNode;
     Element node;
     List<Element> nodes;
     List<String> resultList = [];
     try {
-      parameter = ConnectorParameter("https://aps.ntut.edu.tw/course/tw/Cprog.jsp");
-      parameter.data = {"format": "-1"};
-      result = await Connector.getDataByPost(parameter);
+      result = (await dio.post<String>(
+        "https://aps.ntut.edu.tw/course/tw/Cprog.jsp",
+        data: {"format": "-1"},
+      )).data!.trim();
       tagNode = parse(result);
       nodes = tagNode.getElementsByTagName("a");
       for (int i = 0; i < nodes.length; i++) {
         node = nodes[i];
-        resultList.add(node.text);
+        if (Uri.tryParse(node.attributes['href'] ?? '')?.queryParameters.containsKey('year') == true) {
+          resultList.add(node.text);
+        }
       }
       return resultList;
     } catch (e, stack) {
@@ -760,16 +782,13 @@ class CourseConnector {
   code 參數
   */
   static Future<List<Map>?> getDivisionList(String year) async {
-    ConnectorParameter parameter;
     String result;
     Document tagNode;
     Element node;
     List<Element> nodes;
     List<Map> resultList = [];
     try {
-      parameter = ConnectorParameter(_creditUrl);
-      parameter.data = {"format": "-2", "year": year};
-      result = await Connector.getDataByPost(parameter);
+      result = (await dio.post<String>(_creditUrl, data: {"format": "-2", "year": year})).data!.trim();
       tagNode = parse(result);
       nodes = tagNode.getElementsByTagName("a");
       for (int i = 0; i < nodes.length; i++) {
@@ -790,23 +809,20 @@ class CourseConnector {
   code 參數
   */
   static Future<List<Map>?> getDepartmentList(Map code) async {
-    ConnectorParameter parameter;
     String result;
     Document tagNode;
     Element node;
     List<Element> nodes;
     List<Map> resultList = [];
     try {
-      parameter = ConnectorParameter(_creditUrl);
-      parameter.data = code;
-      result = await Connector.getDataByPost(parameter);
+      result = (await dio.post<String>(_creditUrl, data: code)).data!.trim();
       tagNode = parse(result);
       node = tagNode.getElementsByTagName("table").first;
       nodes = node.getElementsByTagName("a");
       for (int i = 0; i < nodes.length; i++) {
         node = nodes[i];
         Map<String, String> code = Uri.parse(node.attributes["href"] ?? "").queryParameters;
-        String name = node.text.replaceAll(RegExp("[ |s]"), "");
+        String name = node.text.replaceAll(RegExp(r'\s'), "");
         resultList.add({"name": name, "code": code});
       }
       return resultList;
@@ -821,7 +837,6 @@ class CourseConnector {
   minGraduationCredits
   */
   static Future<GraduationInformationJson?> getCreditInfo(Map code, String select) async {
-    ConnectorParameter parameter;
     String result;
     Document tagNode;
     Element anode, trNode, node, tdNode;
@@ -829,9 +844,8 @@ class CourseConnector {
     GraduationInformationJson graduationInformation = GraduationInformationJson();
     try {
       Log.d("select is $select");
-      parameter = ConnectorParameter(_creditUrl);
-      parameter.data = code;
-      result = await Connector.getDataByPost(parameter);
+
+      result = (await dio.post<String>(_creditUrl, data: code)).data!.trim();
       tagNode = parse(result);
       node = tagNode.getElementsByTagName("table").first;
       trNodes = node.getElementsByTagName("tr");
@@ -840,7 +854,7 @@ class CourseConnector {
       for (int i = 0; i < trNodes.length; i++) {
         trNode = trNodes[i];
         anode = trNode.getElementsByTagName("a").first;
-        String name = anode.text.replaceAll(RegExp("[ |s]"), "");
+        String name = anode.text.replaceAll(RegExp(r'\s'), "");
         if (name.contains(select)) {
           tdNodes = trNode.getElementsByTagName("td");
           Log.d(trNode.innerHtml);
@@ -889,6 +903,7 @@ class CourseConnector {
       }
       if (!pass) {
         Log.d("not find $select");
+        return null;
       }
       return graduationInformation;
     } catch (e, stack) {

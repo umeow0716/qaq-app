@@ -1,12 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:xml/xml.dart';
 
-import 'global_protect_transport.dart';
+import '../http_client_adapter.dart';
 import 'global_protect_esp_transport.dart';
 import 'global_protect_models.dart';
+import 'global_protect_transport.dart';
 
 typedef GlobalProtectConnectorTrace = void Function(String message);
 
@@ -35,10 +36,27 @@ class GlobalProtectClientCertificateRequiredException implements Exception {
 }
 
 class GlobalProtectConnector {
-  GlobalProtectConnector({Uri? portal, HttpClient? httpClient, this.computerName = 'qaq-android'})
+  GlobalProtectConnector({Uri? portal, Dio? dio, this.computerName = 'qaq-android'})
     : portal = portal ?? Uri.parse('https://vpn.ntut.edu.tw'),
-      _httpClient = httpClient ?? HttpClient() {
-    _httpClient.connectionTimeout = const Duration(seconds: 10);
+      _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 10),
+              sendTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 20),
+              responseType: ResponseType.plain,
+              followRedirects: false,
+              validateStatus: (_) => true,
+              contentType: Headers.formUrlEncodedContentType,
+              headers: {HttpHeaders.userAgentHeader: userAgent},
+            ),
+          ) {
+    if (dio == null) {
+      // VPN portal/gateway control endpoints require TLS 1.2. Tunneled
+      // campus HTTPS requests negotiate TLS independently of this client.
+      _dio.httpClientAdapter = createPlatformHttpClientAdapter(linuxTls12Only: true);
+    }
   }
 
   static const String userAgent = 'PAN GlobalProtect';
@@ -48,7 +66,7 @@ class GlobalProtectConnector {
   static const String fallbackAppVersion = '6.3.0-33';
 
   final Uri portal;
-  final HttpClient _httpClient;
+  final Dio _dio;
   final String computerName;
 
   Future<GlobalProtectPreloginResult> prelogin({Uri? server, bool gateway = false}) async {
@@ -263,7 +281,7 @@ class GlobalProtectConnector {
     return esp;
   }
 
-  void close() => _httpClient.close(force: true);
+  void close() => _dio.close(force: true);
 
   Map<String, String> _loginForm({
     required Uri server,
@@ -290,30 +308,25 @@ class GlobalProtectConnector {
   };
 
   Future<String> _postForm(Uri uri, Map<String, String> form, {bool classifySessionResumeFailure = false}) async {
-    final request = await _httpClient.postUrl(uri);
-    request.headers
-      ..set(HttpHeaders.userAgentHeader, userAgent)
-      ..contentType = ContentType('application', 'x-www-form-urlencoded', charset: 'utf-8');
-    request.write(Uri(queryParameters: form).query);
-
-    final response = await request.close();
-    final body = await utf8.decodeStream(response);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
+    final response = await _dio.postUri<String>(uri, data: form);
+    final body = response.data ?? '';
+    final status = response.statusCode ?? 0;
+    if (status < 200 || status >= 300) {
       if (classifySessionResumeFailure) {
-        if (response.statusCode == 512) {
+        if (status == 512) {
           throw GlobalProtectSessionRejectedException(
             _sessionFailureReason(body, fallback: 'Invalid authentication cookie'),
-            statusCode: response.statusCode,
+            statusCode: status,
           );
         }
-        if (response.statusCode == 513) {
+        if (status == 513) {
           throw GlobalProtectClientCertificateRequiredException(
             _sessionFailureReason(body, fallback: 'Valid client certificate is required'),
-            statusCode: response.statusCode,
+            statusCode: status,
           );
         }
       }
-      throw HttpException('GlobalProtect request failed with HTTP ${response.statusCode}: $body', uri: uri);
+      throw HttpException('GlobalProtect request failed with HTTP $status: $body', uri: uri);
     }
     return body;
   }

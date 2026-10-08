@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
 
 const int _progressNotifyByteStep = 128 * 1024;
@@ -32,8 +31,8 @@ class DesktopDownloadItem {
 
 /// Desktop-only material download queue.
 ///
-/// Downloads intentionally reuse [DioConnector]. Its HTTP adapter already
-/// routes iStudy/istudycloud requests through IStudyAccessGuard and the
+/// Downloads intentionally reuse [dio]. Its HTTP adapter already
+/// routes study requests through IStudyAccessGuard and the
 /// GlobalProtect-backed HttpClient when required, so this queue must not create
 /// a second raw HttpClient or bypass the existing proxy/VPN decision.
 class DesktopDownloadManager extends ChangeNotifier {
@@ -73,7 +72,7 @@ class DesktopDownloadManager extends ChangeNotifier {
       final downloadsDirectory = await _downloadsDirectory();
       await downloadsDirectory.create(recursive: true);
 
-      await DioConnector.instance.download(
+      await dio.download(
         url,
         (headers) {
           final filename = _resolveFilename(headers: headers, url: url, suggestedName: suggestedName);
@@ -86,7 +85,7 @@ class DesktopDownloadManager extends ChangeNotifier {
           notifyListeners();
           return destination;
         },
-        progressCallback: (received, total) {
+        onReceiveProgress: (received, total) {
           item
             ..receivedBytes = received
             ..totalBytes = total
@@ -99,7 +98,7 @@ class DesktopDownloadManager extends ChangeNotifier {
           }
         },
         cancelToken: cancelToken,
-        header: <String, dynamic>{'referer': referer ?? url},
+        options: Options(receiveTimeout: Duration.zero, headers: {'referer': referer ?? url}),
       );
 
       item.status = DesktopDownloadStatus.completed;

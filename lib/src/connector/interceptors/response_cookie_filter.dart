@@ -14,7 +14,14 @@ class ResponseCookieFilter extends Interceptor {
 
     if (setCookieHeaders != null && setCookieHeaders.isNotEmpty) {
       final filteredHeaders = setCookieHeaders
+          .expand((header) => header.split(RegExp(r',(?=[^;,]+?=)')))
+          .map((header) => header.trim())
           .where((header) {
+            try {
+              Cookie.fromSetCookieValue(header);
+            } on FormatException {
+              return false;
+            }
             final separatorIndex = header.indexOf('=');
             final cookieName = (separatorIndex < 0 ? header : header.substring(0, separatorIndex)).trim();
             return !blockedCookieNamePatterns.any((pattern) => pattern.hasMatch(cookieName));

@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:html/parser.dart';
+import 'package:path/path.dart' as path;
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/connector/core/connector.dart';
-import 'package:qaq_app/src/connector/core/connector_parameter.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/file/file_download.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/r.dart';
@@ -14,9 +16,6 @@ import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/src/util/mx_player_util.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/other/route_utils.dart';
-import 'package:get/get.dart';
-import 'package:html/parser.dart';
-import 'package:path/path.dart' as path;
 import 'package:video_player/video_player.dart';
 
 class ClassVideoPlayer extends StatefulWidget {
@@ -64,8 +63,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
   void parseVideo() async {
     _isLoading = true;
 
-    final parameter = ConnectorParameter(widget.videoUrl);
-    final result = await Connector.getDataByGet(parameter);
+    final result = (await dio.get<String>(widget.videoUrl)).data!.trim();
     final tagNode = parse(result);
     final node = tagNode.getElementById("videoplayer");
 
@@ -154,7 +152,7 @@ class _VideoPlayer extends State<ClassVideoPlayer> {
   }
 
   Future<void> initController(Uri url) async {
-    final headers = await Connector.getLoginHeaders(url.toString()) ?? {};
+    final headers = await getLoginHeaders(url.toString());
     final playerController = VideoPlayerController.networkUrl(
       url,
       httpHeaders: headers,

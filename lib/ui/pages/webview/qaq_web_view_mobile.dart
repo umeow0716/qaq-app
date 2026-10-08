@@ -4,15 +4,14 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:qaq_app/src/connector/core/dio_connector.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
-import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_debug.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
-import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy_controller.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_proxy.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/connector/web_view_file_transfer.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
@@ -34,7 +33,6 @@ class QAQWebViewMobile extends StatefulWidget {
 }
 
 class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
-  final cookieJar = DioConnector.instance.cookiesManager;
   late final WebViewController _controller;
   late final Future<void> _initialLoadFuture;
   bool _vpnProxyEnabled = false;
@@ -334,7 +332,7 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
           case IStudyAccessRoute.vpn:
             requestUri = await GlobalProtectDownloadRelay.instance.createDownloadUri(
               target: sourceUri,
-              allowedHost: IStudyAccessGuard.iStudyHost,
+              allowedHost: sourceUri.host,
               cookieHeader: cookieHeader,
               userAgent: userAgent,
               referer: referer,
@@ -398,28 +396,9 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
   }
 
   Future<void> _enableWebViewProxy() async {
-    if (_vpnProxyEnabled && GlobalProtectWebViewProxyBridge.instance.isRunning) return;
-    final runtimeGeneration = GlobalProtectWebViewRuntime.generation;
-    if (!Platform.isAndroid) {
-      throw UnsupportedError('The experimental iStudy WebView VPN bridge currently supports Android only.');
-    }
-
-    final port = await GlobalProtectWebViewProxyBridge.instance.ensureStarted(vpnHosts: IStudyAccessGuard.proxyHosts);
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      throw StateError('WebView GlobalProtect runtime was reset before ProxyOverride setup.');
-    }
-    GlobalProtectDebug.log('GP bridge ready on loopback port=$port');
-    final reverseBypassSupported = await GlobalProtectWebViewProxyController.setProxyOverride(
-      port: port,
-      hosts: IStudyAccessGuard.proxyHosts,
-    );
-    GlobalProtectDebug.log('WebView ProxyOverride applied reverseBypass=$reverseBypassSupported');
-    if (!GlobalProtectWebViewRuntime.isCurrent(runtimeGeneration)) {
-      await GlobalProtectWebViewRuntime.reset();
-      throw StateError('WebView GlobalProtect runtime was reset during ProxyOverride setup.');
-    }
+    if (_vpnProxyEnabled && GlobalProtectProxyBridge.instance.isRunning) return;
+    await GlobalProtectWebViewRuntime.enable();
     _vpnProxyEnabled = true;
-    GlobalProtectDebug.log('WebView ProxyOverride active');
   }
 
   Future<void> _clearWebViewProxy() async {

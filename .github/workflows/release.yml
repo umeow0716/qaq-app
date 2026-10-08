@@ -128,7 +128,6 @@ jobs:
           --release
           --flavor real
           --split-per-abi
-          --android-skip-build-dependency-validation
 
       - name: Collect split APKs
         shell: bash
@@ -161,7 +160,6 @@ jobs:
           flutter build apk
           --release
           --flavor real
-          --android-skip-build-dependency-validation
 
       - name: Collect universal APK
         shell: bash
@@ -185,7 +183,6 @@ jobs:
           flutter build appbundle
           --release
           --flavor real
-          --android-skip-build-dependency-validation
 
       - name: Collect AAB
         shell: bash
@@ -233,7 +230,7 @@ jobs:
         run: bash scripts/codegen.sh
 
       - name: Build Windows release
-        run: flutter build windows --release
+        run: flutter build windows --release --flavor real
 
       - name: Package Windows ZIP and MSI
         shell: pwsh
@@ -242,7 +239,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.app-version }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $releaseDir = 'build/windows/x64/runner/Release'
+          $releaseDir = 'build/windows/x64/real/runner/Release'
           if (-not (Test-Path "$releaseDir/QAQ.exe")) {
             throw "Windows release executable not found: $releaseDir/QAQ.exe"
           }
@@ -292,6 +289,9 @@ jobs:
             ninja-build \
             pkg-config
 
+      - name: Setup Rust for native HTTP transport
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -305,7 +305,7 @@ jobs:
         run: bash scripts/codegen.sh
 
       - name: Build Linux release
-        run: flutter build linux --release
+        run: flutter build linux --release --flavor real
 
       - name: Package DEB and AppImage
         run: >-
