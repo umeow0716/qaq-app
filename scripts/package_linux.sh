@@ -12,7 +12,9 @@ PACKAGE_NAME="qaq"
 APP_VERSION="$1"
 RELEASE_TAG="$2"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUNDLE_DIR="$PROJECT_DIR/build/linux/x64/release/bundle"
+# Flutter includes the flavor in desktop output paths. Release builds use real
+# explicitly, independently of the app's default beta flavor.
+BUNDLE_DIR="$PROJECT_DIR/build/linux/x64/real/release/bundle"
 DIST_DIR="$PROJECT_DIR/dist"
 DESKTOP_FILE="$PROJECT_DIR/linux/packaging/$APP_ID.desktop"
 ICON_FILE="$PROJECT_DIR/assets/images/desktop-icon.png"

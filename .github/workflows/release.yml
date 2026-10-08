@@ -230,7 +230,7 @@ jobs:
         run: bash scripts/codegen.sh
 
       - name: Build Windows release
-        run: flutter build windows --release
+        run: flutter build windows --release --flavor real
 
       - name: Package Windows ZIP and MSI
         shell: pwsh
@@ -239,7 +239,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.app-version }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $releaseDir = 'build/windows/x64/runner/Release'
+          $releaseDir = 'build/windows/x64/real/runner/Release'
           if (-not (Test-Path "$releaseDir/QAQ.exe")) {
             throw "Windows release executable not found: $releaseDir/QAQ.exe"
           }
@@ -302,7 +302,7 @@ jobs:
         run: bash scripts/codegen.sh
 
       - name: Build Linux release
-        run: flutter build linux --release
+        run: flutter build linux --release --flavor real
 
       - name: Package DEB and AppImage
         run: >-
