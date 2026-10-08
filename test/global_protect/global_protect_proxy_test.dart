@@ -9,7 +9,7 @@ void main() {
   group('GlobalProtect WebView proxy routing', () {
     const vpnHosts = GlobalProtectRouting.webViewProxyHosts;
 
-    test('routes configured study and portal SSO hosts through GlobalProtect', () {
+    test('routes configured study hosts through GlobalProtect', () {
       expect(
         GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudy.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
@@ -24,10 +24,15 @@ void main() {
       );
     });
 
-    test('includes source downloads and portal SSO in the production proxy policy', () {
-      for (final host in ['istudycloud.ntut.edu.tw', 'nportal.ntut.edu.tw']) {
-        expect(GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts), isTrue);
-      }
+    test('keeps portal authentication direct while tunneling study downloads', () {
+      expect(
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudycloud.ntut.edu.tw', vpnHosts: vpnHosts),
+        isTrue,
+      );
+      expect(
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'nportal.ntut.edu.tw', vpnHosts: vpnHosts),
+        isFalse,
+      );
     });
 
     test('can bind the loopback listener before VPN routing is enabled', () async {
@@ -41,7 +46,7 @@ void main() {
       expect(bridge.vpnRoutingEnabled, isFalse);
     });
 
-    test('serves a Windows PAC with the shared study and SSO host policy', () async {
+    test('serves a Windows PAC that proxies study hosts and keeps the portal direct', () async {
       final bridge = GlobalProtectProxyBridge.instance;
       addTearDown(bridge.close);
 
@@ -59,7 +64,7 @@ void main() {
       expect(response, contains('HTTP/1.1 200 OK'));
       expect(response, contains('"istudy.ntut.edu.tw"'));
       expect(response, contains('"istudycloud.ntut.edu.tw"'));
-      expect(response, contains('"nportal.ntut.edu.tw"'));
+      expect(response, isNot(contains('"nportal.ntut.edu.tw"')));
       expect(response, contains('PROXY 127.0.0.1:$port'));
       expect(response, contains('return "DIRECT"'));
     });

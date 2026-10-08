@@ -113,6 +113,53 @@ void main() {
     expect(lookups, 1);
   });
 
+  test('OAuth keeps portal cookies on the direct route and tunnels the redirect destination', () async {
+    final jar = CookieJar();
+    await jar.saveFromResponse(Uri.parse('https://nportal.ntut.edu.tw/'), [
+      Cookie('JSESSIONID', 'portal-session')..path = '/',
+    ]);
+    final direct = RecordingAdapter((options) {
+      expect(options.uri.host, 'nportal.ntut.edu.tw');
+      expect(options.headers[HttpHeaders.cookieHeader], contains('JSESSIONID=portal-session'));
+      if (options.uri.path == '/ssoIndex.do') return ResponseBody.fromString('<form id="ssoForm"></form>', 200);
+      return ResponseBody.fromString(
+        '',
+        302,
+        headers: {
+          HttpHeaders.locationHeader: ['https://istudy.ntut.edu.tw/login2.php'],
+        },
+      );
+    });
+    final tunnel = RecordingAdapter((options) {
+      expect(options.uri.host, 'istudy.ntut.edu.tw');
+      expect(options.headers[HttpHeaders.cookieHeader], isNot(contains('JSESSIONID=portal-session')));
+      return ResponseBody.fromString('study authenticated', 200);
+    });
+    var tunnelLookups = 0;
+    final adapter = GlobalProtectDioAdapter(
+      directAdapter: direct,
+      resolveRoute: () async => IStudyAccessRoute.vpn,
+      tunnelAdapter: () async {
+        tunnelLookups++;
+        return tunnel;
+      },
+    );
+    final client = createDio(directAdapter: adapter, useGlobalProtect: false, cookies: jar);
+    addTearDown(client.close);
+    final form = await client.get<String>('https://nportal.ntut.edu.tw/ssoIndex.do?apOu=ischool_plus_oauth');
+    expect(form.data, contains('ssoForm'));
+    expect(tunnelLookups, 0);
+    final response = await client.post<String>(
+      'https://nportal.ntut.edu.tw/oauth2Server.do',
+      data: {'redirect_uri': 'https://istudy.ntut.edu.tw/login2.php'},
+    );
+    expect(response.data, 'study authenticated');
+    expect(response.realUri.host, 'istudy.ntut.edu.tw');
+    expect(direct.requests, hasLength(2));
+    expect(tunnel.requests, hasLength(1));
+    expect(tunnelLookups, 1);
+  });
+
   test('VPN uses the session client and closing Dio does not close that client', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));

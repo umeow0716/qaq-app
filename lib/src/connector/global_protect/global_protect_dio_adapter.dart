@@ -44,6 +44,11 @@ class GlobalProtectDioAdapter implements HttpClientAdapter {
       case IStudyAccessRoute.blocked:
         throw const IStudyAccessBlockedException();
       case IStudyAccessRoute.vpn:
+        // Portal sessions are bound to the login connection's source route.
+        // Keep the OAuth exchange direct; the redirect to iStudy selects GP.
+        if (GlobalProtectRouting.normalizeHost(options.uri.host) == GlobalProtectRouting.portalHost) {
+          return directAdapter.fetch(options, requestStream, cancelFuture);
+        }
         final client = await _tunnelAdapter();
         _checkActive(options);
         // Resolve afresh so a reconnect never reuses the previous session client.

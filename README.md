@@ -82,14 +82,6 @@ Dio continues to manage cookies and redirects. Android/iOS retain `native_dio_ad
 
 Install the stable Rust toolchain with [rustup](https://rustup.rs/) before building. The rhttp Flutter plugin
 requires Rust during native builds, including mobile builds. CI installs this toolchain automatically.
-Linux builds require the existing GTK/WebKit development dependencies; Ubuntu 22.04 is supported.
-The desktop adapter dependency is pinned to a reviewed Git commit in `pubspec.yaml`.
-
-Optional native GP transport tests require a built desktop library and `GP_USERNAME`/`GP_PASSWORD`.
-On Linux, set `LD_LIBRARY_PATH` to the release bundle's `lib` directory when using `flutter test`.
-The native CONNECT transport reaches iStudy successfully. A separate live SSO check currently receives
-“請重新登入” after moving a direct portal session onto GP; this also reproduces with the previous IO transport.
-That existing cross-route session behavior remains unresolved.
 
 ## Contributing
 

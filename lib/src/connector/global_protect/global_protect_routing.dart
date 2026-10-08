@@ -14,9 +14,9 @@ class GlobalProtectRouting {
 
   static const portalHost = 'nportal.ntut.edu.tw';
   static const studyHosts = <String>['istudy.ntut.edu.tw', 'istudycloud.ntut.edu.tw'];
-  // CONNECT exposes only the host, so an active WebView VPN flow also allows
-  // the portal through the proxy for the iSchool SSO redirect chain.
-  static const webViewProxyHosts = <String>[...studyHosts, portalHost];
+  // Keep the portal on its login route: switching its session onto GP makes
+  // the server ask for login again. Only the destination iStudy hosts use GP.
+  static const webViewProxyHosts = studyHosts;
 
   static String normalizeHost(String host) => host.toLowerCase().replaceFirst(RegExp(r'\.$'), '');
 
