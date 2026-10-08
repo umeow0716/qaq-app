@@ -1,25 +1,21 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:get/route_manager.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/generated/l10n.dart';
 import 'package:qaq_app/src/config/app_config.dart';
 import 'package:qaq_app/src/config/app_themes.dart';
-import 'package:qaq_app/src/connector/blocked_cookies.dart';
-import 'package:qaq_app/src/connector/interceptors/request_interceptor.dart';
-import 'package:qaq_app/src/connector/interceptors/response_cookie_filter.dart';
 import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/providers/category_provider.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/util/language_util.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_page.dart';
 import 'package:qaq_app/ui/screen/main_screen.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:get/route_manager.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 
 typedef _FutureVoidCallBack = Future<void> Function();
 
@@ -27,18 +23,13 @@ Future<void> runQAQApp() async {
   final appDocDir = (await getApplicationDocumentsDirectory()).path;
   final CookieJar cookieJar = PersistCookieJar(storage: FileStorage('$appDocDir/.cookies'));
 
-  final apiInterceptors = [
-    ResponseCookieFilter(blockedCookieNamePatterns: blockedCookieNamePatterns),
-    CookieManager(cookieJar),
-    RequestInterceptors(),
-  ];
   const webViewPage = WebViewPage.instance;
 
   Future<void> handleAppDetached() async {
     await webViewPage.close();
   }
 
-  await LocalStorage.instance.init(httpClientInterceptors: apiInterceptors, cookieJar: cookieJar);
+  await LocalStorage.instance.init(cookieJar: cookieJar);
   await LanguageUtil.init();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   WidgetsBinding.instance.addObserver(_QAQLifeCycleEventHandler(detachedCallBack: handleAppDetached));

@@ -1,6 +1,6 @@
+import 'package:flutter_test/flutter_test.dart';
 import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
-import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('VPN auto-connect setting defaults to disabled', () {
@@ -21,9 +21,17 @@ void main() {
     expect(IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true), IStudyAccessRoute.vpn);
   });
 
-  test('guards both iStudy service hosts', () {
+  test('guards study hosts and the iSchool SSO entry point', () {
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudy.ntut.edu.tw/mooc/')), isTrue);
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudycloud.ntut.edu.tw/')), isTrue);
+    expect(
+      IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/ssoIndex.do?apOu=ischool_plus_oauth')),
+      isTrue,
+    );
+    expect(
+      IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/ssoIndex.do?apOu=aa_003_LB_oauth')),
+      isFalse,
+    );
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/')), isFalse);
   });
 }

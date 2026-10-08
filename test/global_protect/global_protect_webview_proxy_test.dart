@@ -3,12 +3,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_proxy.dart';
+import 'package:qaq_app/src/connector/global_protect/global_protect_routing.dart';
 
 void main() {
   group('GlobalProtect WebView proxy routing', () {
-    const vpnHosts = <String>['istudy.ntut.edu.tw', 'istudycloud.ntut.edu.tw'];
+    const vpnHosts = GlobalProtectRouting.webViewProxyHosts;
 
-    test('routes configured iStudy hosts through GlobalProtect', () {
+    test('routes configured study and portal SSO hosts through GlobalProtect', () {
       expect(
         GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudy.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
@@ -29,6 +30,12 @@ void main() {
       );
     });
 
+    test('includes source downloads and portal SSO in the production proxy policy', () {
+      for (final host in ['istudycloud.ntut.edu.tw', 'nportal.ntut.edu.tw']) {
+        expect(GlobalProtectWebViewProxyBridge.shouldRouteThroughGlobalProtect(host: host, vpnHosts: vpnHosts), isTrue);
+      }
+    });
+
     test('can bind the loopback listener before VPN routing is enabled', () async {
       final bridge = GlobalProtectWebViewProxyBridge.instance;
       addTearDown(bridge.close);
@@ -40,7 +47,7 @@ void main() {
       expect(bridge.vpnRoutingEnabled, isFalse);
     });
 
-    test('serves a Windows PAC that proxies both iStudy service hosts', () async {
+    test('serves a Windows PAC with the shared study and SSO host policy', () async {
       final bridge = GlobalProtectWebViewProxyBridge.instance;
       addTearDown(bridge.close);
 
@@ -58,13 +65,13 @@ void main() {
       expect(response, contains('HTTP/1.1 200 OK'));
       expect(response, contains('"istudy.ntut.edu.tw"'));
       expect(response, contains('"istudycloud.ntut.edu.tw"'));
+      expect(response, contains('"nportal.ntut.edu.tw"'));
       expect(response, contains('PROXY 127.0.0.1:$port'));
       expect(response, contains('return "DIRECT"'));
     });
 
-    test('keeps every non-iStudy destination direct', () {
+    test('keeps destinations outside the shared proxy policy direct', () {
       for (final host in <String>[
-        'nportal.ntut.edu.tw',
         'www.google.com',
         'cdn.example.com',
         'foo.istudy.ntut.edu.tw',

@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'global_protect_transport.dart';
 import 'ipv4_tcp_codec.dart';
 import 'virtual_byte_socket.dart';
-import 'virtual_tcp_loopback_bridge.dart';
 
 typedef VirtualTcpTrace = void Function(String message);
 
@@ -45,9 +44,6 @@ class VirtualTcpSocket implements VirtualByteSocket {
   @override
   Stream<Uint8List> get stream => _incoming.stream;
   bool get isConnected => _connected && !_closed;
-
-  Future<VirtualTcpLoopbackBridge> createLoopbackBridge({Duration timeout = const Duration(seconds: 5)}) =>
-      VirtualTcpLoopbackBridge.attach(this, timeout: timeout);
 
   static Future<VirtualTcpSocket> connectIp({
     required GlobalProtectTransport transport,

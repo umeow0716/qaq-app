@@ -2,20 +2,20 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
+import 'package:dio_redirect_interceptor/dio_redirect_interceptor.dart';
+import 'package:html/dom.dart' as html;
+import 'package:html/parser.dart' as html;
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/connector/core/connector.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/model/ischoolplus/course_file_json.dart';
 import 'package:qaq_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
 import 'package:qaq_app/src/util/html_utils.dart';
-import 'package:html/dom.dart' as html;
-import 'package:html/parser.dart' as html;
 
 import '../model/course/course_student.dart';
-import 'core/connector_parameter.dart';
+import 'global_protect/global_protect_routing.dart';
 import 'ntut_connector.dart';
 
-enum ISchoolPlusConnectorStatus { loginSuccess, loginGetSSOIndexError, loginRedirectionError, unknownError }
+enum ISchoolPlusConnectorStatus { loginSuccess, loginGetSSOIndexError, loginRedirectionError }
 
 enum IPlusReturnStatus { success, fail, noPermission }
 
@@ -27,17 +27,12 @@ class ReturnWithStatus<T> {
 class ISchoolPlusConnector {
   static const String _iSchoolPlusUrl = 'https://istudy.ntut.edu.tw/';
 
-  //static final String _getLoginISchoolUrl = _iSchoolPlusUrl + "mooc/login.php";
-  //static final String _postLoginISchoolUrl = _iSchoolPlusUrl + "login.php";
-  //static final String _iSchoolPlusIndexUrl = _iSchoolPlusUrl + "mooc/index.php";
   static const String _getCourseName = "${_iSchoolPlusUrl}learn/mooc_sysbar.php";
   static const _getCourseStudentList = "${_iSchoolPlusUrl}learn/learn_ranking.php";
   static const _ssoLoginUrl = "${NTUTConnector.host}ssoIndex.do";
 
-  /// The Authorization Step of ISchool (2023-10-21)
-  /// 1. GET https://nportal.ntut.edu.tw/ssoIndex.do
-  /// 2-1. POST https://nportal.ntut.edu.tw/oauth2Server.do (It should be. See the comment on step 2-1)
-  /// 2-2. follow the redirection to https://istudy.ntut.edu.tw/login2.php (It should be. See the comment on step 2-2)
+  /// Parse the portal SSO form, then let Dio follow the OAuth redirects through
+  /// the GP routing adapter. Only application-level "connection lost" is retried.
   static Future<ISchoolPlusConnectorStatus> login(String account) async {
     try {
       final ssoIndexResponse = await getSSOIndexResponse();
@@ -60,26 +55,16 @@ class ISchoolPlusConnector {
       }
 
       for (int retry = 0; retry < 3; retry++) {
-        // Step 2-1
-        // The ssoIndexJumpUrl should be "oauth2Server.do", and the response should contain redirection location.
-        // If not, a retry of getting redirection location will perform.
-        final jumpParameter = ConnectorParameter("${NTUTConnector.host}$ssoIndexJumpUrl");
-        jumpParameter.data = oauthData;
-        final jumpResult = (await Connector.getDataByPostResponse(jumpParameter));
-        if (jumpResult.statusCode != 302) {
-          log("[QAQ] ischool_plus_connector.dart: failed to get redirection location from oauth2Server, retrying...");
-          await Future.delayed(const Duration(milliseconds: 100));
+        final response = await dio.post<String>(
+          Uri.parse(_ssoLoginUrl).resolve(ssoIndexJumpUrl).toString(),
+          data: oauthData,
+        );
+        // Dio follows the OAuth 302 using the same cookies and routes each hop.
+        if (response.statusCode != HttpStatus.ok || !GlobalProtectRouting.isStudyHost(response.realUri.host)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
           continue;
         }
-        // Step 2-2
-        // The redirect location should be "https://istudy.ntut.edu.tw/login2.php", and the response should not contain
-        // "connection `lost`", if it does, a retry of getting redirection location will perform.
-        final redirectLocations = jumpResult.headers['location'];
-        if (redirectLocations == null || redirectLocations.isEmpty) {
-          continue;
-        }
-        final login2Parameter = ConnectorParameter(redirectLocations.first);
-        final login2Result = await Connector.getDataByGet(login2Parameter);
+        final login2Result = response.data ?? '';
         if (login2Result.contains("lost")) {
           log("[QAQ] ischool_plus_connector.dart: connection lost during redirection, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
@@ -97,10 +82,7 @@ class ISchoolPlusConnector {
   static Future<String> getSSOIndexResponse() async {
     final data = {"apOu": "ischool_plus_oauth", "datetime1": DateTime.now().millisecondsSinceEpoch.toString()};
     for (int retry = 0; retry < 5; retry++) {
-      final parameter = ConnectorParameter(_ssoLoginUrl);
-      parameter.data = data;
-
-      final response = (await Connector.getDataByGet(parameter)).toString().trim();
+      final response = (await dio.get<String>(_ssoLoginUrl, queryParameters: data)).data!.trim();
       if (response.contains("ssoForm")) return response;
       log("[QAQ] ischool_plus_connector.dart: failed to get ssoForm, retrying...");
       await Future.delayed(const Duration(milliseconds: 100));
@@ -108,7 +90,7 @@ class ISchoolPlusConnector {
     return "";
   }
 
-  static Future<ReturnWithStatus<List<CourseStudent>>> getCourseStudent(String courseId) async {
+  static Future<ReturnWithStatus<List<CourseStudent>>> getCourseStudent(String courseId) => _withCourse(() async {
     try {
       if (!await _selectCourse(courseId)) {
         final returnResult = ReturnWithStatus<List<CourseStudent>>();
@@ -116,8 +98,7 @@ class ISchoolPlusConnector {
         return returnResult;
       }
 
-      ConnectorParameter parameter = ConnectorParameter(_getCourseStudentList);
-      String result = await Connector.getDataByGet(parameter);
+      String result = (await dio.get<String>(_getCourseStudentList)).data!.trim();
 
       html.Document tagNode = html.parse(result);
       html.Element table = tagNode.querySelectorAll('table')[1];
@@ -125,15 +106,16 @@ class ISchoolPlusConnector {
 
       List<CourseStudent> courseStudents = <CourseStudent>[];
       for (int i = 0; i < nodes.length; i++) {
-        html.Element node = nodes[i].querySelectorAll('td')[1];
+        final cells = nodes[i].querySelectorAll('td');
+        if (cells.length < 2) continue;
+        html.Element node = cells[1];
 
         final infoNode = node.querySelector('div');
         if (infoNode == null) continue;
-        String information = infoNode.innerHtml;
-        int splitIndex = information.indexOf(' ');
-
-        String studentId = information.substring(0, splitIndex);
-        String studentName = information.substring(splitIndex + 2, information.length - 1);
+        final information = RegExp(r'^(\S+)\s+\((.*)\)$').firstMatch(infoNode.text.trim());
+        if (information == null) continue;
+        final studentId = information.group(1)!;
+        final studentName = information.group(2)!;
 
         // 過濾掉校務人士，如有多身分考慮枚舉或過濾 Email
         if (studentId == 'istudyoaa') {
@@ -155,9 +137,9 @@ class ISchoolPlusConnector {
       returnResult.status = IPlusReturnStatus.fail;
       return returnResult;
     }
-  }
+  });
 
-  static Future<ReturnWithStatus<List<CourseFileJson>>> getCourseFile(String courseId) async {
+  static Future<ReturnWithStatus<List<CourseFileJson>>> getCourseFile(String courseId) => _withCourse(() async {
     var value = ReturnWithStatus<List<CourseFileJson>>();
     try {
       List<CourseFileJson> courseFileList = [];
@@ -166,8 +148,7 @@ class ISchoolPlusConnector {
         return value;
       }
 
-      var parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/launch.php");
-      var result = await Connector.getDataByGet(parameter);
+      var result = (await dio.get<String>("${_iSchoolPlusUrl}learn/path/launch.php")).data!.trim();
       var exp = RegExp(r"cid=(?<cid>[\w|-]+,)");
       var matches = exp.firstMatch(result);
       final cid = matches?.group(1);
@@ -175,10 +156,11 @@ class ISchoolPlusConnector {
         value.status = IPlusReturnStatus.fail;
         return value;
       }
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/pathtree.php");
-      parameter.data = {'cid': cid};
 
-      result = await Connector.getDataByGet(parameter);
+      result = (await dio.get<String>(
+        "${_iSchoolPlusUrl}learn/path/pathtree.php",
+        queryParameters: {'cid': cid},
+      )).data!.trim();
       var tagNode = html.parse(result);
       final fetchResourceForm = tagNode.getElementById("fetchResourceForm");
       if (fetchResourceForm == null) {
@@ -206,8 +188,8 @@ class ISchoolPlusConnector {
           downloadPost[key] = node.attributes['value'] ?? '';
         }
       }
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_loadCA.php"); //取得下載檔案XML
-      result = await Connector.getDataByGet(parameter);
+      //取得下載檔案XML
+      result = (await dio.get<String>("${_iSchoolPlusUrl}learn/path/SCORM_loadCA.php")).data!.trim();
       tagNode = html.parse(result);
       final itemNodes = tagNode.getElementsByTagName("item");
       final resourceNodes = tagNode.getElementsByTagName("resource");
@@ -247,169 +229,160 @@ class ISchoolPlusConnector {
       value.status = IPlusReturnStatus.fail;
       return value;
     }
-  }
+  });
 
-  //List[0] RealUrl , List[1] referer
+  /// Resolve the resource URL without downloading the file body. This is the
+  /// only campus request that intentionally exposes the original redirect:
+  /// SCORM returns a preview Location whose path must become a download URL.
   static Future<List<String>?> getRealFileUrl(Map<String, String> postParameter) async {
-    ConnectorParameter parameter;
-    String url;
-    String result = '';
     try {
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/path/SCORM_fetchResource.php");
-      parameter.data = postParameter;
-      parameter.referer = "${_iSchoolPlusUrl}learn/path/pathtree.php?cid=${postParameter['course_id']}";
-      Response response;
-      response = await Connector.getDataByPostResponse(parameter);
-      result = response.toString();
-      RegExp exp;
-      RegExpMatch? matches;
-      if (response.statusCode == HttpStatus.ok) {
-        exp = RegExp("[\"'](?<url>https?://.+)[\"']");
-        //檢測網址 "http://....." or 'https://.....' or "http://..." or 'http://...'
-        matches = exp.firstMatch(result);
-        final absoluteUrl = matches?.group(1);
-        final pass = absoluteUrl?.toLowerCase().contains("http") ?? false;
-        if (pass && absoluteUrl != null) {
-          url = absoluteUrl;
-          //已經是完整連結
-          return [url, url];
-        } else {
-          exp = RegExp("\"(?<url>/.+)\""); //檢測/ 開頭網址
-          matches = exp.firstMatch(result);
-          bool pass = (matches?.groupCount == null) ? false : true;
-          if (pass) {
-            final relativeUrl = matches?.group(1);
-            if (relativeUrl == null) return null;
-            String realUrl = _iSchoolPlusUrl + relativeUrl;
-            return [realUrl, realUrl]; //一般下載連結
-          } else {
-            exp = RegExp("\"(?<url>.+)\""); //檢測""內包含字
-            matches = exp.firstMatch(result);
-            final previewPath = matches?.group(1);
-            if (previewPath == null) return null;
-            url = "${_iSchoolPlusUrl}learn/path/$previewPath"; //是PDF預覽畫面
-            parameter = ConnectorParameter(url); //去PDF預覽頁面取得真實下載網址
-            result = await Connector.getDataByGet(parameter);
-            exp = RegExp("DEFAULT_URL.+['|\"](?<url>.+)['|\"]"); //取的PDF真實下載位置
-            matches = exp.firstMatch(result);
-            final downloadPath = matches?.group(1);
-            if (downloadPath == null) return null;
-            String realUrl = "${_iSchoolPlusUrl}learn/path/$downloadPath";
-            return [realUrl, url]; //PDF需要有referer不然會無法下載
-          }
-        }
-      } else if (response.isRedirect == true || result.isEmpty) {
-        //發生跳轉 出現檔案下載預覽頁面
+      final response = await dio.post<String>(
+        "${_iSchoolPlusUrl}learn/path/SCORM_fetchResource.php",
+        data: postParameter,
+        options: Options(
+          headers: {'referer': "${_iSchoolPlusUrl}learn/path/pathtree.php?cid=${postParameter['course_id']}"},
+          extra: {RedirectInterceptor.followRedirects: false},
+        ),
+      );
+      if (const {301, 302, 303, 307, 308}.contains(response.statusCode)) {
         final locations = response.headers[HttpHeaders.locationHeader];
-        if (locations == null || locations.isEmpty) return null;
-        url = locations.first;
-        url = "${_iSchoolPlusUrl}learn/path/$url";
-        url = url.replaceAll("download_preview", "download"); //下載預覽頁面換成真實下載網址
+        if (locations == null || locations.length != 1 || locations.single.trim().isEmpty) return null;
+        final destination = response.realUri.resolve(locations.single);
+        final url = destination.replace(path: destination.path.replaceAll('download_preview', 'download')).toString();
         return [url, url];
       }
+      if (response.statusCode != HttpStatus.ok) return null;
+      final body = response.data ?? '';
+      // Quoted values are non-greedy so another assignment or quote on the
+      // same line cannot become part of the resource URL.
+      final quoted = RegExp(r'''(["'])(.*?)\1''');
+      final values = quoted.allMatches(body).map((match) => match.group(2)!).toList();
+      final navigation = RegExp(
+        r'''(?:\blocation(?:\.href)?\s*=\s*|\b(?:window\.open|location\.(?:replace|assign))\s*\(\s*)(["'])(.*?)\1''',
+      ).firstMatch(body)?.group(2);
+      final target = values
+          .where((value) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/'))
+          .firstOrNull;
+      final destination = navigation ?? target;
+      if (destination != null &&
+          (destination.startsWith('http://') || destination.startsWith('https://') || destination.startsWith('/'))) {
+        final url = response.realUri.resolve(destination).toString();
+        return [url, url];
+      }
+      final previewPath =
+          navigation ??
+          values.where((value) => value.isNotEmpty && !value.contains('<') && !value.contains(' ')).firstOrNull;
+      if (previewPath == null) return null;
+      final previewUri = response.realUri.resolve(previewPath);
+      final preview = await dio.get<String>(previewUri.toString());
+      final match = RegExp(r'''\bDEFAULT_URL\s*=\s*(["'])(.*?)\1''').firstMatch(preview.data ?? '');
+      final downloadPath = match?.group(2);
+      if (downloadPath == null || downloadPath.isEmpty) return null;
+      return [preview.realUri.resolve(downloadPath).toString(), preview.realUri.toString()];
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
-      Log.e(result);
       return null;
     }
-    return null;
   }
 
-  static String bid = '';
-
-  static Future<ReturnWithStatus<List<ISchoolPlusAnnouncementJson>>> getCourseAnnouncement(String courseId) async {
-    String result;
-    var value = ReturnWithStatus<List<ISchoolPlusAnnouncementJson>>();
-    try {
-      if (!await _selectCourse(courseId)) {
-        value.status = IPlusReturnStatus.noPermission;
-        return value;
-      }
-      ConnectorParameter parameter;
-      html.Document tagNode;
-      List<html.Element> nodes;
-      html.Element node;
-      Map<String, String> data = {"cid": "", "bid": "", "nid": ""};
-      List<ISchoolPlusAnnouncementJson> announcementList = [];
-
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_list.php");
-      parameter.data = data;
-      result = await Connector.getDataByPost(parameter);
-      tagNode = html.parse(result);
-      final bidNode = tagNode.getElementById("bid");
-      bid = bidNode?.attributes["value"] ?? "";
-
-      final formSearch = tagNode.getElementById("formSearch");
-      if (formSearch == null) {
-        value.status = IPlusReturnStatus.fail;
-        return value;
-      }
-      node = formSearch;
-      nodes = node.getElementsByTagName("input");
-      final selectPage = tagNode.getElementById("selectPage")?.attributes['value'] ?? "1";
-      final inputPerPage = tagNode.getElementById("inputPerPage")?.attributes['value'] ?? "10";
-      data = {
-        "token": "",
-        "bid": "",
-        "curtab": "",
-        "action": "getNews",
-        "tpc": "1",
-        "selectPage": selectPage,
-        "inputPerPage": inputPerPage,
-      };
-      for (html.Element node in nodes) {
-        final name = node.attributes['name'];
-        if (name != null && data.containsKey(name)) {
-          data[name] = node.attributes['value'] ?? '';
-        }
-      }
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}mooc/controllers/forum_ajax.php");
-      parameter.data = data;
-      result = await Connector.getDataByPost(parameter);
-      //ISchoolPlusAnnouncementInfoJson iPlusJson = ISchoolPlusAnnouncementInfoJson.fromJson( json.decode(result) );
-      Map<String, dynamic> jsonData = {};
-      final decoded = json.decode(result);
-      if (decoded is! Map) {
-        value.status = IPlusReturnStatus.fail;
-        return value;
-      }
-      final Map<dynamic, dynamic> j = decoded;
-      if (j["code"] == 0) {
-        final dataValue = j['data'];
-        if (dataValue is Map) {
-          jsonData = Map<String, dynamic>.from(dataValue);
-        }
-        int totalRows = int.tryParse(j['total_rows']?.toString() ?? '0') ?? 0;
-        if (totalRows > 0) {
-          for (final key in jsonData.keys) {
-            final keyName = key.toString();
-            final rawItem = jsonData[keyName];
-            if (rawItem is! Map) continue;
-            ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(
-              Map<String, dynamic>.from(rawItem),
-            );
-            courseInfo.subject = HtmlUtils.clean(courseInfo.subject); //處理HTM特殊字
-            courseInfo.token = data['token'] ?? '';
-            courseInfo.bid = keyName.split("|").first;
-            courseInfo.nid = keyName.split("|").last;
-            announcementList.add(courseInfo);
+  static Future<ReturnWithStatus<List<ISchoolPlusAnnouncementJson>>> getCourseAnnouncement(String courseId) =>
+      _withCourse(() async {
+        String result;
+        var value = ReturnWithStatus<List<ISchoolPlusAnnouncementJson>>();
+        try {
+          if (!await _selectCourse(courseId)) {
+            value.status = IPlusReturnStatus.noPermission;
+            return value;
           }
+
+          html.Document tagNode;
+          List<html.Element> nodes;
+          html.Element node;
+          Map<String, String> data = {"cid": "", "bid": "", "nid": ""};
+          List<ISchoolPlusAnnouncementJson> announcementList = [];
+
+          result = (await dio.post<String>("${_iSchoolPlusUrl}forum/m_node_list.php", data: data)).data!.trim();
+          tagNode = html.parse(result);
+          final bidNode = tagNode.getElementById("bid");
+          final boardId = bidNode?.attributes["value"] ?? "";
+
+          final formSearch = tagNode.getElementById("formSearch");
+          if (formSearch == null) {
+            value.status = IPlusReturnStatus.fail;
+            return value;
+          }
+          node = formSearch;
+          nodes = node.getElementsByTagName("input");
+          final selectPage = tagNode.getElementById("selectPage")?.attributes['value'] ?? "1";
+          final inputPerPage = tagNode.getElementById("inputPerPage")?.attributes['value'] ?? "10";
+          data = {
+            "token": "",
+            "bid": boardId,
+            "curtab": "",
+            "action": "getNews",
+            "tpc": "1",
+            "selectPage": selectPage,
+            "inputPerPage": inputPerPage,
+          };
+          for (html.Element node in nodes) {
+            final name = node.attributes['name'];
+            if (name != null && data.containsKey(name)) {
+              data[name] = node.attributes['value'] ?? '';
+            }
+          }
+
+          result = (await dio.post<String>(
+            "${_iSchoolPlusUrl}mooc/controllers/forum_ajax.php",
+            data: data,
+          )).data!.trim();
+          Map<String, dynamic> jsonData = {};
+          final decoded = json.decode(result);
+          if (decoded is! Map) {
+            value.status = IPlusReturnStatus.fail;
+            return value;
+          }
+          final Map<dynamic, dynamic> j = decoded;
+          // WMPro uses code=-1 for an empty board as well as other failures.
+          // Only its measured "no data" response is a successful empty list.
+          if (j['code'] == -1 && j['total_rows']?.toString() == '0' && j['message'] == '沒有任何資料') {
+            value.status = IPlusReturnStatus.success;
+            value.result = [];
+            return value;
+          }
+          if (j["code"] != 0) return value;
+          final dataValue = j['data'];
+          if (dataValue is Map) {
+            jsonData = Map<String, dynamic>.from(dataValue);
+          }
+          int totalRows = int.tryParse(j['total_rows']?.toString() ?? '0') ?? 0;
+          if (totalRows > 0) {
+            for (final key in jsonData.keys) {
+              final keyName = key.toString();
+              final rawItem = jsonData[keyName];
+              if (rawItem is! Map) continue;
+              ISchoolPlusAnnouncementJson courseInfo = ISchoolPlusAnnouncementJson.fromJson(
+                Map<String, dynamic>.from(rawItem),
+              );
+              courseInfo.subject = HtmlUtils.clean(courseInfo.subject); //處理HTM特殊字
+              courseInfo.token = data['token'] ?? '';
+              courseInfo.bid = keyName.split("|").first;
+              courseInfo.nid = keyName.split("|").last;
+              announcementList.add(courseInfo);
+            }
+          }
+          value.status = IPlusReturnStatus.success;
+          value.result = announcementList;
+          return value;
+        } catch (e, stack) {
+          Log.eWithStack(e.toString(), stack);
+          value.status = IPlusReturnStatus.fail;
+          return value;
         }
-      }
-      value.status = IPlusReturnStatus.success;
-      value.result = announcementList;
-      return value;
-    } catch (e, stack) {
-      Log.eWithStack(e.toString(), stack);
-      value.status = IPlusReturnStatus.fail;
-      return value;
-    }
-  }
+      });
 
   static Future<Map?> getCourseAnnouncementDetail(ISchoolPlusAnnouncementJson value) async {
     String result;
     try {
-      ConnectorParameter parameter;
       html.Document tagNode;
       List<html.Element> nodes;
       html.Element node;
@@ -424,9 +397,8 @@ class ISchoolPlusConnector {
         'awppathre': '',
         'nowpage': '1',
       };
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/m_node_chain.php");
-      parameter.data = data;
-      result = await Connector.getDataByPost(parameter);
+
+      result = (await dio.post<String>("${_iSchoolPlusUrl}forum/m_node_chain.php", data: data)).data!.trim();
       tagNode = html.parse(result);
       node = tagNode.getElementsByClassName("main node-info").first;
       Map detail = {};
@@ -448,10 +420,7 @@ class ISchoolPlusConnector {
         for (html.Element node in nodes) {
           String href = node.attributes["href"] ?? "";
           if (href.isEmpty) continue;
-          if (href[0] == '/') {
-            href = href.substring(1, href.length);
-          }
-          fileMap[node.text] = _iSchoolPlusUrl + href;
+          fileMap[node.text] = Uri.parse("${_iSchoolPlusUrl}forum/m_node_chain.php").resolve(href).toString();
         }
       }
       detail["title"] = title;
@@ -467,26 +436,10 @@ class ISchoolPlusConnector {
   }
 
   static Future<bool> courseSubscribe(String bid, bool subscribe) async {
-    ConnectorParameter parameter;
-    html.Document tagNode;
-    String title;
-    String result;
     try {
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/subscribe.php");
-      parameter.data = {"bid": bid};
-      int time = 0;
-      do {
-        result = await Connector.getDataByPost(parameter);
-        tagNode = html.parse(result);
-        title = tagNode.getElementsByTagName("title").first.text;
-        Log.d(title);
-        time++;
-      } while (title.contains("取消") == subscribe && time < 2);
-      if (time >= 2) {
-        return false;
-      } else {
-        return true;
-      }
+      if (await getCourseSubscribe(bid) == subscribe) return true;
+      await dio.post<String>("${_iSchoolPlusUrl}forum/subscribe.php", data: {"bid": bid});
+      return await getCourseSubscribe(bid) == subscribe;
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
       return false;
@@ -494,27 +447,20 @@ class ISchoolPlusConnector {
   }
 
   static Future<List<String>?> getSubscribeNotice() async {
-    ConnectorParameter parameter;
     html.Document tagNode;
-    html.Element node;
-    List<html.Element> nodes;
     String result;
     List<String> courseNameList = [];
     try {
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/my_forum.php");
-      result = await Connector.getDataByPost(parameter);
+      result = (await dio.post<String>("${_iSchoolPlusUrl}learn/my_forum.php")).data!.trim();
       tagNode = html.parse(result);
-      nodes = tagNode.getElementsByTagName("tbody");
-      if (nodes.length > 1) {
-        node = nodes[1];
-      } else {
-        return null; //代表無公告
-      }
-      nodes = node.getElementsByTagName("tr");
-      for (int i = 0; i < nodes.length; i++) {
-        node = nodes[i];
-        String courseName = node.getElementsByTagName("td")[1].text.split("_")[1];
-        courseNameList.add(courseName);
+      // Include only data rows: headers and demo courses do not necessarily
+      // contain the semester_name_courseId naming convention.
+      for (final row in tagNode.querySelectorAll('tr')) {
+        final cells = row.getElementsByTagName('td');
+        if (cells.length < 2 || int.tryParse(cells.first.text.trim()) == null) continue;
+        final label = cells[1].text.trim();
+        final parts = label.split('_');
+        courseNameList.add(parts.length >= 3 ? parts.sublist(1, parts.length - 1).join('_') : label);
       }
       return courseNameList;
     } catch (e, stack) {
@@ -523,54 +469,43 @@ class ISchoolPlusConnector {
     }
   }
 
+  /// Read the board's current button label; subscribe.php is a toggle, so
+  /// using that endpoint for a read briefly changes the user's subscription.
   static Future<bool> getCourseSubscribe(String bid) async {
-    ConnectorParameter parameter;
-    html.Document tagNode;
-    String title;
-    String result;
-    try {
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}forum/subscribe.php");
-      parameter.data = {"bid": bid};
-      await Connector.getDataByPost(parameter);
-      result = await Connector.getDataByPost(parameter);
-      tagNode = html.parse(result);
-      title = tagNode.getElementsByTagName("title").first.text;
-      return !title.contains("取消");
-    } catch (e) {
-      return false;
-    }
+    if (bid.isEmpty) throw ArgumentError.value(bid, 'bid', 'Board id must not be empty');
+    final response = await dio.post<String>("${_iSchoolPlusUrl}forum/m_node_list.php", data: {'bid': bid});
+    final button = html.parse(response.data).getElementById('subscribe');
+    final label = button?.text.trim().toLowerCase() ?? '';
+    if (label.contains('取消訂閱') || label.contains('unsubscribe')) return true;
+    if (label == '訂閱' || label == 'subscribe') return false;
+    throw const FormatException('Forum page does not expose a subscription state.');
   }
 
-  static Future<String> getBid(String courseId) async {
-    /*
-    ConnectorParameter parameter;
-    html.Document tagNode;
-    String result;
-    try {
-      await _selectCourse(courseId);
-      parameter = ConnectorParameter(
-          "https://istudy.ntut.edu.tw/forum/m_node_list.php");
-      result = await RequestsConnector.getDataByPost(parameter);
-      tagNode = html.parse(result);
-      return tagNode
-          .getElementById("bid")
-          .attributes["value"];
-    } catch (e) {
-      throw e;
-    }
-     */
-    return bid;
+  static Future<String> getBid(String courseId) => _withCourse(() async {
+    if (!await _selectCourse(courseId)) throw StateError('Course is not accessible.');
+    final response = await dio.post<String>("${_iSchoolPlusUrl}forum/m_node_list.php");
+    final boardId = html.parse(response.data).getElementById('bid')?.attributes['value'];
+    if (boardId == null || boardId.isEmpty) throw const FormatException('Course board id is missing.');
+    return boardId;
+  });
+
+  // WMPro stores the selected course in the HTTP session. Keep each switch
+  // and its dependent reads together so parallel callers cannot mix courses.
+  static Future<void> _courseQueue = Future<void>.value();
+
+  static Future<T> _withCourse<T>(Future<T> Function() operation) {
+    final result = _courseQueue.then((_) => operation());
+    _courseQueue = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
   }
 
   static Future<bool> _selectCourse(String courseId) async {
-    ConnectorParameter parameter;
     html.Document tagNode;
     html.Element node;
     List<html.Element> nodes;
     String result;
     try {
-      parameter = ConnectorParameter(_getCourseName);
-      result = await Connector.getDataByGet(parameter);
+      result = (await dio.get<String>(_getCourseName)).data!.trim();
       tagNode = html.parse(result);
       final courseSelect = tagNode.getElementById("selcourse");
       if (courseSelect == null) return false;
@@ -579,7 +514,7 @@ class ISchoolPlusConnector {
       String? courseValue;
       for (int i = 1; i < nodes.length; i++) {
         node = nodes[i];
-        String name = node.text.split("_").last;
+        String name = node.text.trim().split("_").last;
         if (name == courseId) {
           courseValue = node.attributes["value"];
           break;
@@ -589,11 +524,8 @@ class ISchoolPlusConnector {
         return false;
       }
       String xml = "<manifest><ticket/><course_id>$courseValue</course_id><env/></manifest>";
-      parameter = ConnectorParameter("${_iSchoolPlusUrl}learn/goto_course.php");
-      parameter.data = xml;
-      await Connector.getDataByPost(
-        parameter,
-      ); //因為RequestsConnector無法傳送XML但是 DioConnector無法解析 Content-Type: text/html;;charset=UTF-8
+
+      await dio.post<String>("${_iSchoolPlusUrl}learn/goto_course.php", data: xml);
       return true;
     } catch (e, stack) {
       Log.eWithStack(e, stack);

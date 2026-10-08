@@ -10,15 +10,10 @@ class NtutCertificatePolicy {
 
   static bool trustsHost(String host) {
     final normalizedHost = host.trim().toLowerCase();
-    return normalizedHost == baseDomain ||
-        normalizedHost.endsWith('.$baseDomain');
+    return normalizedHost == baseDomain || normalizedHost.endsWith('.$baseDomain');
   }
 
-  static bool allowBadCertificate(
-    X509Certificate certificate,
-    String host,
-    int port,
-  ) {
+  static bool allowBadCertificate(X509Certificate certificate, String host, int port) {
     if (!trustsHost(host)) return false;
 
     // A school CA trust exception must not turn an expired or not-yet-valid
@@ -26,8 +21,7 @@ class NtutCertificatePolicy {
     // verification error here, so keep the exception as narrow as the API
     // allows.
     final now = DateTime.now();
-    return !now.isBefore(certificate.startValidity) &&
-        !now.isAfter(certificate.endValidity);
+    return !now.isBefore(certificate.startValidity) && !now.isAfter(certificate.endValidity);
   }
 
   /// Extracts the request URI from webview_all_windows' pinned SSL error text.
@@ -41,9 +35,7 @@ class NtutCertificatePolicy {
     final separator = description.lastIndexOf(': ');
     if (separator <= _webViewSslErrorPrefix.length) return null;
 
-    return Uri.tryParse(
-      description.substring(_webViewSslErrorPrefix.length, separator),
-    );
+    return Uri.tryParse(description.substring(_webViewSslErrorPrefix.length, separator));
   }
 
   /// webview_all_windows maps an untrusted/invalid certificate chain to
@@ -51,8 +43,6 @@ class NtutCertificatePolicy {
   /// and revocation failures fail-closed.
   static bool allowsWindowsWebViewCertificateError(String description) {
     final uri = webViewRequestUri(description);
-    return uri != null &&
-        trustsHost(uri.host) &&
-        description.endsWith(': WebErrorStatusCertificateIsInvalid.');
+    return uri != null && trustsHost(uri.host) && description.endsWith(': WebErrorStatusCertificateIsInvalid.');
   }
 }

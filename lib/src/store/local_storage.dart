@@ -2,13 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cookie_jar/cookie_jar.dart';
-import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:qaq_app/src/connector/core/dio_connector.dart';
-import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
+import 'package:get/get.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_app_session.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_download_relay.dart';
 import 'package:qaq_app/src/connector/global_protect/global_protect_webview_runtime.dart';
+import 'package:qaq_app/src/connector/istudy_reachability_probe.dart';
+import 'package:qaq_app/src/connector/ischool_plus_access_guard.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
@@ -17,9 +20,6 @@ import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
 import 'package:qaq_app/src/store/user_session_artifacts.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/course/course_class_json.dart';
@@ -37,7 +37,7 @@ class LocalStorage {
   static const _ntutPasswordStorageKey = 'ntut_password_v1';
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
-  final cacheManager = DefaultCacheManager();
+  late final cacheManager = DefaultCacheManager();
 
   final _userDataJsonKey = "UserDataJsonKey";
   final _courseTableJsonKey = "CourseTableJsonListKey";
@@ -50,7 +50,6 @@ class LocalStorage {
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
 
-  final _httpClientInterceptors = <Interceptor>[];
   CookieJar? _cookieJar;
 
   SharedPreferences? _pref;
@@ -530,19 +529,25 @@ class LocalStorage {
 
   List<SemesterJson> getSemesterList() => _courseSemesterList;
 
-  Future<void> init({List<Interceptor> httpClientInterceptors = const [], CookieJar? cookieJar}) async {
+  Future<void> init({CookieJar? cookieJar}) async {
     _pref = await SharedPreferences.getInstance();
 
-    if (httpClientInterceptors.isNotEmpty) {
-      _httpClientInterceptors
-        ..clear()
-        ..addAll(httpClientInterceptors);
-    }
     if (cookieJar != null) {
       _cookieJar = cookieJar;
     }
 
-    await DioConnector.instance.init(interceptors: _httpClientInterceptors, cookieJar: _cookieJar);
+    GlobalProtectAppSession.instance.configureCredentials(account: getAccount, password: getPassword);
+    configureNetwork(
+      cookies: _cookieJar ??= CookieJar(),
+      resolveStudyRoute: () async {
+        final route = await IStudyAccessGuard.route();
+        if (route == IStudyAccessRoute.blocked) {
+          throw IStudyAccessBlockedException(IStudyAccessGuard.blockedMessage);
+        }
+        return route;
+      },
+      tunnelClient: () async => (await GlobalProtectAppSession.instance.ensureHttpClient()).client,
+    );
     await _loadUserData();
     _loadCourseTableList();
     _loadSetting();
@@ -576,7 +581,7 @@ class LocalStorage {
     await cleanup('webview-download-relay', GlobalProtectDownloadRelay.instance.close);
     await cleanup('webview-vpn-runtime', GlobalProtectWebViewRuntime.reset);
     await cleanup('global-protect-session', GlobalProtectAppSession.instance.disconnectAndClearCachedSession);
-    await cleanup('dio-cookies', DioConnector.instance.deleteCookies);
+    await cleanup('dio-cookies', cookieJar.deleteAll);
     await cleanup('webview-cookies', WebViewCookieStore.clearAll);
     await cleanup('network-image-cache', cacheManager.emptyCache);
     await cleanup('generated-user-artifacts', UserSessionArtifacts.clear);

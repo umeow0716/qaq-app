@@ -1,16 +1,14 @@
 import 'dart:developer';
 
+import 'package:html/dom.dart';
+import 'package:html/parser.dart';
 import 'package:qaq_app/debug/log/log.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
-import 'package:html/dom.dart';
-import 'package:html/parser.dart';
 
-import 'core/connector.dart';
-import 'core/connector_parameter.dart';
-
-enum ScoreConnectorStatus { loginSuccess, loginFail, unknownError }
+enum ScoreConnectorStatus { loginSuccess, loginFail }
 
 class ScoreConnector {
   static const String _scoreHost = "https://aps-course.ntut.edu.tw/";
@@ -24,10 +22,8 @@ class ScoreConnector {
         "apOu": "aa_003_LB_oauth",
         "datetime1": DateTime.now().millisecondsSinceEpoch.toString(),
       };
-      final ssoIndexParameter = ConnectorParameter(_ssoLoginUrl);
-      ssoIndexParameter.data = ssoIndexData;
 
-      final ssoIndexTagNode = parse(await Connector.getDataByGet(ssoIndexParameter));
+      final ssoIndexTagNode = parse((await dio.get<String>(_ssoLoginUrl, queryParameters: ssoIndexData)).data!.trim());
       final ssoIndexNodes = ssoIndexTagNode.getElementsByTagName("input");
       final ssoIndexJumpUrl = ssoIndexTagNode.getElementsByTagName("form")[0].attributes["action"];
       if (ssoIndexJumpUrl == null || ssoIndexJumpUrl.isEmpty) {
@@ -42,23 +38,16 @@ class ScoreConnector {
         }
       }
 
-      final jumpParameter = ConnectorParameter("${NTUTConnector.host}$ssoIndexJumpUrl");
-      jumpParameter.data = oauthData;
-
       for (int retry = 0; retry < 3; retry++) {
-        final jumpResult = (await Connector.getDataByPostResponse(jumpParameter));
-        if (jumpResult.statusCode != 302) {
-          log("[QAQ] score_connector.dart: failed to get redirection location from oauth2Server, retrying...");
-          await Future.delayed(const Duration(milliseconds: 100));
+        final response = await dio.post<String>(
+          Uri.parse(_ssoLoginUrl).resolve(ssoIndexJumpUrl).toString(),
+          data: oauthData,
+        );
+        if (response.statusCode != 200 || response.realUri.host != Uri.parse(_scoreHost).host) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
           continue;
         }
-
-        final redirectLocations = jumpResult.headers['location'];
-        if (redirectLocations == null || redirectLocations.isEmpty) {
-          continue;
-        }
-        final loginOAuthParameter = ConnectorParameter(redirectLocations.first);
-        final loginOAuthResult = (await Connector.getDataByPostResponse(loginOAuthParameter)).toString().trim();
+        final loginOAuthResult = response.data ?? '';
         if (loginOAuthResult.contains("中斷連線")) {
           log("[QAQ] score_connector.dart: connection lost during redirection, retrying...");
           await Future.delayed(const Duration(milliseconds: 100));
@@ -79,7 +68,6 @@ class ScoreConnector {
     for (int c in input.codeUnits) {
       if (c == 12288) {
         c = 32;
-        continue;
       }
       if (c > 65280 && c < 65375) {
         c = (c - 65248);
@@ -91,7 +79,7 @@ class ScoreConnector {
 
   static Future<List<SemesterCourseScoreJson>> getScoreRankList() async {
     //取得排名與成績
-    ConnectorParameter parameter;
+
     String result;
     Document tagNode;
     Element scoreNode;
@@ -99,9 +87,8 @@ class ScoreConnector {
     List<SemesterCourseScoreJson> courseScoreList = [];
     try {
       Map<String, String> data = {"format": "-2"};
-      parameter = ConnectorParameter(_scoreAllScoreUrl);
-      parameter.data = data;
-      result = await Connector.getDataByGet(parameter);
+
+      result = (await dio.get<String>(_scoreAllScoreUrl, queryParameters: data)).data!.trim();
       final List<String> evalQuestionnaireCheckTexts = ['教學評量', 'Course Evaluation Questionnaire'];
       if (evalQuestionnaireCheckTexts.any((text) => result.contains(text))) {
         throw const FormatException(
@@ -175,10 +162,7 @@ class ScoreConnector {
         }
       }
 
-      parameter = ConnectorParameter(_scoreRankUrl);
-      parameter.data = data;
-      parameter.charsetName = "big5";
-      result = await Connector.getDataByGet(parameter);
+      result = (await dio.get<String>(_scoreRankUrl, queryParameters: data)).data!.trim();
       tagNode = parse(result);
       final rankNodes = tagNode
           .getElementsByTagName("tbody")

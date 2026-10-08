@@ -41,8 +41,11 @@ class ISchoolPlusAnnouncementInfoJson {
 
 @JsonSerializable(createToJson: false)
 class ISchoolPlusAnnouncementJson {
+  @JsonKey(includeFromJson: false, includeToJson: false)
   String token = '';
+  @JsonKey(includeFromJson: false, includeToJson: false)
   String bid = '';
+  @JsonKey(includeFromJson: false, includeToJson: false)
   String nid = '';
 
   @JsonKey(name: 'boardid')

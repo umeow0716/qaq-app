@@ -2,32 +2,35 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:qaq_app/src/connector/ntut_certificate_policy.dart';
-import 'package:qaq_app/src/store/local_storage.dart';
 
 import 'global_protect_connector.dart';
 import 'global_protect_debug.dart';
 import 'global_protect_http_client.dart';
 import 'global_protect_idle.dart';
 import 'global_protect_models.dart';
-import 'global_protect_session_manager.dart';
 import 'global_protect_session_cache.dart';
+import 'global_protect_session_manager.dart';
 
 /// Process-local owner for the app's experimental GlobalProtect connection.
 ///
 /// Credentials are never copied into this object. Every connection attempt
-/// reads the account/password already held by [LocalStorage] at that moment.
+/// reads the account/password through the callbacks supplied by app initialization.
 class GlobalProtectAppSession {
-  GlobalProtectAppSession._()
-    : _connector = GlobalProtectConnector(
-        httpClient: HttpClient()
-          ..badCertificateCallback = NtutCertificatePolicy.allowBadCertificate,
-      ) {
+  GlobalProtectAppSession._() : _connector = GlobalProtectConnector() {
     _idleController = GlobalProtectIdleController(timeout: idleTimeout, onIdle: _disconnectForIdle);
     _manager = GlobalProtectSessionManager(connect: _connectUsingCachedSessionOrPassword);
   }
 
   static const idleTimeout = Duration(minutes: 5);
   static final GlobalProtectAppSession instance = GlobalProtectAppSession._();
+
+  String Function() _account = () => '';
+  String Function() _password = () => '';
+
+  void configureCredentials({required String Function() account, required String Function() password}) {
+    _account = account;
+    _password = password;
+  }
 
   final GlobalProtectConnector _connector;
   final GlobalProtectSessionCache _sessionCache = GlobalProtectSessionCache.instance;
@@ -51,7 +54,7 @@ class GlobalProtectAppSession {
     final disconnecting = _disconnectInFlight;
     if (disconnecting != null) await disconnecting;
 
-    final account = LocalStorage.instance.getAccount().trim();
+    final account = _account().trim();
     GlobalProtectDebug.log('ensureConnected state=${_manager.state.name} accountPresent=${account.isNotEmpty}');
     if (account.isEmpty) {
       GlobalProtectDebug.log('account unavailable; refusing GP connection');
@@ -128,7 +131,7 @@ class GlobalProtectAppSession {
     GlobalProtectDebug.log('creating GP-backed HttpClient');
     final next = GlobalProtectHttpClient.fromConnection(
       connection,
-      badCertificateCallback: NtutCertificatePolicy.allowBadCertificate,
+      badCertificateCallback: Platform.isAndroid ? null : NtutCertificatePolicy.allowBadCertificate,
     );
     _httpClient = next;
     _httpConnection = connection;
@@ -137,7 +140,7 @@ class GlobalProtectAppSession {
 
   Future<GlobalProtectConnection> _connectUsingCachedSessionOrPassword() async {
     final runtimeGeneration = _runtimeGeneration;
-    final username = LocalStorage.instance.getAccount().trim();
+    final username = _account().trim();
     if (username.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();
     }
@@ -173,7 +176,7 @@ class GlobalProtectAppSession {
       throw StateError('GlobalProtect runtime was reset before password login.');
     }
 
-    final password = LocalStorage.instance.getPassword();
+    final password = _password();
     GlobalProtectDebug.log('starting GP password login; passwordPresent=${password.isNotEmpty}');
     if (password.isEmpty) {
       throw const GlobalProtectCredentialsUnavailableException();

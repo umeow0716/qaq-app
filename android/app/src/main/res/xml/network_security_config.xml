@@ -3,19 +3,6 @@
     <!-- Reject cleartext traffic by default. -->
     <base-config cleartextTrafficPermitted="false" />
 
-    <!--
-      NTUT-managed networks may install their CA into Android's user trust store.
-      Trust that store only for NTUT hosts; all other domains keep the platform
-      default trust policy.
-    -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">ntut.edu.tw</domain>
-        <trust-anchors>
-            <certificates src="system" />
-            <certificates src="user" />
-        </trust-anchors>
-    </domain-config>
-
     <!-- The WebView GP proxy and system-download relay intentionally use loopback HTTP. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">127.0.0.1</domain>

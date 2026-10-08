@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'global_protect_transport.dart';
 import 'global_protect_models.dart';
+import 'global_protect_transport.dart';
 import 'virtual_byte_socket.dart';
 import 'virtual_tcp_loopback_bridge.dart';
 import 'virtual_tcp_socket.dart';
@@ -24,8 +24,7 @@ class GlobalProtectHttpClient {
     GlobalProtectHostResolver? resolver,
     GlobalProtectVirtualSocketDialer? socketDialer,
     SecurityContext? securityContext,
-    bool Function(X509Certificate certificate, String host, int port)?
-    badCertificateCallback,
+    bool Function(X509Certificate certificate, String host, int port)? badCertificateCallback,
     Duration tcpConnectTimeout = const Duration(seconds: 8),
     Duration bridgeTimeout = const Duration(seconds: 5),
     Duration tlsHandshakeTimeout = const Duration(seconds: 15),
@@ -69,8 +68,7 @@ class GlobalProtectHttpClient {
     GlobalProtectHostResolver? resolver,
     GlobalProtectVirtualSocketDialer? socketDialer,
     SecurityContext? securityContext,
-    bool Function(X509Certificate certificate, String host, int port)?
-    badCertificateCallback,
+    bool Function(X509Certificate certificate, String host, int port)? badCertificateCallback,
     Duration tcpConnectTimeout = const Duration(seconds: 8),
     Duration bridgeTimeout = const Duration(seconds: 5),
     Duration tlsHandshakeTimeout = const Duration(seconds: 15),
@@ -101,8 +99,7 @@ class GlobalProtectHttpClient {
   final GlobalProtectHostResolver _resolver;
   final GlobalProtectVirtualSocketDialer? _socketDialer;
   final SecurityContext? _securityContext;
-  final bool Function(X509Certificate certificate, String host, int port)?
-  _badCertificateCallback;
+  final bool Function(X509Certificate certificate, String host, int port)? _badCertificateCallback;
   final Duration _tcpConnectTimeout;
   final Duration _bridgeTimeout;
   final Duration _tlsHandshakeTimeout;
@@ -149,7 +146,7 @@ class GlobalProtectHttpClient {
         context: _securityContext,
         onBadCertificate: _badCertificateCallback == null
             ? null
-            : (certificate) => _badCertificateCallback!(certificate, uri.host, port),
+            : (certificate) => _badCertificateCallback(certificate, uri.host, port),
         bridgeTimeout: _bridgeTimeout,
         handshakeTimeout: _tlsHandshakeTimeout,
       );

@@ -3,17 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/connector/core/connector.dart';
-import 'package:qaq_app/src/connector/core/connector_parameter.dart';
-import 'package:qaq_app/src/connector/core/dio_connector.dart';
+import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/model/ntut/ap_tree_json.dart';
 import 'package:qaq_app/src/model/ntut/ntut_calendar_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
 import 'package:qaq_app/src/portal/simple_login_result.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
-import 'package:intl/intl.dart';
 
 class NTUTConnector {
   static const host = "https://nportal.ntut.edu.tw/";
@@ -28,12 +25,11 @@ class NTUTConnector {
   static const maxAvatarUploadBytes = 20 * 1024 * 1024;
 
   static Future<SimpleLoginResult> login(String account, String password) async {
-    final parameter = ConnectorParameter(_loginUrl)
-      ..userAgent = _portalApiUserAgent
-      ..referer = "${host}index.do"
-      ..data = {"muid": account, "mpassword": password};
-
-    final response = await Connector.getDataByPostResponse(parameter);
+    final response = await dio.post<String>(
+      _loginUrl,
+      data: {"muid": account, "mpassword": password},
+      options: Options(headers: {'user-agent': _portalApiUserAgent, 'referer': "${host}index.do"}),
+    );
     if (response.statusCode != HttpStatus.ok) {
       throw StateError('NTUT login failed with HTTP ${response.statusCode}.');
     }
@@ -49,7 +45,7 @@ class NTUTConnector {
       // The portal frontend expects the account cookie in addition to the
       // server-managed session cookie returned by login.do.
       final accountCookie = Cookie('muid', account.toLowerCase())..path = '/';
-      await DioConnector.instance.cookiesManager.saveFromResponse(Uri.parse(host), [accountCookie]);
+      await cookieJar.saveFromResponse(Uri.parse(host), [accountCookie]);
 
       final userInfo = UserInfoJson(
         givenName: loginResult.userNaturalName,
@@ -66,16 +62,16 @@ class NTUTConnector {
     return loginResult;
   }
 
+  static Future<void> clearSession() => cookieJar.delete(Uri.parse(host), true);
+
   /// Returns true only when the existing cookie-backed session still reaches
   /// the JSON portal API. A logged-out request returns the HTML login flow.
-  static Future<void> clearSession() => DioConnector.instance.deleteCookiesFor(Uri.parse(host));
-
   static Future<bool> checkSession() async {
     try {
-      final parameter = ConnectorParameter(_checkSessionUrl)
-        ..userAgent = _portalApiUserAgent
-        ..referer = "${host}index.do";
-      final response = await Connector.getDataByGetResponse(parameter);
+      final response = await dio.get<String>(
+        _checkSessionUrl,
+        options: Options(headers: {'user-agent': _portalApiUserAgent, 'referer': "${host}index.do"}),
+      );
 
       if (response.statusCode != HttpStatus.ok) {
         return false;
@@ -94,10 +90,11 @@ class NTUTConnector {
     }
 
     final uri = Uri.parse(_localeReloadUrl).replace(queryParameters: {'locale': locale});
-    final parameter = ConnectorParameter(uri.toString())
-      ..userAgent = _portalApiUserAgent
-      ..referer = "${host}index.do";
-    final response = await Connector.getDataByGetResponse(parameter);
+
+    final response = await dio.get<String>(
+      uri.toString(),
+      options: Options(headers: {'user-agent': _portalApiUserAgent, 'referer': "${host}index.do"}),
+    );
 
     if (response.statusCode != HttpStatus.ok) {
       throw StateError('NTUT locale reload failed with HTTP ${response.statusCode}.');
@@ -135,9 +132,8 @@ class NTUTConnector {
     final endDate = formatter.format(endTime);
     try {
       final data = {"startDate": startDate, "endDate": endDate};
-      final parameter = ConnectorParameter(_getCalendarUrl);
-      parameter.data = data;
-      final result = await Connector.getDataByGet(parameter);
+
+      final result = (await dio.get<String>(_getCalendarUrl, queryParameters: data)).data!.trim();
       final calendarList = getNTUTCalendarJsonList(json.decode(result));
       return calendarList;
     } catch (e, stack) {
@@ -148,11 +144,7 @@ class NTUTConnector {
 
   static Future<APTreeJson?> getTree(String? arg) async {
     try {
-      final parameter = ConnectorParameter(_getTreeUrl);
-      if (arg != null) {
-        parameter.data = {"apDn": arg};
-      }
-      final result = await Connector.getDataByPost(parameter);
+      final result = (await dio.post<String>(_getTreeUrl, data: arg == null ? null : {"apDn": arg})).data!.trim();
       final apTreeJson = APTreeJson.fromJson(json.decode(result));
       return apTreeJson;
     } catch (e, stack) {
@@ -163,12 +155,15 @@ class NTUTConnector {
 
   static Future<Uint8List> getUserImageBytes() async {
     final userPhoto = LocalStorage.instance.getUserInfo().userPhoto;
-    final parameter = ConnectorParameter(_getPictureUrl)
-      ..userAgent = _portalApiUserAgent
-      ..referer = "${host}index.do"
-      ..data = {'realname': userPhoto};
 
-    final response = await Connector.getBytesByGetResponse(parameter);
+    final response = await dio.get<List<int>>(
+      _getPictureUrl,
+      queryParameters: {'realname': userPhoto},
+      options: Options(
+        headers: {'user-agent': _portalApiUserAgent, 'referer': "${host}index.do"},
+        responseType: ResponseType.bytes,
+      ),
+    );
     if (response.statusCode != HttpStatus.ok) {
       throw StateError('Avatar download failed with HTTP ${response.statusCode}.');
     }
@@ -186,19 +181,6 @@ class NTUTConnector {
     return Uint8List.fromList(bytes);
   }
 
-  static Future<Map<String, Map<String, String>>> getUserImageRequestInfo() async {
-    final imageInfo = <String, Map<String, String>>{};
-    final userPhoto = LocalStorage.instance.getUserInfo().userPhoto;
-    Log.d("getUserImage");
-
-    final url = '$_getPictureUrl?realname=$userPhoto';
-
-    imageInfo['url'] = {'value': url};
-    imageInfo['header'] = await Connector.getLoginHeaders(url) ?? <String, String>{};
-
-    return imageInfo;
-  }
-
   static Future<String> uploadUserImage(Uint8List imageBytes) async {
     if (imageBytes.isEmpty) {
       throw const FormatException('Avatar image is empty.');
@@ -211,13 +193,15 @@ class NTUTConnector {
     final uploadUri = Uri.parse(
       _uploadPictureUrl,
     ).replace(queryParameters: {'uploadQuota': '20', 'ldapPhoto': oldFilename});
-    final parameter = ConnectorParameter(uploadUri.toString())
-      ..userAgent = _portalApiUserAgent
-      ..referer = "${host}index.do"
-      ..contentType = Headers.multipartFormDataContentType
-      ..data = FormData.fromMap({'file[]': MultipartFile.fromBytes(imageBytes, filename: 'avatar.jpg')});
 
-    final response = await Connector.getDataByPostResponse(parameter);
+    final response = await dio.post<String>(
+      uploadUri.toString(),
+      data: FormData.fromMap({'file[]': MultipartFile.fromBytes(imageBytes, filename: 'avatar.jpg')}),
+      options: Options(
+        headers: {'user-agent': _portalApiUserAgent, 'referer': "${host}index.do"},
+        contentType: Headers.multipartFormDataContentType,
+      ),
+    );
     if (response.statusCode != HttpStatus.ok) {
       throw StateError('Avatar upload failed with HTTP ${response.statusCode}.');
     }
