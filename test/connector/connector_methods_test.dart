@@ -262,6 +262,53 @@ void main() {
       expect(course.teacher.single.href, 'https://aps.ntut.edu.tw/course/tw/Teach.jsp?code=T001');
       expect(course.classroom.single.name, '測試教室');
     });
+    for (final language in ['tw', 'en', 'teacher']) {
+      test('$language timetable keeps scheduled class meetings without course IDs', () async {
+        final columns = language == 'en'
+            ? 17
+            : language == 'teacher'
+            ? 21
+            : 20;
+        final meeting = List.filled(columns, '');
+        meeting[1] = language == 'en' ? 'Class Meeting and Advisor Time' : '班週會及導師時間';
+        meeting[language == 'en' ? 8 : 10] = '3 4';
+        final timetable = _table([
+          if (language != 'en') [_title],
+          List.filled(columns, '欄位'),
+          List.filled(columns, ''),
+          meeting,
+          ['總計'],
+        ]);
+        body(
+          language == 'teacher'
+              ? timetable
+              : _table([
+                      ['', '', '', '', 'Test Student'],
+                    ]) +
+                    timetable,
+        );
+        final semester = SemesterJson(year: '115', semester: '1');
+        final info = switch (language) {
+          'en' => await CourseConnector.getENCourseMainInfoList('Student', semester),
+          'teacher' => await CourseConnector.getTWTeacherCourseMainInfoList('T001', semester),
+          _ => await CourseConnector.getTWCourseMainInfoList('Student', semester),
+        };
+        // The all-empty layout row stays excluded, while the meeting retains
+        // its original empty ID and its Tuesday time slots.
+        expect(info!.json, hasLength(1));
+        final meetingInfo = info.json.single;
+        expect(meetingInfo.course.id, isEmpty);
+        expect(meetingInfo.course.name, meeting[1]);
+        expect(meetingInfo.course.time[Day.Tuesday], '3 4');
+        final table = CourseTableJson();
+        final detail = CourseInfoJson(main: meetingInfo);
+        expect(table.setCourseDetailByTimeString(Day.Tuesday, meetingInfo.course.time[Day.Tuesday]!, detail), isTrue);
+        expect(table.courseInfoMap[Day.Tuesday]![SectionNumber.T_3]!.main.course.name, meeting[1]);
+        expect(table.courseInfoMap[Day.Tuesday]![SectionNumber.T_4]!.main.course.name, meeting[1]);
+        final restored = CourseTableJson.fromJson(jsonDecode(jsonEncode(table)) as Map<String, dynamic>);
+        expect(restored.courseInfoMap[Day.Tuesday]![SectionNumber.T_3]!.main.course.name, meeting[1]);
+      });
+    }
     test('getENCourseMainInfoList parses course, teacher and classroom', () async {
       body(
         _table([

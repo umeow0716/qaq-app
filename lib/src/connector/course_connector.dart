@@ -483,7 +483,8 @@ class CourseConnector {
         CourseMainInfoJson courseMainInfo = CourseMainInfoJson();
         CourseMainJson courseMain = CourseMainJson();
         nodesOne = courseNodes[i].getElementsByTagName("td");
-        if (nodesOne.length < 17 || strQ2B(nodesOne[0].text).trim().isEmpty) continue;
+        // Class meetings have no course ID; only an empty name marks a layout row.
+        if (nodesOne.length < 17 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("Withdraw")) {
           continue;
         }
@@ -583,7 +584,8 @@ class CourseConnector {
         CourseMainJson courseMain = CourseMainJson();
 
         nodesOne = courseNodes[i].getElementsByTagName("td");
-        if (nodesOne.length < 20 || strQ2B(nodesOne[0].text).trim().isEmpty) continue;
+        // 班週會及導師時間 has a name/time but no course ID.
+        if (nodesOne.length < 20 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("撤選")) {
           continue;
         }
@@ -679,7 +681,7 @@ class CourseConnector {
         CourseMainJson courseMain = CourseMainJson();
 
         nodesOne = courseNodes[i].getElementsByTagName("td");
-        if (nodesOne.length < 21 || strQ2B(nodesOne[0].text).trim().isEmpty) continue;
+        if (nodesOne.length < 21 || strQ2B(nodesOne[1].text).trim().isEmpty) continue;
         if (nodesOne[16].text.contains("撤選")) {
           continue;
         }

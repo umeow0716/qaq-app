@@ -153,7 +153,7 @@ void main() {
             () => CourseConnector.getENCourseMainInfoList(account, semester!),
             (v) => v != null && v.json.isNotEmpty,
           );
-          final course = tw.json.first;
+          final course = tw.json.firstWhere((course) => course.course.id.isNotEmpty);
           await check(
             'Course.getCourseCategory',
             () => CourseConnector.getCourseCategory(course.course.id),
