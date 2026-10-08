@@ -53,8 +53,8 @@ class GlobalProtectConnector {
             ),
           ) {
     if (dio == null) {
-      // VPN portal/gateway control endpoints require TLS 1.2. The tunneled
-      // campus HTTPS requests keep their separate TLS 1.3-only adapter.
+      // VPN portal/gateway control endpoints require TLS 1.2. Tunneled
+      // campus HTTPS requests negotiate TLS independently of this client.
       _dio.httpClientAdapter = createPlatformHttpClientAdapter(linuxTls12Only: true);
     }
   }

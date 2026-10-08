@@ -267,7 +267,8 @@ class GlobalProtectAppSession {
       }
       if (_dioProxyPort != port || _dioAdapter == null) {
         _dioAdapter?.close(force: true);
-        _dioAdapter = createDesktopProxyAdapter(port);
+        // Mixed-version rustls ClientHello succeeds inside the ESP tunnel.
+        _dioAdapter = createDesktopProxyAdapter(port, linuxAllowTls12: true);
         _dioProxyPort = port;
       }
       return _dioAdapter!;

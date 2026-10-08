@@ -17,7 +17,7 @@ ClientSettings _linuxClientSettings({ProxySettings? proxySettings}) =>
     ClientSettings(tlsSettings: _linuxTlsSettings, proxySettings: proxySettings);
 
 /// Platform transport only: no cookies, redirects, or GP routing.
-/// GlobalProtect control servers use TLS 1.2-only on Linux; other requests
+/// GlobalProtect control servers use TLS 1.2-only on Linux; other direct requests
 /// use TLS 1.3-only to avoid NTUT's resets of mixed-version ClientHello.
 HttpClientAdapter createPlatformHttpClientAdapter({bool linuxTls12Only = false}) {
   if (Platform.isAndroid || Platform.isIOS) {
@@ -36,8 +36,13 @@ HttpClientAdapter createPlatformHttpClientAdapter({bool linuxTls12Only = false})
 }
 
 /// Native TLS runs above the shared GP CONNECT proxy on Windows and Linux.
-HttpClientAdapter createDesktopProxyAdapter(int port) => NativeDesktopAdapter(
+/// Allow TLS 1.2/1.3 negotiation only for clients routed through the VPN;
+/// the shared proxy can also forward direct traffic that needs TLS 1.3-only.
+HttpClientAdapter createDesktopProxyAdapter(int port, {bool linuxAllowTls12 = false}) => NativeDesktopAdapter(
   createWinHttpConfiguration: () =>
       WinHttpClientConfiguration(accessType: WinHttpAccessType.named, proxy: '127.0.0.1:$port'),
-  createRhttpSettings: () => _linuxClientSettings(proxySettings: ProxySettings.proxy('http://127.0.0.1:$port')),
+  createRhttpSettings: () {
+    final proxy = ProxySettings.proxy('http://127.0.0.1:$port');
+    return linuxAllowTls12 ? ClientSettings(proxySettings: proxy) : _linuxClientSettings(proxySettings: proxy);
+  },
 );
