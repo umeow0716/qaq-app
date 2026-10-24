@@ -142,13 +142,22 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(R.current.warning),
-        content: Text(R.current.logoutWarning),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(R.current.cancel)),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(R.current.sure)),
-        ],
+      builder: (dialogContext) => CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.enter): () => Navigator.of(dialogContext).pop(true),
+          const SingleActivator(LogicalKeyboardKey.numpadEnter): () => Navigator.of(dialogContext).pop(true),
+        },
+        child: Focus(
+          autofocus: true,
+          child: AlertDialog(
+            title: Text(R.current.warning),
+            content: Text(R.current.logoutWarning),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(R.current.cancel)),
+              FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(R.current.sure)),
+            ],
+          ),
+        ),
       ),
     );
     if (confirmed != true) return;
