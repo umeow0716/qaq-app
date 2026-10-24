@@ -21,11 +21,18 @@ void main() {
     expect(IStudyAccessGuard.routeFor(directReachable: false, autoConnectVpn: true), IStudyAccessRoute.vpn);
   });
 
-  test('guards study hosts and the iSchool SSO entry point', () {
+  test('guards VPN target hosts and their SSO entry points', () {
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudy.ntut.edu.tw/mooc/')), isTrue);
     expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://istudycloud.ntut.edu.tw/')), isTrue);
+    expect(IStudyAccessGuard.isIStudyUri(Uri.parse('https://postman.ntut.edu.tw/')), isTrue);
     expect(
       IStudyAccessGuard.isIStudyUri(Uri.parse('https://nportal.ntut.edu.tw/ssoIndex.do?apOu=ischool_plus_oauth')),
+      isTrue,
+    );
+    expect(
+      IStudyAccessGuard.isIStudyUri(
+        Uri.parse('https://nportal.ntut.edu.tw/ssoIndex.do?apOu=test_postman&datetime1=1792848790506'),
+      ),
       isTrue,
     );
     expect(
