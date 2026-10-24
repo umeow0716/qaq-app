@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 
 class CourseTableShareCodec {
-  static const int version = 1;
+  static const int version = 2;
   static const String scheme = 'qaq';
   static const String host = 'course-table';
   static const String path = '/share';
@@ -25,7 +25,7 @@ class CourseTableShareCodec {
             .toList()
           ..sort(_compareCourseTables);
 
-    final semesters = <String, List<String>>{};
+    final semesters = <String, List<Map<String, dynamic>>>{};
     var studentName = '';
     for (final table in ownTables) {
       if (table.studentName.trim().isNotEmpty) {
@@ -39,9 +39,8 @@ class CourseTableShareCodec {
       final semesterKey = semesterKeyOf(table);
       if (semesterKeys != null && !semesterKeys.contains(semesterKey)) continue;
 
-      final courseIds = table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty).toSet().toList()
-        ..sort();
-      if (courseIds.isNotEmpty) semesters[semesterKey] = courseIds;
+      final courses = _courseIdentifiersOf(table);
+      if (courses.isNotEmpty) semesters[semesterKey] = courses;
     }
 
     return <String, dynamic>{
@@ -61,6 +60,56 @@ class CourseTableShareCodec {
 
   static String semesterKeyOf(CourseTableJson table) =>
       '${table.courseSemester.year.trim()}-${table.courseSemester.semester.trim()}';
+
+  static List<Map<String, dynamic>> _courseIdentifiersOf(CourseTableJson table) {
+    final courses = <String, Map<String, dynamic>>{};
+    final syllabusCodes = <String, Set<String>>{};
+
+    for (final dayMap in table.courseInfoMap.values) {
+      for (final courseInfo in dayMap.values) {
+        final course = courseInfo.main.course;
+        final snum = course.id.trim();
+        if (snum.isEmpty) continue;
+
+        final sharedCourse = courses.putIfAbsent(
+          snum,
+          () => <String, dynamic>{'snum': snum, 'currCode': '', 'syllabusCodes': <String>[]},
+        );
+
+        final currCode = _queryCode(course.href, expectedPage: 'Curr.jsp');
+        if ((sharedCourse['currCode'] as String).isEmpty && currCode.isNotEmpty) {
+          sharedCourse['currCode'] = currCode;
+        }
+
+        final codes = syllabusCodes.putIfAbsent(snum, () => <String>{});
+        _addQueryCode(codes, course.scheduleHref, expectedPage: 'ShowSyllabus.jsp');
+        _addQueryCode(codes, courseInfo.extra.course.href, expectedPage: 'ShowSyllabus.jsp');
+        for (final teacher in courseInfo.main.teacher) {
+          _addQueryCode(codes, teacher.href, expectedPage: 'Teach.jsp');
+        }
+      }
+    }
+
+    final result = courses.values.toList()
+      ..sort((a, b) => (a['snum'] as String).compareTo(b['snum'] as String));
+    for (final course in result) {
+      final codes = syllabusCodes[course['snum']]?.toList() ?? <String>[];
+      codes.sort();
+      course['syllabusCodes'] = codes;
+    }
+    return result;
+  }
+
+  static void _addQueryCode(Set<String> codes, String href, {required String expectedPage}) {
+    final code = _queryCode(href, expectedPage: expectedPage);
+    if (code.isNotEmpty) codes.add(code);
+  }
+
+  static String _queryCode(String href, {required String expectedPage}) {
+    final uri = Uri.tryParse(href.trim());
+    if (uri == null || !uri.path.endsWith(expectedPage)) return '';
+    return uri.queryParameters['code']?.trim() ?? '';
+  }
 
   static int _compareCourseTables(CourseTableJson a, CourseTableJson b) {
     final year = _number(b.courseSemester.year).compareTo(_number(a.courseSemester.year));

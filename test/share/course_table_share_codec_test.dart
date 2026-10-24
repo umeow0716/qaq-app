@@ -13,6 +13,8 @@ CourseTableJson table({
   required String year,
   required String semester,
   required List<String> courseIds,
+  List<String>? currCodes,
+  List<List<String>>? syllabusCodes,
 }) {
   final result = CourseTableJson(
     studentId: studentId,
@@ -20,11 +22,32 @@ CourseTableJson table({
     courseSemester: SemesterJson(year: year, semester: semester),
   );
   for (var index = 0; index < courseIds.length; index++) {
+    final currentSyllabusCodes = syllabusCodes?[index] ?? <String>[];
     result.setCourseDetailByTime(
       Day.Monday,
       SectionNumber.values[index],
       CourseInfoJson(
-        main: CourseMainInfoJson(course: CourseMainJson(id: courseIds[index])),
+        main: CourseMainInfoJson(
+          course: CourseMainJson(
+            id: courseIds[index],
+            href:
+                currCodes == null
+                    ? ''
+                    : 'https://aps.ntut.edu.tw/course/tw/Curr.jsp?format=-2&code=${currCodes[index]}',
+            scheduleHref:
+                currentSyllabusCodes.isEmpty
+                    ? ''
+                    : 'https://aps.ntut.edu.tw/course/tw/ShowSyllabus.jsp?snum=${courseIds[index]}&code=${currentSyllabusCodes.first}',
+          ),
+          teacher:
+              currentSyllabusCodes
+                  .map(
+                    (code) => TeacherJson(
+                      href: 'https://aps.ntut.edu.tw/course/tw/Teach.jsp?format=-3&year=$year&sem=$semester&code=$code',
+                    ),
+                  )
+                  .toList(),
+        ),
       ),
     );
   }
@@ -42,10 +65,27 @@ void main() {
           studentName: '測試學生',
           year: '115',
           semester: '1',
-          courseIds: <String>['371933', '371934'],
+          courseIds: <String>['361024', '363589'],
+          currCodes: <String>['3314123', '4236123'],
+          syllabusCodes: <List<String>>[
+            <String>['11126'],
+            <String>['11397', '10986'],
+          ],
         ),
-        table(studentId: '12345678', studentName: '測試學生', year: '114', semester: '2', courseIds: <String>['361463']),
-        table(studentId: '87654321', studentName: '其他學生', year: '115', semester: '1', courseIds: <String>['999999']),
+        table(
+          studentId: '12345678',
+          studentName: '測試學生',
+          year: '114',
+          semester: '2',
+          courseIds: <String>['361463'],
+        ),
+        table(
+          studentId: '87654321',
+          studentName: '其他學生',
+          year: '115',
+          semester: '1',
+          courseIds: <String>['999999'],
+        ),
       ],
     );
 
@@ -55,19 +95,28 @@ void main() {
     expect(person['studentId'], '12345678');
     expect(person['name'], '測試學生');
     expect(person['semesters'], <String, dynamic>{
-      '115-1': <String>['371933', '371934'],
+      '115-1': <Map<String, dynamic>>[
+        <String, dynamic>{'snum': '361024', 'currCode': '3314123', 'syllabusCodes': <String>['11126']},
+        <String, dynamic>{
+          'snum': '363589',
+          'currCode': '4236123',
+          'syllabusCodes': <String>['10986', '11397'],
+        },
+      ],
     });
   });
 
   test('share URL round-trips the gzip compressed JSON payload', () {
     final payload = <String, dynamic>{
-      'version': 1,
+      'version': 2,
       'people': <Map<String, dynamic>>[
         <String, dynamic>{
           'studentId': '12345678',
           'name': '測試學生',
           'semesters': <String, dynamic>{
-            '115-1': <String>['371933', '371934'],
+            '115-1': <Map<String, dynamic>>[
+              <String, dynamic>{'snum': '361024', 'currCode': '3314123', 'syllabusCodes': <String>['11126']},
+            ],
           },
         },
       ],
