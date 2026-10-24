@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:qaq_app/debug/log/log.dart';
 import 'package:qaq_app/src/connector/core/network_request_pool.dart';
@@ -16,6 +18,7 @@ class CourseTableCloudSync {
   static const int maxTaskContentLength = 255;
   static const int _fragmentReserve = 32;
   static const int _maxCloudParts = 999;
+  static const Duration _abandonedStagingMinAge = Duration(minutes: 30);
   static const List<Duration> _retryDelays = <Duration>[
     Duration(seconds: 30),
     Duration(minutes: 2),
@@ -24,7 +27,6 @@ class CourseTableCloudSync {
   ];
 
   Future<void> _queue = Future<void>.value();
-  int _pushGeneration = 0;
   bool _backgroundSyncQueued = false;
   bool _sessionAlreadyAuthenticatedHint = false;
   Timer? _retryTimer;
@@ -48,7 +50,6 @@ class CourseTableCloudSync {
     final account = storage.getAccount().trim();
     if (account.isEmpty) return;
 
-    _pushGeneration++;
     await storage.setCourseTableCloudSyncDirty(true);
     _cancelRetry(resetBackoff: false);
     _scheduleBackgroundSync();
@@ -123,58 +124,250 @@ class CourseTableCloudSync {
     final account = storage.getAccount().trim();
     if (account.isEmpty) return true;
 
-    if (!sessionAlreadyAuthenticated && !await _ensurePortalSession()) return false;
-    if (!_isCurrentAccount(account)) return true;
+    // A startup hint is not proof of a still-valid portal session.
+    if (sessionAlreadyAuthenticated) {
+      if (!await NTUTConnector.checkSession() && !await _ensurePortalSession()) return false;
+    } else if (!await _ensurePortalSession()) {
+      return false;
+    }
+    if (!_isCurrentAccount(account)) return false;
 
-    final tasks = await _findCloudTasks();
+    final cloud = await _loadVerifiedCloudSnapshot();
+    if (cloud == null || !_isCurrentAccount(account)) return false;
+    final revision = storage.getCourseTableCloudSyncLocalRevision();
+    final dirty = storage.getCourseTableCloudSyncDirty();
+    final local = _localPeople();
+    final base = storage.getCourseTableCloudSyncBasePeople();
 
-    if (storage.getCourseTableCloudSyncDirty()) {
-      final localRevision = _pushGeneration;
-      await _pushSnapshot(tasks);
-      if (_isCurrentAccount(account) && localRevision == _pushGeneration) {
-        await storage.setCourseTableCloudSyncDirty(false);
+    if (cloud.isCorrupt) {
+      // Do not turn a corrupt cloud into an empty tombstone. Only a stable,
+      // readable corrupt generation with a real local/last-known-good recovery
+      // source may be repaired automatically.
+      final recovery = local.isNotEmpty ? local : (!dirty ? base : null);
+      if (recovery == null || recovery.isEmpty) {
+        Log.e('Cloud snapshot is corrupt; no nonempty recovery source, preserving both sides');
+        return false;
       }
-      return true;
+      return _publishVerifiedSnapshot(account, revision, cloud, recovery);
     }
 
-    if (tasks.isEmpty) {
-      // An empty list is not proof that the cloud has never been initialized;
-      // a transient/session response can also look empty. Only an explicit
-      // local dirty mutation is allowed to create/replace cloud state.
-      return true;
+    if (cloud.people == null) {
+      if (!dirty) return true;
+      // A disappearing cloud is not proof that a formerly synchronized
+      // collection was deliberately deleted. Never publish an empty snapshot
+      // if we have any history of remote data.
+      if (base != null && base.isNotEmpty) return false;
+      return _publishVerifiedSnapshot(account, revision, cloud, local);
     }
 
+    if (!dirty) {
+      // Older app versions had no verified-base marker. Never erase existing
+      // unverified local imports merely because this is the first successful
+      // remote read (including a remotely published empty tombstone).
+      if (!canPullRemoteWithoutDiscardingLocal(base: base, local: local, remote: cloud.people!)) {
+        Log.e('Unverified local course tables differ from cloud; preserving local data for explicit reconciliation');
+        return false;
+      }
+      return storage.applyVerifiedCourseTableCloudSnapshot(
+        _withoutOwnAccount(cloud.people!),
+        account: account,
+        expectedRevision: revision,
+      );
+    }
+
+    final merged = mergeSnapshots(base: base, local: local, remote: cloud.people!);
+    if (merged == null) {
+      Log.e('Course table sync conflict: same person was changed independently; cloud write deferred');
+      return false;
+    }
+    if (_samePeople(merged, cloud.people!)) {
+      return storage.applyVerifiedCourseTableCloudSnapshot(
+        merged,
+        account: account,
+        expectedRevision: revision,
+        completeLocalUpload: true,
+      );
+    }
+    return _publishVerifiedSnapshot(account, revision, cloud, merged);
+  }
+
+  Future<bool> _publishVerifiedSnapshot(
+    String account,
+    int revision,
+    _VerifiedCloudSnapshot cloud,
+    List<CourseTableSharePerson> people,
+  ) async {
+    final storage = LocalStorage.instance;
+    if (!_isCurrentAccount(account) || storage.getCourseTableCloudSyncLocalRevision() != revision) return false;
+    // Authentication can expire between the initial read and this write.
+    if (!await NTUTConnector.checkSession()) return false;
+    final nextGeneration = _nextGenerationAfter(cloud.signature);
+    await _commitSnapshotCopyOnWrite(cloud, encodeSnapshotUrls(people, generation: nextGeneration), account: account);
+    // A user mutation may have started during the upload. The cloud now holds
+    // an older snapshot, so leave dirty set and retry instead of hiding it.
+    if (!_isCurrentAccount(account) || storage.getCourseTableCloudSyncLocalRevision() != revision) return false;
+    return storage.applyVerifiedCourseTableCloudSnapshot(
+      people,
+      account: account,
+      expectedRevision: revision,
+      completeLocalUpload: true,
+    );
+  }
+
+  static String _nextGenerationAfter(String signature) {
+    // Microsecond clocks alone are not globally unique across devices.
+    final jitter = Random.secure().nextInt(1024);
+    var next = DateTime.now().microsecondsSinceEpoch + jitter;
+    final generations = RegExp(r'[?#&]g=([0-9a-z]+)');
+    for (final match in generations.allMatches(signature)) {
+      final value = int.tryParse(match.group(1)!, radix: 36);
+      if (value != null && value >= next) next = value + 1 + jitter;
+    }
+    return next.toRadixString(36);
+  }
+
+  /// First pull after migration must not silently delete local-only entries.
+  static bool canPullRemoteWithoutDiscardingLocal({
+    required List<CourseTableSharePerson>? base,
+    required List<CourseTableSharePerson> local,
+    required List<CourseTableSharePerson> remote,
+  }) => _samePeople(local, remote) || (base == null ? local.isEmpty : _samePeople(local, base));
+
+  /// Three-way, per-person reconciliation. Only local changes relative to a
+  /// previously verified base may delete remote people. Simultaneous changes
+  /// to the same person require user conflict resolution (fail closed).
+  /// Without a base, local *additions* are safe, but colliding edits are not.
+  static List<CourseTableSharePerson>? mergeSnapshots({
+    required List<CourseTableSharePerson>? base,
+    required List<CourseTableSharePerson> local,
+    required List<CourseTableSharePerson> remote,
+  }) {
+    final old = {for (final p in base ?? const <CourseTableSharePerson>[]) p.studentId.trim(): p};
+    final mine = {for (final p in local) p.studentId.trim(): p};
+    final theirs = {for (final p in remote) p.studentId.trim(): p};
+    final ids = <String>{...old.keys, ...mine.keys, ...theirs.keys}..remove('');
+    final result = <CourseTableSharePerson>[];
+    for (final id in ids) {
+      final before = old[id];
+      final current = mine[id];
+      final latest = theirs[id];
+      final localChanged = base == null ? current != null : !_samePerson(before, current);
+      final remoteChanged = base == null ? latest != null : !_samePerson(before, latest);
+      if (localChanged && remoteChanged && !_samePerson(current, latest)) return null;
+      final chosen = localChanged ? current : latest;
+      if (chosen != null) result.add(chosen);
+    }
+    result.sort((a, b) => a.studentId.compareTo(b.studentId));
+    return result;
+  }
+
+  static bool _samePerson(CourseTableSharePerson? a, CourseTableSharePerson? b) =>
+      a == null ? b == null : b != null && _canonicalPerson(a) == _canonicalPerson(b);
+
+  static String _canonicalPerson(CourseTableSharePerson person) {
+    final payload = person.toJson();
+    final semesters = person.semesters.keys.toList()..sort();
+    payload['semesters'] = {
+      for (final semester in semesters)
+        semester: (person.semesters[semester]!.map((course) {
+          final courseJson = course.toJson();
+          (courseJson['syllabusCodes'] as List<String>).sort();
+          return courseJson;
+        }).toList()..sort((a, b) => '${a['snum']}:${a['currCode']}'.compareTo('${b['snum']}:${b['currCode']}'))),
+    };
+    return jsonEncode(payload);
+  }
+
+  static bool _samePeople(List<CourseTableSharePerson> a, List<CourseTableSharePerson> b) =>
+      _mergePeopleCanonical(a) == _mergePeopleCanonical(b);
+
+  static String _mergePeopleCanonical(Iterable<CourseTableSharePerson> people) {
+    final sorted = people.toList()..sort((a, b) => a.studentId.compareTo(b.studentId));
+    return sorted.map(_canonicalPerson).join('\u0000');
+  }
+
+  /// Empty discovery must be confirmed independently. Malformed task contents
+  /// must be stable on two reads before automatic repair is even considered.
+  Future<_VerifiedCloudSnapshot?> _loadVerifiedCloudSnapshot() async {
+    final first = await _findCloudTasks();
+    if (first.isEmpty) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final second = await _findCloudTasks();
+      if (second.isNotEmpty) return _inspectCloudTasks(second);
+      return const _VerifiedCloudSnapshot(tasks: [], people: null, signature: 'empty');
+    }
+    return _inspectCloudTasks(first);
+  }
+
+  Future<_VerifiedCloudSnapshot?> _inspectCloudTasks(List<NPortalTaskRef> tasks) async {
     final reads = await _readTasks(tasks);
-    if (reads == null) return false;
-
-    // Empty/malformed same-title tasks are not evidence that the user's local
-    // data should be destroyed. Ignore bad fragments and use any remaining
-    // complete generation. If no complete generation exists, preserve both
-    // sides and wait for an explicit local edit to repair the cloud.
-    final contents = reads
-        .map((read) => read.content?.trim() ?? '')
-        .where((content) => _looksLikeSnapshotUrl(content))
-        .toList(growable: false);
-    if (contents.isEmpty) {
-      Log.e('Course table cloud snapshot has no readable generation; preserving local data');
-      return true;
-    }
-
-    List<CourseTableSharePerson> remote;
+    if (reads == null || reads.any((read) => read.content == null)) return null;
+    final confirmed = await _findCloudTasks();
+    if (!_sameTaskIds(tasks, confirmed)) return null;
+    final signature = _taskReadSignature(reads);
+    if (signature == null) return null;
+    final contents = reads.map((read) => read.content!.trim()).toList(growable: false);
+    final candidateUrls = contents.where(_looksLikeSnapshotUrl).toList(growable: false);
     try {
-      remote = decodeSnapshotUrls(contents);
+      if (candidateUrls.isEmpty) throw const FormatException('No readable QAQ snapshot');
+      return _VerifiedCloudSnapshot(tasks: tasks, people: decodeSnapshotUrls(candidateUrls), signature: signature);
     } catch (error, stackTrace) {
-      Log.eWithStack('Invalid course table cloud snapshot; preserving local data: $error', stackTrace);
-      return true;
+      Log.eWithStack('Undecodable nPortal snapshot: $error', stackTrace);
+      // An in-progress multi-part commit is not corruption. Wait for the
+      // generation to complete or age out before attempting repair.
+      if (_hasRecentIncompleteGeneration(candidateUrls)) return null;
+      // An unrelated manual task with the same title is not enough evidence
+      // to authorize initialization. Prefer preserving the cloud in doubt.
+      if (contents.any((content) => content.isNotEmpty && !content.startsWith('qaq://course-table/share?'))) {
+        return null;
+      }
+      // Re-read every entry and require identical content before considering
+      // destructive repair of an apparently corrupt cloud.
+      final reread = await _readTasks(confirmed);
+      if (reread == null || _taskReadSignature(reread) != signature) return null;
+      return _VerifiedCloudSnapshot(tasks: tasks, isCorrupt: true, signature: signature);
     }
+  }
 
-    // A local import/delete may have happened while the background pull was in
-    // flight. Never overwrite that newer local state with the just-read cloud
-    // snapshot; the queued dirty push will run next.
-    if (storage.getCourseTableCloudSyncDirty() || !_isCurrentAccount(account)) return true;
+  static bool _hasRecentIncompleteGeneration(List<String> urls) {
+    final byGeneration = <String, Set<int>>{};
+    final totals = <String, int>{};
+    final exampleByGeneration = <String, String>{};
+    for (final value in urls) {
+      try {
+        final uri = Uri.parse(value);
+        final fragment = Uri.splitQueryString(uri.fragment);
+        final generation = fragment['g'];
+        final part = int.tryParse(fragment['p'] ?? '');
+        final total = int.tryParse(fragment['t'] ?? '');
+        if (generation == null || part == null || total == null || part < 1 || part > total) continue;
+        byGeneration.putIfAbsent(generation, () => <int>{}).add(part);
+        exampleByGeneration[generation] = value;
+        totals[generation] = total;
+      } catch (_) {
+        // Malformed metadata is considered by the stable-corruption check.
+      }
+    }
+    for (final entry in byGeneration.entries) {
+      if (entry.value.length < (totals[entry.key] ?? 0)) {
+        if (!_isAbandonedStagingSnapshot(exampleByGeneration[entry.key]!)) return true;
+      }
+    }
+    return false;
+  }
 
-    await storage.replaceImportedCourseTableSharePeople(_withoutOwnAccount(remote), abortIfCloudDirty: true);
-    return true;
+  static String? _taskReadSignature(List<_CloudTaskRead> reads) {
+    if (reads.any((read) => read.content == null)) return null;
+    final sorted = reads.toList()..sort((a, b) => a.task.id.compareTo(b.task.id));
+    return sorted
+        .map((read) => '${read.task.id.length}:${read.task.id}:${read.content!.length}:${read.content!}')
+        .join('|');
+  }
+
+  static bool _sameTaskIds(List<NPortalTaskRef> left, List<NPortalTaskRef> right) {
+    final a = left.map((task) => task.id).toSet();
+    final b = right.map((task) => task.id).toSet();
+    return a.length == b.length && a.containsAll(b);
   }
 
   Future<List<NPortalTaskRef>> _findCloudTasks() => NPortalTaskConnector.findTasksBySubject(taskTitle);
@@ -194,17 +387,17 @@ class CourseTableCloudSync {
     return reads.cast<_CloudTaskRead>();
   }
 
-  Future<void> _pushSnapshot(List<NPortalTaskRef> existingTasks) async {
-    final contents = encodeSnapshotUrls(_localPeople());
-    await _commitSnapshotCopyOnWrite(existingTasks, contents);
-  }
-
   /// Commits a complete new generation before touching any existing task.
   ///
   /// A network failure during create/rediscovery/completion therefore leaves
   /// the previous complete generation intact. Old tasks are cleanup-only and
   /// are deleted after the new generation has been verified readable.
-  Future<void> _commitSnapshotCopyOnWrite(List<NPortalTaskRef> existingTasks, List<String> contents) async {
+  Future<void> _commitSnapshotCopyOnWrite(
+    _VerifiedCloudSnapshot before,
+    List<String> contents, {
+    required String account,
+  }) async {
+    final existingTasks = before.tasks;
     if (contents.isEmpty) throw StateError('Course table cloud snapshot cannot be empty');
 
     var targetDn = LocalStorage.instance.getUserInfo().userDn.trim();
@@ -216,15 +409,27 @@ class CourseTableCloudSync {
     // Stage every chunk as unfinished. Do not reuse/edit/delete old task IDs:
     // they are the rollback copy if the network disappears halfway through.
     for (final content in contents) {
+      if (!_isCurrentAccount(account)) throw StateError('Account changed during cloud staging');
       final created = await NPortalTaskConnector.createTask(subject: taskTitle, content: content, targetDn: targetDn);
       if (!created) throw StateError('nPortal rejected course table sync task creation');
     }
 
     final staged = await _rediscoverStagedTasks(knownTaskIds, contents);
 
+    // Compare contents as well as IDs: another device can update an existing
+    // task or complete a new generation while ours was being staged.
+    final latest = await _loadVerifiedCloudSnapshot();
+    if (!_isCurrentAccount(account) || latest == null || latest.signature != before.signature) {
+      throw StateError('nPortal cloud changed during staging; refusing stale commit');
+    }
+
+    // Confirm that the session did not expire before promotion.
+    if (!await NTUTConnector.checkSession()) throw StateError('nPortal session expired before cloud commit');
+
     // Complete only the newly staged IDs. If any mutation fails, the old
     // generation is still untouched and dirty remains set for a later retry.
     for (final read in staged) {
+      if (!_isCurrentAccount(account)) throw StateError('Account changed during cloud commit');
       final content = read.content!;
       final updated = await NPortalTaskConnector.updateTask(id: read.task.id, subject: taskTitle, content: content);
       if (!updated) {
@@ -247,16 +452,86 @@ class CourseTableCloudSync {
     // Also prove the staged fragments form one complete decodable generation.
     decodeSnapshotUrls(verifyReads.map((read) => read.content!).toList(growable: false));
 
+    // Content reads alone do not prove another device can discover this
+    // generation, because readers intentionally query state=100 only. Wait
+    // until every newly committed ID is visible through the completed-task
+    // finder before removing the rollback generation.
+    await _waitUntilCompletedTasksAreDiscoverable(staged.map((read) => read.task.id).toSet());
+
     // Commit succeeded. Old-task cleanup must never make a successful new
     // snapshot look failed: stale generations are harmless because decoding
     // selects the newest complete generation, and a future successful push will
     // try cleanup again.
-    for (final task in existingTasks) {
+    final observed = await _findCloudTasks();
+    final allowedIds = <String>{...knownTaskIds, ...staged.map((read) => read.task.id)};
+    if (observed.any((task) => !allowedIds.contains(task.id))) {
+      // A concurrent writer appeared. Do not destroy its rollback data.
+      Log.e('Concurrent nPortal writer detected; old-generation cleanup deferred');
+      return;
+    }
+    final oldReads = await _readTasks(existingTasks);
+    if (oldReads == null || (before.tasks.isNotEmpty && _taskReadSignature(oldReads) != before.signature)) {
+      Log.e('Old snapshot changed during cleanup; preserving old tasks');
+      return;
+    }
+    for (final read in oldReads) {
+      if (!_isCurrentAccount(account)) return;
+      // Never delete an unrelated/manual entry with the same title.
+      if (!_looksLikeSnapshotUrl(read.content?.trim() ?? '')) continue;
       try {
-        await NPortalTaskConnector.deleteTask(task.id);
+        await NPortalTaskConnector.deleteTask(read.task.id);
       } catch (error, stackTrace) {
-        Log.eWithStack('Deferred cleanup of old course table sync task ${task.id}: $error', stackTrace);
+        Log.eWithStack('Deferred cleanup of old course table sync task ${read.task.id}: $error', stackTrace);
       }
+    }
+
+    // A crash/network loss can leave old state=0 staging tasks behind. They are
+    // never authoritative, but repeated retries would otherwise accumulate
+    // them forever. Only remove same-title QAQ staging fragments that are old
+    // enough to be abandoned; this avoids deleting another device's active
+    // copy-on-write generation. Unknown/manual tasks are left alone.
+    await _cleanupAbandonedStagingTasks(staged.map((read) => read.task.id).toSet());
+  }
+
+  Future<void> _waitUntilCompletedTasksAreDiscoverable(Set<String> expectedTaskIds) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      final completed = await _findCloudTasks();
+      final completedIds = completed.map((task) => task.id).toSet();
+      if (expectedTaskIds.every(completedIds.contains)) return;
+    }
+    throw StateError('New nPortal sync generation is not visible as completed tasks');
+  }
+
+  Future<void> _cleanupAbandonedStagingTasks(Set<String> protectedTaskIds) async {
+    try {
+      final tasks = await NPortalTaskConnector.findStagedTasksBySubject(taskTitle);
+      if (tasks.isEmpty) return;
+
+      final reads = await NetworkRequestPool.shared.run<_CloudTaskRead>(
+        tasks.map(
+          (task) =>
+              (timeout) async => _CloudTaskRead(
+                task: task,
+                content: await NPortalTaskConnector.getTaskContent(task.id, timeout: timeout),
+              ),
+        ),
+        shouldRetry: (read) => read == null || read.content == null,
+      );
+      for (final read in reads.whereType<_CloudTaskRead>()) {
+        if (protectedTaskIds.contains(read.task.id)) continue;
+        final content = read.content?.trim() ?? '';
+        if (!_looksLikeSnapshotUrl(content) || !_isAbandonedStagingSnapshot(content)) continue;
+        try {
+          await NPortalTaskConnector.deleteTask(read.task.id);
+        } catch (error, stackTrace) {
+          Log.eWithStack('Deferred cleanup of staged course table sync task ${read.task.id}: $error', stackTrace);
+        }
+      }
+    } catch (error, stackTrace) {
+      // Cleanup is best-effort and must never turn a verified commit into a
+      // failed sync. A later successful push will retry it.
+      Log.eWithStack('Deferred cleanup of staged course table sync tasks: $error', stackTrace);
     }
   }
 
@@ -264,7 +539,7 @@ class CourseTableCloudSync {
     for (var attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
 
-      final discovered = await _findCloudTasks();
+      final discovered = await NPortalTaskConnector.findStagedTasksBySubject(taskTitle);
       final candidates = discovered.where((task) => !knownTaskIds.contains(task.id)).toList(growable: false);
       if (candidates.length < expectedContents.length) continue;
 
@@ -294,11 +569,28 @@ class CourseTableCloudSync {
     throw StateError('Unable to rediscover a complete staged nPortal sync generation');
   }
 
+  static bool _isAbandonedStagingSnapshot(String content) {
+    try {
+      final uri = Uri.parse(content);
+      final generation = Uri.splitQueryString(uri.fragment)['g'];
+      if (generation == null) return false;
+      final createdMicros = int.tryParse(generation, radix: 36);
+      if (createdMicros == null) return false;
+      final ageMicros = DateTime.now().microsecondsSinceEpoch - createdMicros;
+      return ageMicros >= _abandonedStagingMinAge.inMicroseconds;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static bool _looksLikeSnapshotUrl(String content) {
     if (content.isEmpty) return false;
     final uri = Uri.tryParse(content);
     if (uri == null || uri.scheme != 'qaq' || uri.host != 'course-table' || uri.path != '/share') return false;
     try {
+      if (uri.queryParameters['data']?.isNotEmpty != true) return false;
+      // Older cloud snapshots did not carry fragment generation metadata.
+      if (uri.fragment.isEmpty) return true;
       final fragment = Uri.splitQueryString(uri.fragment);
       return fragment['g']?.isNotEmpty == true &&
           int.tryParse(fragment['p'] ?? '') != null &&
@@ -388,6 +680,11 @@ class CourseTableCloudSync {
     for (final value in urls) {
       final trimmed = value.trim();
       final uri = Uri.parse(trimmed);
+      if (uri.scheme != CourseTableShareCodec.scheme ||
+          uri.host != CourseTableShareCodec.host ||
+          uri.path != CourseTableShareCodec.path) {
+        throw const FormatException('Unexpected URL in course table cloud snapshot');
+      }
       final fragment = uri.fragment;
       if (fragment.isEmpty) {
         legacy.add(trimmed);
@@ -415,26 +712,40 @@ class CourseTableCloudSync {
         () => _CloudSnapshotGroup(generationValue: generationValue, total: total),
       );
       if (group.total != total) throw const FormatException('Inconsistent course table cloud snapshot metadata');
+      if (group.parts.containsKey(part) && group.parts[part] != trimmed) {
+        throw const FormatException('Conflicting duplicate course table cloud fragment');
+      }
       group.parts[part] = trimmed;
     }
 
     final completeGroups = groups.values.where((group) => group.isComplete).toList()
       ..sort((a, b) => b.generationValue.compareTo(a.generationValue));
-    if (completeGroups.isNotEmpty) {
-      final group = completeGroups.first;
-      return _decodeCompleteSnapshot(List<String>.generate(group.total, (index) => group.parts[index + 1]!));
+    for (final group in completeGroups) {
+      try {
+        return _decodeCompleteSnapshot(List<String>.generate(group.total, (index) => group.parts[index + 1]!));
+      } on FormatException {
+        // A newer partial/corrupt commit must not hide a valid rollback copy.
+      } catch (_) {
+        // The older complete generation remains recoverable.
+      }
     }
 
-    if (legacy.isNotEmpty && groups.isEmpty) return _decodeCompleteSnapshot(legacy);
+    if (legacy.isNotEmpty) return _decodeCompleteSnapshot(legacy);
     throw const FormatException('No complete course table cloud snapshot');
   }
 
   static List<CourseTableSharePerson> _decodeCompleteSnapshot(Iterable<String> urls) {
     final decoded = <CourseTableSharePerson>[];
-    for (final value in urls) {
+    final parts = urls.toList(growable: false);
+    for (final value in parts) {
       final payload = CourseTableShareCodec.decodeUrl(value.trim());
       final people = CourseTableSharePerson.fromPayload(payload);
-      if (people.isEmpty) return const <CourseTableSharePerson>[];
+      if (people.isEmpty) {
+        if (parts.length != 1 || decoded.isNotEmpty) {
+          throw const FormatException('Empty fragment mixed with course records');
+        }
+        return const <CourseTableSharePerson>[];
+      }
       decoded.addAll(people);
     }
     return _mergePeople(decoded);
@@ -577,4 +888,15 @@ class _MutableCloudPerson {
   final String studentId;
   String name;
   final Map<String, Map<String, CourseTableShareCourse>> semesters = <String, Map<String, CourseTableShareCourse>>{};
+}
+
+/// Only constructed after successful remote discovery and content validation.
+/// `people == null` means verified absence, not an empty snapshot tombstone.
+class _VerifiedCloudSnapshot {
+  const _VerifiedCloudSnapshot({required this.tasks, required this.signature, this.people, this.isCorrupt = false});
+
+  final List<NPortalTaskRef> tasks;
+  final List<CourseTableSharePerson>? people;
+  final bool isCorrupt;
+  final String signature;
 }

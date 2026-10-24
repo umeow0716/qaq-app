@@ -32,10 +32,19 @@ class NPortalTaskConnector {
     if (normalizedSubject.isEmpty) return const <NPortalTaskRef>[];
 
     // Cloud snapshots are authoritative only when they are private completed
-    // tasks. Unfinished/processing tasks are deliberately ignored: they may be
-    // abandoned staging writes from an interrupted copy-on-write commit, and
-    // are never needed to recover the last complete generation.
+    // tasks. Unfinished/processing tasks are deliberately ignored by readers.
     return _findTasksBySubjectState(normalizedSubject, _completedStatus);
+  }
+
+  /// Finds private unfinished tasks only for the copy-on-write staging flow.
+  ///
+  /// These tasks are never treated as an authoritative cloud snapshot. The
+  /// writer needs their IDs after taskSave.do creates them so it can atomically
+  /// promote the whole generation to completed state.
+  static Future<List<NPortalTaskRef>> findStagedTasksBySubject(String subject) async {
+    final normalizedSubject = subject.trim();
+    if (normalizedSubject.isEmpty) return const <NPortalTaskRef>[];
+    return _findTasksBySubjectState(normalizedSubject, '0');
   }
 
   static Future<List<NPortalTaskRef>> _findTasksBySubjectState(String subject, String state) async {
@@ -61,12 +70,22 @@ class NPortalTaskConnector {
     if (firstPage == null) {
       throw StateError('Unable to load nPortal task list for state $state');
     }
+    // A broken mobile JSON response is not evidence of an empty cloud.
     final mobileMatches = _parseMobileTaskGroups(firstPage, subject, state);
+    if (firstPage.trimLeft().startsWith('[') && mobileMatches == null) {
+      throw StateError('Invalid nPortal task-list response for state $state');
+    }
     if (mobileMatches != null) {
       final deduped = _dedupeTaskRefs(mobileMatches);
       return deduped;
     }
 
+    // Login/error HTML is not an empty task list. Browser-mode list responses
+    // contain task anchors or a task-list <ul>; fail closed otherwise.
+    final document = html.parse(firstPage);
+    if (document.querySelector('ul') == null && !firstPage.contains('taskShow(')) {
+      throw StateError('Unrecognized nPortal task-list HTML for state $state');
+    }
     final firstMatches = _parseFirstPage(firstPage, subject);
     result.addAll(firstMatches);
 
@@ -187,8 +206,7 @@ class NPortalTaskConnector {
     final source = response.data ?? '';
     final mobileContent = _parseMobileTaskContent(source);
     if (mobileContent.found) {
-      final content = mobileContent.content?.trim() ?? '';
-      return content.isEmpty ? null : content;
+      return mobileContent.content?.trim();
     }
 
     final document = html.parse(source);
@@ -197,7 +215,7 @@ class NPortalTaskConnector {
       throw StateError('nPortal task content frame is unavailable');
     }
     final content = frame.text.trim();
-    return content.isEmpty ? null : content;
+    return content;
   }
 
   static Future<String?> getDefaultTargetDn() async {
@@ -302,13 +320,12 @@ class NPortalTaskConnector {
     }
     if (decoded is! List) return null;
 
-    var groupedShape = false;
     final result = <NPortalTaskRef>[];
     for (final group in decoded) {
-      if (group is! Map) continue;
-      final taskList = group['taskList'];
-      if (taskList is! List) continue;
-      groupedShape = true;
+      // Any partially decoded category list is inconclusive, not an empty
+      // remote. In particular, missing the private group must not erase it.
+      if (group is! Map || !group.containsKey('typeId') || group['taskList'] is! List) return null;
+      final taskList = group['taskList'] as List;
 
       // Mobile nPortal returns all category groups even when type=3 is sent.
       // Enforce the cloud-sync ownership rule client-side as well.
@@ -316,7 +333,9 @@ class NPortalTaskConnector {
       if (typeId != '3') continue;
 
       for (final item in taskList) {
-        if (item is! Map) continue;
+        if (item is! Map || !item.containsKey('id') || !item.containsKey('subject') || !item.containsKey('status')) {
+          return null;
+        }
         final id = (item['id'] ?? '').toString().trim();
         final itemSubject = (item['subject'] ?? '').toString().trim();
         final itemStatus = (item['status'] ?? '').toString().trim();
@@ -325,7 +344,7 @@ class NPortalTaskConnector {
         }
       }
     }
-    return groupedShape ? result : null;
+    return result;
   }
 
   static ({bool found, String? content}) _parseMobileTaskContent(String source) {

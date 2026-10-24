@@ -48,6 +48,7 @@ class LocalStorage {
   final _importedCourseTableShareKey = "ImportedCourseTableShareKey";
   final _importedCourseTableCacheKey = "ImportedCourseTableCacheKey";
   final _courseTableCloudSyncDirtyKey = "CourseTableCloudSyncDirtyKey";
+  final _courseTableCloudSyncBaseKey = "CourseTableCloudSyncBaseKey";
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
@@ -60,6 +61,7 @@ class LocalStorage {
   final _importedCourseTableCacheList = <CourseTableJson>[];
   final _importedCourseTableSharePeople = <CourseTableSharePerson>[];
   Future<void> _importedShareMutationQueue = Future<void>.value();
+  int _cloudSyncLocalRevision = 0;
 
   CookieJar? _cookieJar;
 
@@ -250,7 +252,56 @@ class LocalStorage {
 
   bool getCourseTableCloudSyncDirty() => _preferences.getBool(_courseTableCloudSyncDirtyKey) ?? false;
 
-  Future<void> setCourseTableCloudSyncDirty(bool value) => _preferences.setBool(_courseTableCloudSyncDirtyKey, value);
+  int getCourseTableCloudSyncLocalRevision() => _cloudSyncLocalRevision;
+
+  // Increment synchronously, before asynchronous local mutation work starts.
+  // A background upload must not clear a newer edit's dirty flag.
+  Future<void> setCourseTableCloudSyncDirty(bool value) {
+    if (value) _cloudSyncLocalRevision++;
+    return _preferences.setBool(_courseTableCloudSyncDirtyKey, value);
+  }
+
+  /// Null = never verified against cloud, [] = a verified empty snapshot.
+  /// A malformed baseline is unknown, never evidence for deleting remote data.
+  List<CourseTableSharePerson>? getCourseTableCloudSyncBasePeople() {
+    final source = _preferences.getString(_courseTableCloudSyncBaseKey);
+    if (source == null) return null;
+    try {
+      final decoded = json.decode(source);
+      if (decoded is! Map || decoded['account'] != getAccount().trim() || decoded['people'] is! List) return null;
+      return (decoded['people'] as List)
+          .map((item) => CourseTableSharePerson.fromJson((item as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveCloudSyncBasePeople(Iterable<CourseTableSharePerson> people) => _preferences.setString(
+    _courseTableCloudSyncBaseKey,
+    json.encode(<String, dynamic>{
+      'account': getAccount().trim(),
+      'people': people.map((person) => person.toJson()).toList(growable: false),
+    }),
+  );
+
+  /// Stores an authoritative cloud snapshot and applies it only if no local
+  /// edit started while network I/O was in flight.
+  Future<bool> applyVerifiedCourseTableCloudSnapshot(
+    List<CourseTableSharePerson> people, {
+    required String account,
+    required int expectedRevision,
+    bool completeLocalUpload = false,
+  }) => _runImportedShareMutation<bool>(() async {
+    if (getAccount().trim() != account || _cloudSyncLocalRevision != expectedRevision) return false;
+    if (!completeLocalUpload && getCourseTableCloudSyncDirty()) return false;
+    await _replaceImportedCourseTableSharePeopleUnlocked(people);
+    await _saveCloudSyncBasePeople(people);
+    if (completeLocalUpload && getAccount().trim() == account && _cloudSyncLocalRevision == expectedRevision) {
+      await setCourseTableCloudSyncDirty(false);
+    }
+    return getAccount().trim() == account && _cloudSyncLocalRevision == expectedRevision;
+  });
 
   CourseTableSharePerson? getImportedCourseTableSharePerson(String studentId) {
     final normalized = studentId.trim();
@@ -934,6 +985,10 @@ class LocalStorage {
     // Clear in-memory identity/data first so new requests cannot start using the
     // account while the asynchronous logout cleanup is still running.
     _resetUserScopedMemory();
+    _cloudSyncLocalRevision++;
+    // Drain any in-flight cloud pull/import before clearing user-scoped files.
+    // Otherwise its delayed writes could repopulate old-account data.
+    await _importedShareMutationQueue;
 
     Future<void> cleanup(String name, Future<void> Function() action) async {
       try {
@@ -982,6 +1037,7 @@ class LocalStorage {
       _remove(_importedCourseTableCacheKey),
       _remove(_importedCourseTableShareKey),
       _remove(_courseTableCloudSyncDirtyKey),
+      _remove(_courseTableCloudSyncBaseKey),
       _remove(_courseSemesterJsonKey),
       _remove(_scoreCreditJsonKey),
       _remove(_courseCategoryCacheKey),

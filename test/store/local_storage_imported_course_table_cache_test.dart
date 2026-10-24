@@ -132,4 +132,40 @@ void main() {
     expect(storage.getImportedCourseTableSharePerson(local.studentId)?.name, '本機版本');
     expect(storage.getCourseTableCloudSyncDirty(), isTrue);
   });
+
+  test('cloud baseline is account scoped and can persist a verified empty snapshot', () async {
+    final storage = LocalStorage.instance;
+    storage.setAccount('99990000');
+    final revision = storage.getCourseTableCloudSyncLocalRevision();
+    expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
+    expect(
+      await storage.applyVerifiedCourseTableCloudSnapshot(
+        const <CourseTableSharePerson>[],
+        account: '99990000',
+        expectedRevision: revision,
+      ),
+      isTrue,
+    );
+    expect(storage.getCourseTableCloudSyncBasePeople(), isEmpty);
+    storage.setAccount('other-account');
+    expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
+  });
+
+  test('in-flight sync cannot clear newer local dirty intent', () async {
+    final storage = LocalStorage.instance;
+    storage.setAccount('99990000');
+    final initialRevision = storage.getCourseTableCloudSyncLocalRevision();
+    await storage.setCourseTableCloudSyncDirty(true);
+    expect(
+      await storage.applyVerifiedCourseTableCloudSnapshot(
+        const <CourseTableSharePerson>[],
+        account: '99990000',
+        expectedRevision: initialRevision,
+        completeLocalUpload: true,
+      ),
+      isFalse,
+    );
+    expect(storage.getCourseTableCloudSyncDirty(), isTrue);
+    expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
+  });
 }
