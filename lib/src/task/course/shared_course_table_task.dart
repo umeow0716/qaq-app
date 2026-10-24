@@ -63,8 +63,11 @@ class SharedCourseTableTask extends CourseSystemTask<CourseTableJson> {
 
     if (resolvedCourses == 0) return super.onError(R.current.getCourseError);
 
-    storage.addCourseTable(courseTable);
-    await Future.wait(<Future<void>>[storage.saveCourseTableList(), storage.saveCourseExtraInfoCache()]);
+    // Imported schedules are not favorites by default. Keep the imported
+    // identifiers in LocalStorage, but only persist the shared metadata cache
+    // here. The course table itself is added to the favorites list only when
+    // the user explicitly taps the favorite button.
+    await storage.saveCourseExtraInfoCache();
     result = courseTable;
     return TaskStatus.success;
   }
