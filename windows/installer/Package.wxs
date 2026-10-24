@@ -48,6 +48,15 @@
             Advertise="no" />
         </File>
 
+        <RegistryValue Root="HKCR" Key="qaq" Type="string" Value="URL:QAQ Protocol" />
+        <RegistryValue Root="HKCR" Key="qaq" Name="URL Protocol" Type="string" Value="" />
+        <RegistryValue Root="HKCR" Key="qaq\DefaultIcon" Type="string" Value="&quot;[INSTALLFOLDER]QAQ.exe&quot;,0" />
+        <RegistryValue
+          Root="HKCR"
+          Key="qaq\shell\open\command"
+          Type="string"
+          Value="&quot;[INSTALLFOLDER]QAQ.exe&quot; &quot;%1&quot;" />
+
         <RemoveFolder
           Id="RemoveApplicationProgramsFolder"
           Directory="ApplicationProgramsFolder"

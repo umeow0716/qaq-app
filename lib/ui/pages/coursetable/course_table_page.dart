@@ -17,6 +17,7 @@ import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/course/course_classroom_resolution_task.dart';
 import 'package:qaq_app/src/task/course/course_semester_task.dart';
 import 'package:qaq_app/src/task/course/course_table_task.dart';
+import 'package:qaq_app/src/task/course/shared_course_table_task.dart';
 import 'package:qaq_app/src/task/iplus/iplus_subscribe_notice_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
@@ -171,24 +172,83 @@ class _CourseTablePageState extends State<CourseTablePage> {
     }
   }
 
+  Future<void> _selectCourseTable() async {
+    final studentId = await RouteUtils.toCourseTableSelectPage(onDeleted: _handleImportedCourseTableDeleted);
+    if (!mounted || studentId == null || studentId.trim().isEmpty) return;
+
+    final normalized = studentId.trim();
+    final imported = LocalStorage.instance.getImportedCourseTableSharePerson(normalized);
+    if (imported != null) {
+      final semesters = imported.semesterList;
+      if (semesters.isEmpty) return;
+      LocalStorage.instance.setSemesterJsonList(semesters);
+      _getCourseTable(studentId: normalized, semesterSetting: semesters.first);
+      return;
+    }
+
+    _getCourseTable(studentId: normalized);
+  }
+
+  Future<void> _handleImportedCourseTableDeleted(String studentId) async {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty || courseTableData?.studentId.trim() != normalized) return;
+
+    final storage = LocalStorage.instance;
+    final account = storage.getAccount().trim();
+    final ownCourseTables = storage.getCourseTableList().where((table) => table.studentId.trim() == account).toList()
+      ..sort((a, b) {
+        final year = (int.tryParse(b.courseSemester.year) ?? -1).compareTo(int.tryParse(a.courseSemester.year) ?? -1);
+        if (year != 0) return year;
+        return (int.tryParse(b.courseSemester.semester) ?? -1).compareTo(int.tryParse(a.courseSemester.semester) ?? -1);
+      });
+
+    storage.clearSemesterJsonList();
+    _desktopSemesterListStudentId = null;
+
+    if (ownCourseTables.isEmpty) {
+      _getCourseTable(studentId: account);
+      return;
+    }
+
+    final ownCourseTable = ownCourseTables.first;
+    storage.getCourseSetting().info = ownCourseTable;
+    await storage.saveCourseSetting();
+    if (!mounted) return;
+    _showCourseTable(ownCourseTable, checkCourseNotice: false);
+  }
+
   Future<void> _getSemesterList(String studentId) async {
+    final storage = LocalStorage.instance;
+    final imported = storage.getImportedCourseTableSharePerson(studentId);
+    if (imported != null) {
+      storage.setSemesterJsonList(imported.semesterList);
+      return;
+    }
+
     final taskFlow = TaskFlow();
     final task = CourseSemesterTask(studentId)..openLoadingDialog = !_isDesktop;
     taskFlow.addTask(task);
     if (await taskFlow.start()) {
       final result = task.result;
       if (result != null) {
-        LocalStorage.instance.setSemesterJsonList(result);
+        storage.setSemesterJsonList(result);
       }
     }
   }
 
   Future<void> _refreshDesktopSemesterList(String studentId) async {
     final normalizedStudentId = studentId.trim();
-    if (!_isDesktop || normalizedStudentId.isEmpty || normalizedStudentId.length == 5 || _desktopSemesterListLoading) {
+    if (!_isDesktop || normalizedStudentId.isEmpty || _desktopSemesterListLoading) return;
+    if (_desktopSemesterListStudentId == normalizedStudentId) return;
+
+    final imported = LocalStorage.instance.getImportedCourseTableSharePerson(normalizedStudentId);
+    if (imported != null) {
+      LocalStorage.instance.setSemesterJsonList(imported.semesterList);
+      _desktopSemesterListStudentId = normalizedStudentId;
+      if (mounted) setState(() {});
       return;
     }
-    if (_desktopSemesterListStudentId == normalizedStudentId) return;
+    if (normalizedStudentId.length == 5) return;
 
     _desktopSemesterListLoading = true;
     if (mounted) setState(() {});
@@ -229,6 +289,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
     try {
       if (courseTableData?.studentId != effectiveStudentId) {
         LocalStorage.instance.clearSemesterJsonList(); //需重設因為更換了studentId
+        final imported = LocalStorage.instance.getImportedCourseTableSharePerson(effectiveStudentId);
+        if (imported != null) LocalStorage.instance.setSemesterJsonList(imported.semesterList);
       }
 
       SemesterJson? semesterJson;
@@ -240,16 +302,24 @@ class _CourseTablePageState extends State<CourseTablePage> {
       }
       if (semesterJson == null) return;
 
+      final storage = LocalStorage.instance;
+      final imported = storage.getImportedCourseTableSharePerson(effectiveStudentId);
       CourseTableJson? courseTable;
       if (!refresh) {
-        courseTable = LocalStorage.instance.getCourseTable(effectiveStudentId, semesterJson); //去取找是否已經暫存
+        courseTable = imported != null
+            ? storage.getImportedCourseTableCache(effectiveStudentId, semesterJson)
+            : storage.getCourseTable(effectiveStudentId, semesterJson);
       }
       if (courseTable == null) {
         final taskFlow = TaskFlow();
-        final task = CourseTableTask(effectiveStudentId, semesterJson)..openLoadingDialog = !_isDesktop;
-        taskFlow.addTask(task);
-        if (await taskFlow.start()) {
-          courseTable = task.result;
+        if (imported != null) {
+          final task = SharedCourseTableTask(imported, semesterJson)..openLoadingDialog = !_isDesktop;
+          taskFlow.addTask(task);
+          if (await taskFlow.start()) courseTable = task.result;
+        } else {
+          final task = CourseTableTask(effectiveStudentId, semesterJson)..openLoadingDialog = !_isDesktop;
+          taskFlow.addTask(task);
+          if (await taskFlow.start()) courseTable = task.result;
         }
       }
 
@@ -462,6 +532,15 @@ class _CourseTablePageState extends State<CourseTablePage> {
                   ),
                 )
               : const SizedBox.shrink(),
+          if (!isLoading && courseTableData?.studentId.trim() == LocalStorage.instance.getAccount().trim())
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                tooltip: R.current.courseShareTitle,
+                onPressed: RouteUtils.toCourseTableSharePage,
+                icon: const Icon(Icons.share_outlined),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 20),
             child: InkWell(
@@ -494,25 +573,20 @@ class _CourseTablePageState extends State<CourseTablePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Expanded(
-                  child: TextField(
-                    readOnly: true,
-                    scrollPadding: const EdgeInsets.all(0),
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(10),
-                      hintText: R.current.pleaseEnterStudentId,
+                  child: TextButton(
+                    onPressed: isLoading ? null : _selectCourseTable,
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.all(10),
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
-                    onEditingComplete: () {
-                      if (_studentIdControl.text.isEmpty) {
-                        MyToast.show(R.current.pleaseEnterStudentId);
-                      } else {
-                        _getCourseTable(studentId: _studentIdControl.text);
-                      }
-                      _studentFocus.unfocus();
-                    },
-                    controller: _studentIdControl,
-                    focusNode: _studentFocus,
+                    child: Text(
+                      _studentIdControl.text.trim().isEmpty
+                          ? R.current.pleaseEnterStudentId
+                          : _studentIdControl.text.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 TextButton(
@@ -560,11 +634,18 @@ class _CourseTablePageState extends State<CourseTablePage> {
                     Icon(Icons.badge_outlined, size: 18, color: colorScheme.onSurfaceVariant),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        studentId.isEmpty ? R.current.pleaseEnterStudentId : studentId,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      child: InkWell(
+                        onTap: isLoading || _desktopRefreshing ? null : _selectCourseTable,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            studentId.isEmpty ? R.current.pleaseEnterStudentId : studentId,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
                     ),
                     if (totalCredit != null) ...[
@@ -578,6 +659,14 @@ class _CourseTablePageState extends State<CourseTablePage> {
                       ),
                       const SizedBox(width: 8),
                     ],
+                    if (!isLoading && studentId == LocalStorage.instance.getAccount().trim())
+                      Tooltip(
+                        message: R.current.courseShareTitle,
+                        child: IconButton(
+                          onPressed: _desktopRefreshing ? null : RouteUtils.toCourseTableSharePage,
+                          icon: const Icon(Icons.share_outlined),
+                        ),
+                      ),
                     Tooltip(
                       message: R.current.refresh,
                       child: IconButton(
@@ -1116,8 +1205,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
     _studentFocus.unfocus();
   }
 
-  void _showCourseTable(CourseTableJson courseTable) async {
-    if (!_isDesktop) {
+  void _showCourseTable(CourseTableJson courseTable, {bool checkCourseNotice = true}) async {
+    if (!_isDesktop && checkCourseNotice) {
       getCourseNotice(); // Desktop intentionally omits IPlus announcement checks.
     }
     courseTableData = courseTable;

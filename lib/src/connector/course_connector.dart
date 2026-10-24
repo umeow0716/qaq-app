@@ -8,6 +8,7 @@ import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 
 enum CourseConnectorStatus { loginSuccess, loginFail }
 
@@ -21,6 +22,7 @@ class CourseConnector {
   static const String _courseCNHost = "https://aps.ntut.edu.tw/course/tw/";
   static const String _courseENHost = "https://aps.ntut.edu.tw/course/en/";
   static const String _postCourseCNUrl = "${_courseCNHost}Select.jsp";
+  static const String _queryCourseCNUrl = "${_courseCNHost}QueryCourse.jsp";
   static const String _getSyllabusCNUrl = "${_courseCNHost}ShowSyllabus.jsp";
   static const String _postTeacherCourseCNUrl = "${_courseCNHost}Teach.jsp";
   static const String _postCourseENUrl = "${_courseENHost}Select.jsp";
@@ -457,7 +459,134 @@ class CourseConnector {
     return String.fromCharCodes(newString);
   }
 
-  static Future<CourseMainInfo?> getENCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfoJson?> getTWCourseMainInfoByShareIdentifier(
+    CourseTableShareCourse sharedCourse,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
+    try {
+      final currCode = sharedCourse.currCode.trim();
+      if (currCode.isEmpty) return null;
+
+      final data = <String, String>{
+        'stime': '0',
+        'year': semester.year,
+        'matric': "'1','5','6','7','8','9'",
+        'sem': semester.semester,
+        'unit': '＊',
+        'cname': '',
+        'ccode': currCode,
+        'tname': '',
+        for (var day = 0; day < 7; day++) 'D$day': 'ON',
+        'P1': 'ON',
+        'P2': 'ON',
+        'P3': 'ON',
+        'P4': 'ON',
+        'PN': 'ON',
+        'P5': 'ON',
+        'P6': 'ON',
+        'P7': 'ON',
+        'P8': 'ON',
+        'P9': 'ON',
+        'P10': 'ON',
+        'P11': 'ON',
+        'P12': 'ON',
+        'P13': 'ON',
+      };
+
+      final response = await dio.post<String>(
+        _queryCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
+      final document = parse(response.data ?? '');
+      final tables = document.getElementsByTagName('table');
+      if (tables.isEmpty) return null;
+
+      for (final row in tables.first.getElementsByTagName('tr').skip(1)) {
+        final cells = row.children.where((element) => element.localName == 'td').toList();
+        if (cells.length < 20) continue;
+
+        final rowSnum = strQ2B(cells[0].text).replaceAll(RegExp(r'\s'), '');
+        final courseAnchor = cells[1].querySelector('a[href]');
+        final rowCurrCode = Uri.tryParse(courseAnchor?.attributes['href'] ?? '')?.queryParameters['code']?.trim() ?? '';
+        if (sharedCourse.snum.trim().isNotEmpty && rowSnum != sharedCourse.snum.trim()) continue;
+        if (rowCurrCode.isNotEmpty && _normalizeCourseIdentifier(rowCurrCode) != _normalizeCourseIdentifier(currCode)) {
+          continue;
+        }
+
+        return _parseQueryCourseRow(cells, sharedCourse);
+      }
+      return null;
+    } catch (e, stack) {
+      Log.eWithStack('getTWCourseMainInfoByShareIdentifier: $e', stack);
+      return null;
+    }
+  }
+
+  static CourseMainInfoJson _parseQueryCourseRow(List<Element> cells, CourseTableShareCourse sharedCourse) {
+    const dayOrder = <Day>[Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
+
+    final courseAnchor = cells[1].querySelector('a[href]');
+    final course = CourseMainJson(
+      id: strQ2B(cells[0].text).replaceAll(RegExp(r'\s'), ''),
+      name: courseAnchor?.text.trim() ?? cells[1].text.trim(),
+      href: courseAnchor == null
+          ? ''
+          : Uri.parse(_courseCNHost).resolve(courseAnchor.attributes['href'] ?? '').toString(),
+      stage: strQ2B(cells[2].text).trim(),
+      credits: strQ2B(cells[3].text).trim(),
+      hours: strQ2B(cells[4].text).trim(),
+      note: cells.length > 20 ? cells[20].text.trim() : '',
+    );
+
+    for (var index = 0; index < dayOrder.length; index++) {
+      course.time[dayOrder[index]] = strQ2B(cells[index + 8].text).trim();
+    }
+
+    final syllabusAnchor = cells[19].querySelector('a[href]');
+    if (syllabusAnchor != null) {
+      course.scheduleHref = Uri.parse(_courseCNHost).resolve(syllabusAnchor.attributes['href'] ?? '').toString();
+    } else if (sharedCourse.syllabusCodes.isNotEmpty && course.id.isNotEmpty) {
+      course.scheduleHref = Uri.parse(_getSyllabusCNUrl)
+          .replace(queryParameters: <String, String>{'snum': course.id, 'code': sharedCourse.syllabusCodes.first})
+          .toString();
+    }
+
+    final result = CourseMainInfoJson(course: course);
+    for (final node in cells[7].querySelectorAll('a[href]')) {
+      result.teacher.add(
+        TeacherJson(
+          name: node.text.trim(),
+          href: Uri.parse(_courseCNHost).resolve(node.attributes['href'] ?? '').toString(),
+        ),
+      );
+    }
+    for (final node in cells[15].querySelectorAll('a[href]')) {
+      result.classroom.add(
+        ClassroomJson(
+          name: node.text.trim(),
+          href: Uri.parse(_courseCNHost).resolve(node.attributes['href'] ?? '').toString(),
+        ),
+      );
+    }
+    for (final node in cells[6].querySelectorAll('a[href]')) {
+      result.openClass.add(
+        ClassJson(
+          name: node.text.trim(),
+          href: Uri.parse(_courseCNHost).resolve(node.attributes['href'] ?? '').toString(),
+        ),
+      );
+    }
+
+    return result;
+  }
+
+  static Future<CourseMainInfo?> getENCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -465,7 +594,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postCourseENUrl, data: data);
+      Response response = await dio.post<String>(
+        _postCourseENUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       nodes = tagNode.getElementsByTagName("table");
       courseNodes = nodes[1].getElementsByTagName("tr");
@@ -558,7 +691,11 @@ class CourseConnector {
     }
   }
 
-  static Future<CourseMainInfo?> getTWCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfo?> getTWCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -567,7 +704,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postCourseCNUrl, data: data);
+      Response response = await dio.post<String>(
+        _postCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[1];
       courseNodes = node.getElementsByTagName("tr");
@@ -655,7 +796,11 @@ class CourseConnector {
     }
   }
 
-  static Future<CourseMainInfo?> getTWTeacherCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfo?> getTWTeacherCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -664,7 +809,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-3", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postTeacherCourseCNUrl, data: data);
+      Response response = await dio.post<String>(
+        _postTeacherCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[0];
       courseNodes = node.getElementsByTagName("tr");

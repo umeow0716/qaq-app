@@ -21,6 +21,7 @@ import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/user_session_artifacts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,9 @@ class LocalStorage {
 
   final _userDataJsonKey = "UserDataJsonKey";
   final _courseTableJsonKey = "CourseTableJsonListKey";
+  final _importedCourseTableShareKey = "ImportedCourseTableShareKey";
+  final _importedCourseTableCacheKey = "ImportedCourseTableCacheKey";
+  final _courseTableCloudSyncDirtyKey = "CourseTableCloudSyncDirtyKey";
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
@@ -51,6 +55,9 @@ class LocalStorage {
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
+  final _importedCourseTableCacheList = <CourseTableJson>[];
+  final _importedCourseTableSharePeople = <CourseTableSharePerson>[];
+  Future<void> _importedShareMutationQueue = Future<void>.value();
 
   CookieJar? _cookieJar;
 
@@ -197,6 +204,267 @@ class LocalStorage {
     return _courseTableList.firstWhereOrNull(
       (courseTable) => courseTable.courseSemester == courseSemester && courseTable.studentId == studentId,
     );
+  }
+
+  CourseTableJson? getImportedCourseTableCache(String studentId, SemesterJson courseSemester) {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty) return null;
+
+    return _importedCourseTableCacheList.firstWhereOrNull(
+      (courseTable) => courseTable.courseSemester == courseSemester && courseTable.studentId.trim() == normalized,
+    );
+  }
+
+  Future<void> cacheImportedCourseTable(CourseTableJson courseTable) {
+    final studentId = courseTable.studentId.trim();
+    if (studentId.isEmpty) return Future<void>.value();
+
+    _importedCourseTableCacheList.removeWhere(
+      (saved) => saved.courseSemester == courseTable.courseSemester && saved.studentId.trim() == studentId,
+    );
+    _importedCourseTableCacheList.add(courseTable);
+    return saveImportedCourseTableCache();
+  }
+
+  Future<void> saveImportedCourseTableCache() => _save(_importedCourseTableCacheKey, _importedCourseTableCacheList);
+
+  void _loadImportedCourseTableCache() {
+    final readJsonList = _readStringList(_importedCourseTableCacheKey);
+    _importedCourseTableCacheList.clear();
+    if (readJsonList == null) return;
+
+    for (final readJson in readJsonList) {
+      try {
+        _importedCourseTableCacheList.add(CourseTableJson.fromJson(json.decode(readJson)));
+      } catch (_) {
+        // Ignore malformed imported course table cache entries.
+      }
+    }
+  }
+
+  List<CourseTableSharePerson> getImportedCourseTableSharePeople() =>
+      List<CourseTableSharePerson>.unmodifiable(_importedCourseTableSharePeople);
+
+  bool getCourseTableCloudSyncDirty() => _preferences.getBool(_courseTableCloudSyncDirtyKey) ?? false;
+
+  Future<void> setCourseTableCloudSyncDirty(bool value) => _preferences.setBool(_courseTableCloudSyncDirtyKey, value);
+
+  CourseTableSharePerson? getImportedCourseTableSharePerson(String studentId) {
+    final normalized = studentId.trim();
+    return _importedCourseTableSharePeople.firstWhereOrNull((person) => person.studentId == normalized);
+  }
+
+  Future<T> _runImportedShareMutation<T>(Future<T> Function() action) async {
+    final previous = _importedShareMutationQueue;
+    final release = Completer<void>();
+    _importedShareMutationQueue = release.future;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release.complete();
+    }
+  }
+
+  Future<void> importCourseTableSharePeople(
+    Iterable<CourseTableSharePerson> people, {
+    bool markCloudDirty = true,
+  }) async {
+    final incoming = people.toList(growable: false);
+    final expectedAccount = getAccount().trim();
+    if (markCloudDirty && expectedAccount.isNotEmpty) {
+      // Persist intent before mutating local data. If the process is killed
+      // immediately afterwards, next startup still knows local state may need
+      // to be published rather than pulling over it.
+      await setCourseTableCloudSyncDirty(true);
+    }
+    await _runImportedShareMutation<void>(() async {
+      if (getAccount().trim() != expectedAccount) return;
+      await _importCourseTableSharePeopleUnlocked(incoming);
+    });
+  }
+
+  Future<void> _importCourseTableSharePeopleUnlocked(Iterable<CourseTableSharePerson> people) async {
+    for (final person in people) {
+      final studentId = person.studentId.trim();
+      if (studentId.isEmpty) continue;
+      _importedCourseTableSharePeople.removeWhere((saved) => saved.studentId == studentId);
+      _importedCourseTableSharePeople.add(person);
+      _courseTableList.removeWhere((table) => table.studentId.trim() == studentId);
+      _importedCourseTableCacheList.removeWhere((table) => table.studentId.trim() == studentId);
+    }
+    await Future.wait(<Future<void>>[
+      saveImportedCourseTableSharePeople(),
+      saveCourseTableList(),
+      saveImportedCourseTableCache(),
+    ]);
+  }
+
+  Future<void> replaceImportedCourseTableSharePeople(
+    Iterable<CourseTableSharePerson> people, {
+    bool abortIfCloudDirty = false,
+  }) async {
+    final incomingPeople = people.toList(growable: false);
+    final expectedAccount = getAccount().trim();
+    await _runImportedShareMutation<void>(() async {
+      if (getAccount().trim() != expectedAccount) return;
+      // Background pull may have been queued before a user import/delete. The
+      // user mutation marks dirty before entering this queue, so re-check here
+      // after acquiring the queue and refuse to overwrite newer local intent.
+      if (abortIfCloudDirty && getCourseTableCloudSyncDirty()) return;
+      await _replaceImportedCourseTableSharePeopleUnlocked(incomingPeople);
+    });
+  }
+
+  Future<void> _replaceImportedCourseTableSharePeopleUnlocked(Iterable<CourseTableSharePerson> people) async {
+    final account = getAccount().trim();
+    final incoming = <String, CourseTableSharePerson>{};
+    for (final person in people) {
+      final studentId = person.studentId.trim();
+      if (studentId.isEmpty || studentId == account) continue;
+      incoming[studentId] = person;
+    }
+
+    final existingIds = _importedCourseTableSharePeople.map((person) => person.studentId.trim()).toSet();
+    for (final studentId in existingIds.difference(incoming.keys.toSet())) {
+      await _deleteImportedCourseTableSharePersonUnlocked(studentId);
+    }
+
+    final changedIds = <String>{};
+    for (final entry in incoming.entries) {
+      final saved = getImportedCourseTableSharePerson(entry.key);
+      if (saved != null && json.encode(saved.toJson()) == json.encode(entry.value.toJson())) continue;
+      changedIds.add(entry.key);
+      await _importCourseTableSharePeopleUnlocked(<CourseTableSharePerson>[entry.value]);
+    }
+
+    final currentStudentId = _setting.course.info.studentId.trim();
+    if (changedIds.contains(currentStudentId)) {
+      _setting.course = CourseSettingJson();
+      _courseSemesterList.clear();
+      await Future.wait(<Future<void>>[saveCourseSetting(), _remove(_courseSemesterJsonKey)]);
+    }
+  }
+
+  Future<bool> deleteImportedCourseTableSharePerson(String studentId, {bool markCloudDirty = true}) async {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty || normalized == getAccount().trim()) return false;
+
+    final expectedAccount = getAccount().trim();
+    if (markCloudDirty && expectedAccount.isNotEmpty) {
+      await setCourseTableCloudSyncDirty(true);
+    }
+    return _runImportedShareMutation<bool>(() async {
+      if (getAccount().trim() != expectedAccount) return false;
+      return _deleteImportedCourseTableSharePersonUnlocked(normalized);
+    });
+  }
+
+  Future<bool> _deleteImportedCourseTableSharePersonUnlocked(String normalized) async {
+    final deletedCourseIds = <String>{};
+    final imported = getImportedCourseTableSharePerson(normalized);
+    if (imported != null) {
+      for (final courses in imported.semesters.values) {
+        for (final course in courses) {
+          final courseId = course.snum.trim();
+          if (courseId.isNotEmpty) deletedCourseIds.add(courseId);
+        }
+      }
+    }
+
+    for (final table in _courseTableList.where((table) => table.studentId.trim() == normalized)) {
+      deletedCourseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+    for (final table in _importedCourseTableCacheList.where((table) => table.studentId.trim() == normalized)) {
+      deletedCourseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    final currentCourseTable = _setting.course.info;
+    final wasCurrent = currentCourseTable.studentId.trim() == normalized;
+    if (wasCurrent) {
+      deletedCourseIds.addAll(currentCourseTable.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    _importedCourseTableSharePeople.removeWhere((person) => person.studentId.trim() == normalized);
+    _courseTableList.removeWhere((table) => table.studentId.trim() == normalized);
+    _importedCourseTableCacheList.removeWhere((table) => table.studentId.trim() == normalized);
+
+    if (wasCurrent) {
+      _setting.course = CourseSettingJson();
+      _courseSemesterList.clear();
+    }
+
+    final remainingCourseIds = _referencedCourseIds();
+    final orphanedCourseIds = deletedCourseIds.difference(remainingCourseIds);
+    if (orphanedCourseIds.isNotEmpty) {
+      _courseExtraInfoCache.removeWhere((courseId, _) => orphanedCourseIds.contains(courseId.trim()));
+      _courseClassroomCache.removeWhere((_, cache) => orphanedCourseIds.contains(cache.courseId.trim()));
+    }
+
+    final writes = <Future<void>>[
+      saveImportedCourseTableSharePeople(),
+      saveCourseTableList(),
+      saveImportedCourseTableCache(),
+      saveCourseExtraInfoCache(),
+      saveCourseClassroomCache(),
+    ];
+    if (wasCurrent) {
+      writes.add(saveCourseSetting());
+      writes.add(_remove(_courseSemesterJsonKey));
+    }
+    await Future.wait(writes);
+    return wasCurrent;
+  }
+
+  Set<String> _referencedCourseIds() {
+    final courseIds = <String>{};
+
+    for (final person in _importedCourseTableSharePeople) {
+      for (final courses in person.semesters.values) {
+        for (final course in courses) {
+          final courseId = course.snum.trim();
+          if (courseId.isNotEmpty) courseIds.add(courseId);
+        }
+      }
+    }
+
+    for (final table in _courseTableList) {
+      courseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+    for (final table in _importedCourseTableCacheList) {
+      courseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    final currentCourseTable = _setting.course.info;
+    if (!currentCourseTable.isEmpty) {
+      courseIds.addAll(currentCourseTable.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    return courseIds;
+  }
+
+  Future<void> saveImportedCourseTableSharePeople() => _writeStringList(
+    _importedCourseTableShareKey,
+    _importedCourseTableSharePeople.map((person) => json.encode(person.toJson())).toList(),
+  );
+
+  void _loadImportedCourseTableSharePeople() {
+    _importedCourseTableSharePeople.clear();
+    final saved = _readStringList(_importedCourseTableShareKey);
+    if (saved == null) return;
+    for (final value in saved) {
+      try {
+        final decoded = json.decode(value);
+        if (decoded is Map<String, dynamic>) {
+          final person = CourseTableSharePerson.fromJson(decoded);
+          if (person.studentId.isNotEmpty && person.semesters.isNotEmpty) {
+            _importedCourseTableSharePeople.add(person);
+          }
+        }
+      } catch (_) {
+        // Ignore malformed imported share records.
+      }
+    }
   }
 
   Future<void> _saveSetting() => _save(_settingJsonKey, _setting);
@@ -555,6 +823,8 @@ class LocalStorage {
     );
     await _loadUserData();
     _loadCourseTableList();
+    _loadImportedCourseTableCache();
+    _loadImportedCourseTableSharePeople();
     _loadSetting();
     _loadCourseScoreCredit();
     final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
@@ -599,6 +869,8 @@ class LocalStorage {
   void _resetUserScopedMemory() {
     _userData = UserDataJson();
     _courseTableList.clear();
+    _importedCourseTableCacheList.clear();
+    _importedCourseTableSharePeople.clear();
     _courseSemesterList.clear();
     _courseScoreList = CourseScoreCreditJson();
     _courseExtraInfoCache.clear();
@@ -614,6 +886,9 @@ class LocalStorage {
       _secureStorage.delete(key: _ntutPasswordStorageKey),
       _remove(_userDataJsonKey),
       _remove(_courseTableJsonKey),
+      _remove(_importedCourseTableCacheKey),
+      _remove(_importedCourseTableShareKey),
+      _remove(_courseTableCloudSyncDirtyKey),
       _remove(_courseSemesterJsonKey),
       _remove(_scoreCreditJsonKey),
       _remove(_courseCategoryCacheKey),

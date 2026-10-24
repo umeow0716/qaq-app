@@ -229,5 +229,22 @@
   "multipleFiles": "Multiple files",
   "imageFile": "Image (accept=image/*)",
   "selectedFiles": "Selected files",
-  "noFileSelected": "No file selected"
+  "noFileSelected": "No file selected",
+  "courseShareTitle": "Share schedule",
+  "courseShareSelectSemesters": "Select semesters to share",
+  "courseShareScanQr": "Scan QR code",
+  "courseShareImportFile": "Import file",
+  "courseShareExportFile": "Export file",
+  "courseShareNoData": "There is no schedule for your account to share.",
+  "courseShareKeepOneSemester": "Keep at least one semester selected.",
+  "courseShareImportComingSoon": "Schedule import is not implemented yet.",
+  "courseShareCameraUnavailable": "Camera is unavailable. Check camera permission and try again.",
+  "courseShareExportedToDownloads": "Schedule exported to the Downloads folder.",
+  "courseShareExportedToFiles": "Schedule exported to the selected Files location.",
+  "courseShareExportFailed": "Schedule export failed.",
+  "courseShareImportOwnAccount": "You cannot import the schedule of the currently signed-in account.",
+  "courseShareImportSuccess": "Schedule imported.",
+  "courseShareImportFailed": "Schedule import failed or the format is unsupported.",
+  "courseTableSelectTitle": "Select schedule",
+  "courseTableSearchHint": "Search student ID or name"
 }
