@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qaq_app/src/config/app_colors.dart';
@@ -136,8 +138,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           focusNode: _passwordFocus,
                           autofillHints: const [AutofillHints.password],
                           onEditingComplete: () {
-                            _passwordFocus.unfocus();
                             TextInput.finishAutofillContext();
+                            if (Platform.isWindows || Platform.isLinux) {
+                              _loginPress(context);
+                              return;
+                            }
+                            _passwordFocus.unfocus();
                           },
                           validator: _validatorPassword,
                           decoration: InputDecoration(

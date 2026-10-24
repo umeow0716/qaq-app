@@ -7,6 +7,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qaq_app/src/navigation/app_navigator.dart';
 import 'package:qaq_app/src/r.dart';
 
@@ -122,7 +123,7 @@ class _MsgDialogView extends StatelessWidget {
     final hasDescription = parameter.desc?.trim().isNotEmpty ?? false;
     final hasButtons = !parameter.removeCancelButton || !parameter.removeOkButton;
 
-    return SafeArea(
+    final dialog = SafeArea(
       child: Center(
         child: Material(
           color: Colors.transparent,
@@ -187,6 +188,16 @@ class _MsgDialogView extends StatelessWidget {
         ),
       ),
     );
+
+    if (!Platform.isWindows && !Platform.isLinux) return dialog;
+
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): () => _activateDefaultButton(context),
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): () => _activateDefaultButton(context),
+      },
+      child: Focus(autofocus: true, child: dialog),
+    );
   }
 
   Widget _buildButtons(BuildContext context) {
@@ -223,6 +234,16 @@ class _MsgDialogView extends StatelessWidget {
   void _closeAndRun(BuildContext context, VoidCallback? callback) {
     Navigator.of(context, rootNavigator: true).pop();
     callback?.call();
+  }
+
+  void _activateDefaultButton(BuildContext context) {
+    if (!parameter.removeOkButton) {
+      _closeAndRun(context, parameter.onOkButtonClicked);
+      return;
+    }
+    if (!parameter.removeCancelButton) {
+      _closeAndRun(context, parameter.onCancelButtonClicked);
+    }
   }
 }
 
