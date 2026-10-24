@@ -14,6 +14,7 @@ import 'package:qaq_app/src/connector/nportal_task_connector.dart';
 import 'package:qaq_app/src/connector/score_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/src/model/coursetable/empty_classroom_cache.dart';
 import 'package:qaq_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
 import 'package:qaq_app/src/share/course_table_share_data.dart';
@@ -460,6 +461,80 @@ void main() {
       );
       final semesters = await CourseConnector.getCourseSemester('Student');
       expect(semesters!.single, SemesterJson(year: '115', semester: '1'));
+    });
+    test('getClassroomSemesters reads the newest two classroom links from the home page', () async {
+      body(
+        '<a href="Croom.jsp?format=-2&year=114&sem=2">114-2</a>'
+        '<a href="Subj.jsp?format=-2&year=116&sem=1">ignore</a>'
+        '<a href="Croom.jsp?format=-2&year=115&sem=1">115-1</a>'
+        '<a href="Croom.jsp?format=-2&year=113&sem=2">113-2</a>',
+      );
+
+      final semesters = await CourseConnector.getClassroomSemesters();
+
+      expect(semesters, <SemesterJson>[
+        SemesterJson(year: '115', semester: '1'),
+        SemesterJson(year: '114', semester: '2'),
+      ]);
+      expect(adapter.requests.single.uri.path, '/course/tw/course.jsp');
+    });
+
+    test('getClassroomSemesters always uses the Chinese course system', () async {
+      body('<a href="Croom.jsp?format=-2&year=115&sem=1">115-1</a>');
+      await CourseConnector.getClassroomSemesters();
+      expect(adapter.requests.single.uri.path, '/course/tw/course.jsp');
+    });
+
+    test('getClassroomList parses legacy rows with omitted closing tags', () async {
+      body(
+        '<table>'
+        '<tr><th>教室簡稱<th>教室全名<th>容量(座位數)'
+        '<tr><td><a href="Croom.jsp?format=-3&year=115&sem=1&code=493">一教1F(e)</a><br>'
+        '<td>一教1F多功能教室<td align=right>48<td align=right>25'
+        '<tr><td><a href="Croom.jsp?format=-3&year=115&sem=1&code=9">一教301</a><br>'
+        '<td>第一教學大樓301室<td align=right>55<td align=right>25'
+        '</table>',
+      );
+
+      final rooms = await CourseConnector.getClassroomList(SemesterJson(year: '115', semester: '1'));
+
+      expect(rooms, hasLength(2));
+      expect(rooms![0].code, '493');
+      expect(rooms[0].name, '一教1F(e)');
+      expect(rooms[0].fullName, '一教1F多功能教室');
+      expect(rooms[0].capacity, '48');
+      expect(rooms[0].sourceUrl, contains('/course/tw/Croom.jsp?'));
+      expect(rooms[1].code, '9');
+    });
+    test('getEmptyClassroomSchedule parses all 14 legacy timetable rows', () async {
+      const sections = ['1', '2', '3', '4', 'N', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D'];
+      final timetable = StringBuffer(
+        '<table><tr><td>metadata</table><table><tr><th><th>日<th>一<th>二<th>三<th>四<th>五<th>六',
+      );
+      for (final section in sections) {
+        timetable.write('<tr><td>第 $section 節');
+        for (var day = 0; day < 7; day++) {
+          timetable.write('<td>${section == '3' && day == 2 ? '測試課程' : '　'}');
+        }
+      }
+      timetable.write('</table>');
+      body(timetable.toString());
+
+      final room = await CourseConnector.getEmptyClassroomSchedule(
+        EmptyClassroomRoomJson(
+          code: '493',
+          name: '一教1F(e)',
+          fullName: '一教1F多功能教室',
+          capacity: '48',
+          sourceUrl: 'https://aps.ntut.edu.tw/course/tw/Croom.jsp?format=-3&year=115&sem=1&code=493',
+        ),
+      );
+
+      expect(room, isNotNull);
+      expect(room!.built, isTrue);
+      expect(room.isOccupied(Day.Tuesday, SectionNumber.T_3), isTrue);
+      expect(room.isOccupied(Day.Monday, SectionNumber.T_3), isFalse);
+      expect(room.isOccupied(Day.Tuesday, SectionNumber.T_4), isFalse);
     });
     test('getTWCourseMainInfoList skips empty layout rows and keeps URLs', () async {
       body(_tw());

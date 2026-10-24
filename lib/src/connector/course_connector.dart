@@ -8,6 +8,7 @@ import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/course/course_syllabus_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
+import 'package:qaq_app/src/model/coursetable/empty_classroom_cache.dart';
 import 'package:qaq_app/src/share/course_table_share_data.dart';
 
 enum CourseConnectorStatus { loginSuccess, loginFail }
@@ -441,6 +442,138 @@ class CourseConnector {
       return semesterJsonList;
     } catch (e, stack) {
       Log.eWithStack(e.toString(), stack);
+      return null;
+    }
+  }
+
+  static Future<List<SemesterJson>?> getClassroomSemesters({Duration? timeout}) async {
+    try {
+      final response = await dio.get<String>(
+        '${_courseCNHost}course.jsp',
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
+      final document = parse(response.data ?? '');
+      final semesters = <SemesterJson>[];
+      final seen = <String>{};
+      for (final anchor in document.querySelectorAll('a[href]')) {
+        final href = anchor.attributes['href'];
+        if (href == null || href.isEmpty) continue;
+        final uri = response.realUri.resolve(href.replaceAll('&amp;', '&'));
+        if (!uri.path.endsWith('/Croom.jsp')) continue;
+        if (uri.queryParameters['format'] != '-2') continue;
+        final year = uri.queryParameters['year']?.trim() ?? '';
+        final semester = uri.queryParameters['sem']?.trim() ?? '';
+        if (year.isEmpty || semester.isEmpty) continue;
+        final key = '$year-$semester';
+        if (seen.add(key)) {
+          semesters.add(SemesterJson(year: year, semester: semester));
+        }
+      }
+      return EmptyClassroomSemesterPolicy.newestTwo(semesters);
+    } catch (e, stack) {
+      Log.eWithStack('getClassroomSemesters: $e', stack);
+      return null;
+    }
+  }
+
+  static Future<List<EmptyClassroomRoomJson>?> getClassroomList(SemesterJson semester, {Duration? timeout}) async {
+    try {
+      final response = await dio.get<String>(
+        '${_courseCNHost}Croom.jsp',
+        queryParameters: <String, String>{'format': '-2', 'year': semester.year, 'sem': semester.semester},
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
+      final rooms = <EmptyClassroomRoomJson>[];
+      final seenCodes = <String>{};
+
+      // Croom.jsp is legacy HTML and intentionally omits </td> / </tr>.
+      // Parse each raw <tr> segment so browser/DOM tree-repair differences do
+      // not merge following classrooms into the current row.
+      final html = response.data ?? '';
+      final rowPattern = RegExp(r'<tr\b[^>]*>(.*?)(?=<tr\b|</table>|$)', caseSensitive: false, dotAll: true);
+      final hrefPattern = RegExp(
+        r'''<a\s+[^>]*href=["']([^"']*Croom\.jsp\?[^"']*format=-3[^"']*)["'][^>]*>(.*?)</a>''',
+        caseSensitive: false,
+        dotAll: true,
+      );
+      final cellPattern = RegExp(r'<td\b[^>]*>(.*?)(?=<td\b|$)', caseSensitive: false, dotAll: true);
+      for (final rowMatch in rowPattern.allMatches(html)) {
+        final rowHtml = rowMatch.group(1) ?? '';
+        final hrefMatch = hrefPattern.firstMatch(rowHtml);
+        if (hrefMatch == null) continue;
+        final href = hrefMatch.group(1);
+        if (href == null || href.isEmpty) continue;
+        final resolved = response.realUri.resolve(href.replaceAll('&amp;', '&'));
+        final code = resolved.queryParameters['code']?.trim() ?? '';
+        if (code.isEmpty || !seenCodes.add(code)) continue;
+
+        final cells = cellPattern.allMatches(rowHtml).map((match) => match.group(1) ?? '').toList(growable: false);
+        String cellText(int index) => index < cells.length ? strQ2B(parseFragment(cells[index]).text ?? '').trim() : '';
+        final name = strQ2B(parseFragment(hrefMatch.group(2) ?? '').text ?? '').trim();
+        if (name.isEmpty) continue;
+        rooms.add(
+          EmptyClassroomRoomJson(
+            code: code,
+            name: name,
+            fullName: cellText(1),
+            capacity: cellText(2),
+            sourceUrl: resolved.toString(),
+          ),
+        );
+      }
+
+      if (rooms.isEmpty) return null;
+      rooms.sort((a, b) => a.name.compareTo(b.name));
+      return rooms;
+    } catch (e, stack) {
+      Log.eWithStack('getClassroomList: $e', stack);
+      return null;
+    }
+  }
+
+  static Future<EmptyClassroomRoomJson?> getEmptyClassroomSchedule(
+    EmptyClassroomRoomJson room, {
+    Duration? timeout,
+  }) async {
+    try {
+      final response = await dio.get<String>(
+        room.sourceUrl,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
+      final html = response.data ?? '';
+      final tablePattern = RegExp(r'<table\b[^>]*>(.*?)</table>', caseSensitive: false, dotAll: true);
+      final tables = tablePattern.allMatches(html).map((match) => match.group(1) ?? '').toList(growable: false);
+      if (tables.length < 2) return null;
+
+      const dayOrder = <Day>[
+        Day.Sunday,
+        Day.Monday,
+        Day.Tuesday,
+        Day.Wednesday,
+        Day.Thursday,
+        Day.Friday,
+        Day.Saturday,
+      ];
+      final occupied = <Day, Set<SectionNumber>>{for (final day in dayOrder) day: <SectionNumber>{}};
+      final rowPattern = RegExp(r'<tr\b[^>]*>(.*?)(?=<tr\b|$)', caseSensitive: false, dotAll: true);
+      final cellPattern = RegExp(r'<td\b[^>]*>(.*?)(?=<td\b|$)', caseSensitive: false, dotAll: true);
+      var sectionIndex = 0;
+      for (final rowMatch in rowPattern.allMatches(tables[1])) {
+        final cells = cellPattern.allMatches(rowMatch.group(1) ?? '').map((match) => match.group(1) ?? '').toList();
+        if (cells.length < 8 || sectionIndex >= EmptyClassroomPeriod.order.length) continue;
+        final section = EmptyClassroomPeriod.order[sectionIndex++];
+        for (var dayIndex = 0; dayIndex < dayOrder.length; dayIndex++) {
+          final text = strQ2B(parseFragment(cells[dayIndex + 1]).text ?? '').trim();
+          if (text.isNotEmpty) {
+            occupied[dayOrder[dayIndex]]!.add(section);
+          }
+        }
+      }
+
+      if (sectionIndex != EmptyClassroomPeriod.order.length) return null;
+      return room.copyWith(built: true, occupiedByDay: occupied);
+    } catch (e, stack) {
+      Log.eWithStack('getEmptyClassroomSchedule(${room.code}): $e', stack);
       return null;
     }
   }

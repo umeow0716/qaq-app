@@ -18,6 +18,7 @@ import 'package:qaq_app/src/connector/web_view_cookie_store.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/course/course_score_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
+import 'package:qaq_app/src/model/coursetable/empty_classroom_cache.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
@@ -52,6 +53,7 @@ class LocalStorage {
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
   final _courseExtraInfoCacheKey = "CourseExtraInfoCacheKey";
   final _courseClassroomCacheKey = "CourseClassroomResolutionCacheKey";
+  final _emptyClassroomCacheKey = "EmptyClassroomCacheKey";
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
@@ -67,6 +69,7 @@ class LocalStorage {
   CourseScoreCreditJson _courseScoreList = CourseScoreCreditJson();
   final Map<String, CourseExtraInfoJson> _courseExtraInfoCache = {};
   final Map<String, CourseClassroomCacheJson> _courseClassroomCache = {};
+  final List<EmptyClassroomCacheJson> _emptyClassroomCaches = <EmptyClassroomCacheJson>[];
   SettingJson _setting = SettingJson();
 
   SharedPreferences get _preferences {
@@ -764,6 +767,94 @@ class LocalStorage {
     return _writeString(_courseClassroomCacheKey, json.encode(encoded));
   }
 
+  void _loadEmptyClassroomCache() {
+    _emptyClassroomCaches.clear();
+    final readJson = _readString(_emptyClassroomCacheKey);
+    if (readJson == null) return;
+    try {
+      final decoded = json.decode(readJson);
+      final values = decoded is List
+          ? decoded
+          : decoded is Map<String, dynamic>
+          ? <Object?>[decoded]
+          : const <Object?>[];
+      for (final value in values) {
+        if (value is! Map) continue;
+        try {
+          final cache = EmptyClassroomCacheJson.fromJson(Map<String, dynamic>.from(value));
+          if (cache.year.isEmpty || cache.semester.isEmpty || cache.language.isEmpty) continue;
+          _emptyClassroomCaches.add(cache);
+        } catch (_) {
+          // Ignore malformed entries; they are ordinary cache misses.
+        }
+      }
+    } catch (_) {
+      // A malformed top-level payload is a cache miss and can be rebuilt.
+    }
+  }
+
+  List<EmptyClassroomCacheJson> getEmptyClassroomCaches() =>
+      List<EmptyClassroomCacheJson>.unmodifiable(_emptyClassroomCaches);
+
+  EmptyClassroomCacheJson? getEmptyClassroomCache(SemesterJson semester, String language) {
+    return _emptyClassroomCaches.firstWhereOrNull((cache) => cache.matches(semester, language));
+  }
+
+  Future<void> setEmptyClassroomCache(EmptyClassroomCacheJson cache) {
+    _emptyClassroomCaches.removeWhere(
+      (saved) => saved.year == cache.year && saved.semester == cache.semester && saved.language == cache.language,
+    );
+    _emptyClassroomCaches.add(cache);
+    return saveEmptyClassroomCache();
+  }
+
+  Future<void> retainEmptyClassroomCaches({required Iterable<SemesterJson> semesters, required String language}) {
+    final allowed = EmptyClassroomSemesterPolicy.newestTwo(semesters);
+    final allowedKeys = allowed.map((semester) => '${semester.year}-${semester.semester}').toSet();
+    final newestBySemester = <String, EmptyClassroomCacheJson>{};
+    for (final cache in _emptyClassroomCaches) {
+      final key = '${cache.year}-${cache.semester}';
+      if (cache.schemaVersion != EmptyClassroomCacheJson.currentSchemaVersion ||
+          cache.language != language ||
+          !allowedKeys.contains(key)) {
+        continue;
+      }
+      final previous = newestBySemester[key];
+      if (previous == null || cache.updatedAt.isAfter(previous.updatedAt)) {
+        newestBySemester[key] = cache;
+      }
+    }
+    _emptyClassroomCaches
+      ..clear()
+      ..addAll(
+        allowed
+            .map((semester) => newestBySemester['${semester.year}-${semester.semester}'])
+            .whereType<EmptyClassroomCacheJson>(),
+      );
+    return saveEmptyClassroomCache();
+  }
+
+  Future<void> saveEmptyClassroomCache() {
+    if (_emptyClassroomCaches.isEmpty) return _remove(_emptyClassroomCacheKey);
+    return _writeString(
+      _emptyClassroomCacheKey,
+      json.encode(_emptyClassroomCaches.map((cache) => cache.toJson()).toList(growable: false)),
+    );
+  }
+
+  Future<void> clearEmptyClassroomCache({SemesterJson? semester, String? language}) {
+    if (semester == null && language == null) {
+      _emptyClassroomCaches.clear();
+    } else {
+      _emptyClassroomCaches.removeWhere(
+        (cache) =>
+            (semester == null || (cache.year == semester.year && cache.semester == semester.semester)) &&
+            (language == null || cache.language == language),
+      );
+    }
+    return saveEmptyClassroomCache();
+  }
+
   Future<void> saveCourseSetting() => _saveSetting();
 
   Future<void> clearCourseSetting() {
@@ -829,6 +920,7 @@ class LocalStorage {
     _loadCourseScoreCredit();
     final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
     _loadCourseClassroomCache();
+    _loadEmptyClassroomCache();
     if (courseExtraInfoCacheChanged) {
       await saveCourseExtraInfoCache();
     }
@@ -875,6 +967,7 @@ class LocalStorage {
     _courseScoreList = CourseScoreCreditJson();
     _courseExtraInfoCache.clear();
     _courseClassroomCache.clear();
+    _emptyClassroomCaches.clear();
     _setting.course = CourseSettingJson();
     _firstRun.clear();
   }
@@ -894,6 +987,7 @@ class LocalStorage {
       _remove(_courseCategoryCacheKey),
       _remove(_courseExtraInfoCacheKey),
       _remove(_courseClassroomCacheKey),
+      _remove(_emptyClassroomCacheKey),
       _remove('firstUse$courseNotice'),
       // Keep global/user-choice settings (theme, file path, sort, and
       // SettingJson.other), but persist the cleared course/announcement state.
