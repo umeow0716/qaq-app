@@ -7,6 +7,8 @@ import 'package:file_saver/file_saver.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qaq_app/src/connector/core/network_request_pool.dart';
+import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/share/course_table_share_codec.dart';
@@ -74,27 +76,39 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
     if (semesterLoadSucceeded && semesters != null) {
       storage.setSemesterJsonList(semesters);
 
-      var failedToLoadCourseTable = false;
+      final missingSemesters = <SemesterJson>[];
       for (final semester in semesters) {
-        if (!mounted) return;
-        var table = storage.getCourseTable(_account, semester);
+        final table = storage.getCourseTable(_account, semester);
         if (table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty)) {
-          final tableTask = CourseTableTask(_account, semester)
-            ..openLoadingDialog = false
-            ..openErrorDialog = false;
-          final tableFlow = TaskFlow()..addTask(tableTask);
+          missingSemesters.add(semester);
+        }
+      }
 
-          var success = false;
-          try {
-            success = await tableFlow.start();
-          } catch (_) {
-            success = false;
-          }
-          if (success) table = tableTask.result;
+      var failedToLoadCourseTable = false;
+      if (missingSemesters.isNotEmpty) {
+        final loaded = await NetworkRequestPool.shared.run<CourseTableJson>(
+          missingSemesters.map(
+            (semester) =>
+                (timeout) => CourseTableTask(_account, semester).loadAfterLogin(
+                  timeout: timeout,
+                  persist: false,
+                ),
+          ),
+          shouldRetry: (table) =>
+              table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty),
+        );
+
+        var savedAny = false;
+        for (final table in loaded) {
           if (table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty)) {
             failedToLoadCourseTable = true;
             continue;
           }
+          storage.addCourseTable(table);
+          savedAny = true;
+        }
+        if (savedAny) {
+          await Future.wait([storage.saveCourseTableList(), storage.saveCourseExtraInfoCache()]);
         }
       }
 

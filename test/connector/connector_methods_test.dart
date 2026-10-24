@@ -255,13 +255,20 @@ void main() {
     });
     test('getTWCourseMainInfoList skips empty layout rows and keeps URLs', () async {
       body(_tw());
-      final info = await CourseConnector.getTWCourseMainInfoList('Student', SemesterJson(year: '115', semester: '1'));
+      final info = await CourseConnector.getTWCourseMainInfoList(
+        'Student',
+        SemesterJson(year: '115', semester: '1'),
+        timeout: const Duration(seconds: 4),
+      );
       expect(info!.json, hasLength(1));
       final course = info.json.single;
       expect(course.course.id, '371933');
       expect(course.course.time[Day.Monday], '12');
       expect(course.teacher.single.href, 'https://aps.ntut.edu.tw/course/tw/Teach.jsp?code=T001');
       expect(course.classroom.single.name, '測試教室');
+      expect(adapter.requests.single.connectTimeout, const Duration(seconds: 4));
+      expect(adapter.requests.single.receiveTimeout, const Duration(seconds: 4));
+      expect(adapter.requests.single.sendTimeout, const Duration(seconds: 4));
     });
     for (final language in ['tw', 'en', 'teacher']) {
       test('$language timetable keeps scheduled class meetings without course IDs', () async {

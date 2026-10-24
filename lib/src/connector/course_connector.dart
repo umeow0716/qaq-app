@@ -591,7 +591,11 @@ class CourseConnector {
     return result;
   }
 
-  static Future<CourseMainInfo?> getENCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfo?> getENCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -599,7 +603,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postCourseENUrl, data: data);
+      Response response = await dio.post<String>(
+        _postCourseENUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       nodes = tagNode.getElementsByTagName("table");
       courseNodes = nodes[1].getElementsByTagName("tr");
@@ -692,7 +700,11 @@ class CourseConnector {
     }
   }
 
-  static Future<CourseMainInfo?> getTWCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfo?> getTWCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -701,7 +713,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-2", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postCourseCNUrl, data: data);
+      Response response = await dio.post<String>(
+        _postCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[1];
       courseNodes = node.getElementsByTagName("tr");
@@ -789,7 +805,11 @@ class CourseConnector {
     }
   }
 
-  static Future<CourseMainInfo?> getTWTeacherCourseMainInfoList(String studentId, SemesterJson semester) async {
+  static Future<CourseMainInfo?> getTWTeacherCourseMainInfoList(
+    String studentId,
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     var info = CourseMainInfo();
     try {
       Document tagNode;
@@ -798,7 +818,11 @@ class CourseConnector {
       List<Day> dayEnum = [Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
       Map<String, String> data = {"code": studentId, "format": "-3", "year": semester.year, "sem": semester.semester};
 
-      Response response = await dio.post<String>(_postTeacherCourseCNUrl, data: data);
+      Response response = await dio.post<String>(
+        _postTeacherCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       tagNode = parse(response.toString());
       node = tagNode.getElementsByTagName("table")[0];
       courseNodes = node.getElementsByTagName("tr");
