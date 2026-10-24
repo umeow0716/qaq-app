@@ -5,6 +5,7 @@ import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/util/language_util.dart';
 
 import '../task.dart';
 import 'course_system_task.dart';
@@ -31,6 +32,18 @@ class SharedCourseTableTask extends CourseSystemTask<CourseTableJson> {
     );
     final storage = LocalStorage.instance;
     var resolvedCourses = 0;
+
+    final classMeeting = CourseInfoJson(
+      main: CourseMainInfoJson(
+        course: CourseMainJson(
+          name: LanguageUtil.getLangIndex() == LangEnum.en
+              ? 'Class Meeting and Advisor Time'
+              : '班週會及導師時間',
+          time: <Day, String>{Day.Tuesday: '3 4'},
+        ),
+      ),
+    );
+    courseTable.setCourseDetailByTimeString(Day.Tuesday, '3 4', classMeeting);
 
     for (final sharedCourse in sharedCourses) {
       final main = await CourseConnector.getTWCourseMainInfoByShareIdentifier(sharedCourse, semester);
