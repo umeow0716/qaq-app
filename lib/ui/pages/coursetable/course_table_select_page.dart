@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/sync/course_table_cloud_sync.dart';
 
 class CourseTableSelectPage extends StatefulWidget {
   const CourseTableSelectPage({super.key, this.onDeleted});
@@ -24,8 +27,11 @@ class _CourseTableSelectPageState extends State<CourseTableSelectPage> {
 
   Future<void> _deleteImportedPerson(String studentId) async {
     await LocalStorage.instance.deleteImportedCourseTableSharePerson(studentId);
-    await widget.onDeleted?.call(studentId);
     if (mounted) setState(() {});
+
+    unawaited(CourseTableCloudSync.instance.pushLocalSnapshot());
+    final onDeleted = widget.onDeleted?.call(studentId);
+    if (onDeleted != null) await onDeleted;
   }
 
   @override

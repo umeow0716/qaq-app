@@ -10,6 +10,7 @@ import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/connector/ischool_plus_connector.dart';
 import 'package:qaq_app/src/connector/network.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
+import 'package:qaq_app/src/connector/nportal_task_connector.dart';
 import 'package:qaq_app/src/connector/score_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
@@ -207,6 +208,213 @@ void main() {
       expect(adapter.requests.single.contentType, startsWith('multipart/form-data'));
       body('{}');
       await expectLater(NTUTConnector.uploadUserImage(Uint8List.fromList([1])), throwsFormatException);
+    });
+  });
+
+  group('NPortalTaskConnector', () {
+    test('findTasksBySubject scans only private completed tasks', () async {
+      respond((request) {
+        final state = request.uri.queryParameters['state'];
+        if (request.uri.path == '/task5List.do') {
+          expect(state, '100');
+          return _ok(
+            '<ul><li><a onclick=\'taskShow("100")\'><div>QAQ 課表跨裝置同步</div></a></li>'
+            '<li><a onclick=\'taskShow("101")\'><div>其他事項</div></a></li></ul>',
+          );
+        }
+        if (request.uri.path == '/taskListNext.do') {
+          final page = request.uri.queryParameters['page'];
+          if (page == '2') {
+            return _ok(
+              json.encode(<Map<String, dynamic>>[
+                <String, dynamic>{'id': 102, 'subject': 'QAQ 課表跨裝置同步'},
+                <String, dynamic>{'id': 103, 'subject': '其他事項'},
+              ]),
+            );
+          }
+          return _ok('[]');
+        }
+        throw StateError('Unexpected request ${request.uri}');
+      });
+
+      final tasks = await NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步');
+
+      expect(tasks.map((task) => task.id), <String>['100', '102']);
+      final listRequests = adapter.requests.where((request) => request.uri.path == '/task5List.do').toList();
+      expect(listRequests, hasLength(1));
+      expect(listRequests.single.uri.queryParameters['type'], '3');
+      expect(listRequests.single.uri.queryParameters['state'], '100');
+      expect(listRequests.single.uri.queryParameters['creator'], '');
+      expect(
+        adapter.requests
+            .where((request) => request.uri.path == '/taskListNext.do')
+            .every((request) => request.uri.queryParameters['state'] == '100'),
+        isTrue,
+      );
+    });
+
+    test('findTasksBySubject filters mobile grouped JSON to private completed only', () async {
+      respond((request) {
+        if (request.uri.path != '/task5List.do') {
+          throw StateError('Mobile grouped JSON should not request taskListNext.do');
+        }
+        expect(request.uri.queryParameters['state'], '100');
+        return _ok(
+          json.encode(<Map<String, dynamic>>[
+            <String, dynamic>{
+              'typeId': 1,
+              'typeName': '系統通知',
+              'taskList': <Map<String, dynamic>>[
+                <String, dynamic>{'id': 215810, 'subject': 'QAQ 課表跨裝置同步', 'status': 100},
+              ],
+            },
+            <String, dynamic>{
+              'typeId': 3,
+              'typeName': '私人事項',
+              'taskList': <Map<String, dynamic>>[
+                <String, dynamic>{'id': 215811, 'subject': 'QAQ 課表跨裝置同步', 'status': 100},
+                <String, dynamic>{'id': 215812, 'subject': 'QAQ 課表跨裝置同步', 'status': 0},
+                <String, dynamic>{'id': 215813, 'subject': '其他事項', 'status': 100},
+              ],
+            },
+          ]),
+        );
+      });
+
+      final tasks = await NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步');
+
+      expect(tasks.map((task) => task.id), <String>['215811']);
+      expect(adapter.requests.where((request) => request.uri.path == '/task5List.do'), hasLength(1));
+      expect(adapter.requests.where((request) => request.uri.path == '/taskListNext.do'), isEmpty);
+    });
+
+    test('findTasksBySubject stops repeated final page for completed state', () async {
+      respond((request) {
+        if (request.uri.path == '/task5List.do') {
+          expect(request.uri.queryParameters['state'], '100');
+          return _ok('<ul></ul>');
+        }
+        if (request.uri.path == '/taskListNext.do') {
+          expect(request.uri.queryParameters['state'], '100');
+          return _ok(
+            json.encode(<Map<String, dynamic>>[
+              <String, dynamic>{'id': 102, 'subject': '其他事項'},
+            ]),
+          );
+        }
+        throw StateError('Unexpected request ${request.uri}');
+      });
+
+      final tasks = await NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步');
+
+      expect(tasks, isEmpty);
+      final nextRequests = adapter.requests.where((request) => request.uri.path == '/taskListNext.do').toList();
+      expect(nextRequests, hasLength(2));
+      expect(nextRequests.map((request) => request.uri.queryParameters['page']), <String?>['2', '3']);
+    });
+
+    test('getTaskContent supports mobile JSON and browser HTML and rejects unexpected pages', () async {
+      body(
+        json.encode(<String, dynamic>{
+          'id': 215563,
+          'subject': 'QAQ 課表跨裝置同步',
+          'content': 'qaq://course-table/share?data=mobile',
+          'status': 100,
+        }),
+      );
+      expect(await NPortalTaskConnector.getTaskContent('215563'), 'qaq://course-table/share?data=mobile');
+      expect(adapter.requests.single.uri.path, '/task5Show.do');
+      expect(adapter.requests.single.uri.queryParameters['id'], '215563');
+
+      body('<div class="content-frame">qaq://course-table/share?data=browser<br></div>');
+      expect(await NPortalTaskConnector.getTaskContent('215563'), 'qaq://course-table/share?data=browser');
+
+      body('<html><form id="loginForm"></form></html>');
+      await expectLater(NPortalTaskConnector.getTaskContent('215563'), throwsStateError);
+    });
+
+    test('getDefaultTargetDn reads the self target from the new-task form', () async {
+      body('<form><input type="hidden" name="targetDn" value="cn=test,dc=ntut"></form>');
+
+      expect(await NPortalTaskConnector.getDefaultTargetDn(), 'cn=test,dc=ntut');
+      expect(adapter.requests.single.uri.path, '/task5Edit.do');
+      expect(adapter.requests.single.uri.queryParameters['id'], '');
+    });
+
+    test('create update and delete use the HAR task settings', () async {
+      respond((request) {
+        if (request.uri.path == '/taskDel.do') {
+          return _ok('{"success":true,"returnMsg":"刪除成功。","extraInfo":null}');
+        }
+        if (request.uri.path == '/taskSave.do' && request.data is Map) {
+          final data = request.data as Map;
+          if (data.length == 2 && data['id'] == '215563' && data['taskStatus'] == '100') {
+            return _ok('');
+          }
+        }
+        return _ok('{"success":true,"returnMsg":"儲存成功。","extraInfo":null}');
+      });
+
+      expect(
+        await NPortalTaskConnector.createTask(
+          subject: 'QAQ 課表跨裝置同步',
+          content: 'qaq://course-table/share?data=create',
+          targetDn: 'cn=test,dc=ntut',
+        ),
+        isTrue,
+      );
+      expect(
+        await NPortalTaskConnector.updateTask(
+          id: '215563',
+          subject: 'QAQ 課表跨裝置同步',
+          content: 'qaq://course-table/share?data=update',
+        ),
+        isTrue,
+      );
+      await NPortalTaskConnector.deleteTask('215563');
+
+      final createData = (adapter.requests[0].data as Map).cast<String, String>();
+      expect(createData['taskType'], '3');
+      expect(createData['taskPriority'], '3');
+      expect(createData['taskModify'], '1');
+      expect(createData['targetDn'], 'cn=test,dc=ntut');
+      expect(createData['taskStatus'], '0');
+      expect(createData['date'], '2031-12-31');
+      expect(createData['time'], '23:59');
+      expect(createData['taskDeadline'], '2031-12-31 23:59');
+      expect(createData['id'], '');
+
+      final updateData = (adapter.requests[1].data as Map).cast<String, String>();
+      expect(updateData['id'], '215563');
+      expect(updateData['taskType'], '3');
+      expect(updateData['taskPriority'], '3');
+      expect(updateData['taskStatus'], '100');
+      expect(updateData['time'], '11:59');
+      expect(updateData['taskDeadline'], '2031-12-31 11:59');
+      expect(updateData.containsKey('targetDn'), isFalse);
+      expect(updateData.containsKey('taskModify'), isFalse);
+
+      // HAR lifecycle: create starts unfinished. A later full edit marks the
+      // discovered task completed, followed by the status-only safeguard.
+      final completedData = (adapter.requests[2].data as Map).cast<String, String>();
+      expect(adapter.requests[2].uri.path, '/taskSave.do');
+      expect(completedData, <String, String>{'id': '215563', 'taskStatus': '100'});
+
+      expect(adapter.requests[3].uri.path, '/taskDel.do');
+      expect((adapter.requests[3].data as Map)['id'], '215563');
+    });
+
+    test('mobile JSON mutation failures are not treated as success', () async {
+      body('{"success":false,"returnMsg":"失敗","extraInfo":null}');
+
+      expect(
+        await NPortalTaskConnector.createTask(
+          subject: 'QAQ 課表跨裝置同步',
+          content: 'qaq://course-table/share?data=create',
+          targetDn: 'cn=test,dc=ntut',
+        ),
+        isFalse,
+      );
     });
   });
 

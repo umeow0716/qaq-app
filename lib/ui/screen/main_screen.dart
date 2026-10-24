@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/notifications/notifications.dart';
 import 'package:qaq_app/src/providers/app_provider.dart';
 import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/sync/course_table_cloud_sync.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task.dart';
 import 'package:qaq_app/src/util/language_util.dart';
@@ -61,6 +63,10 @@ class _MainScreenState extends State<MainScreen> {
         // failure must not prevent the app from entering offline mode.
         Log.eWithStack('nPortal locale reload failed: $error', stackTrace);
       }
+
+      // Cross-device course-table sync is best-effort background work. App
+      // startup and offline usage must never wait for nPortal cloud storage.
+      unawaited(CourseTableCloudSync.instance.syncOnAppOpen(sessionAlreadyAuthenticated: true));
     }
 
     setState(() {

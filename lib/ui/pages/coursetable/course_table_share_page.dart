@@ -14,6 +14,7 @@ import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/share/course_table_share_codec.dart';
 import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/sync/course_table_cloud_sync.dart';
 import 'package:qaq_app/src/task/course/course_semester_task.dart';
 import 'package:qaq_app/src/task/course/course_table_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
@@ -467,6 +468,7 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
       }
 
       await LocalStorage.instance.importCourseTableSharePeople(people);
+      unawaited(CourseTableCloudSync.instance.pushLocalSnapshot());
       _showInfo(R.current.courseShareImportSuccess, type: DialogType.success);
     } catch (_) {
       _showInfo(R.current.courseShareImportFailed, type: DialogType.error);
