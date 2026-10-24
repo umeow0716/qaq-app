@@ -56,8 +56,11 @@ class RouteUtils {
     return await Get.to(() => const CourseTableSharePage(), transition: transition);
   }
 
-  static Future<String?> toCourseTableSelectPage() async {
-    return await Get.to<String>(() => const CourseTableSelectPage(), transition: transition);
+  static Future<String?> toCourseTableSelectPage({Future<void> Function(String studentId)? onDeleted}) async {
+    return await Get.to<String>(
+      () => CourseTableSelectPage(onDeleted: onDeleted),
+      transition: transition,
+    );
   }
 
   static Future<dynamic> toPrivacyPolicyPage() async {

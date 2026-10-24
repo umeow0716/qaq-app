@@ -173,7 +173,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
   }
 
   Future<void> _selectCourseTable() async {
-    final studentId = await RouteUtils.toCourseTableSelectPage();
+    final studentId = await RouteUtils.toCourseTableSelectPage(onDeleted: _handleImportedCourseTableDeleted);
     if (!mounted || studentId == null || studentId.trim().isEmpty) return;
 
     final normalized = studentId.trim();
@@ -187,6 +187,36 @@ class _CourseTablePageState extends State<CourseTablePage> {
     }
 
     _getCourseTable(studentId: normalized);
+  }
+
+  Future<void> _handleImportedCourseTableDeleted(String studentId) async {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty || courseTableData?.studentId.trim() != normalized) return;
+
+    final storage = LocalStorage.instance;
+    final account = storage.getAccount().trim();
+    final ownCourseTables = storage.getCourseTableList().where((table) => table.studentId.trim() == account).toList()
+      ..sort((a, b) {
+        final year = (int.tryParse(b.courseSemester.year) ?? -1).compareTo(int.tryParse(a.courseSemester.year) ?? -1);
+        if (year != 0) return year;
+        return (int.tryParse(b.courseSemester.semester) ?? -1).compareTo(
+          int.tryParse(a.courseSemester.semester) ?? -1,
+        );
+      });
+
+    storage.clearSemesterJsonList();
+    _desktopSemesterListStudentId = null;
+
+    if (ownCourseTables.isEmpty) {
+      _getCourseTable(studentId: account);
+      return;
+    }
+
+    final ownCourseTable = ownCourseTables.first;
+    storage.getCourseSetting().info = ownCourseTable;
+    await storage.saveCourseSetting();
+    if (!mounted) return;
+    _showCourseTable(ownCourseTable, checkCourseNotice: false);
   }
 
   Future<void> _getSemesterList(String studentId) async {
@@ -1174,8 +1204,8 @@ class _CourseTablePageState extends State<CourseTablePage> {
     _studentFocus.unfocus();
   }
 
-  void _showCourseTable(CourseTableJson courseTable) async {
-    if (!_isDesktop) {
+  void _showCourseTable(CourseTableJson courseTable, {bool checkCourseNotice = true}) async {
+    if (!_isDesktop && checkCourseNotice) {
       getCourseNotice(); // Desktop intentionally omits IPlus announcement checks.
     }
     courseTableData = courseTable;

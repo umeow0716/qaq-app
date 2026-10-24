@@ -4,7 +4,9 @@ import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 
 class CourseTableSelectPage extends StatefulWidget {
-  const CourseTableSelectPage({super.key});
+  const CourseTableSelectPage({super.key, this.onDeleted});
+
+  final Future<void> Function(String studentId)? onDeleted;
 
   @override
   State<CourseTableSelectPage> createState() => _CourseTableSelectPageState();
@@ -18,6 +20,12 @@ class _CourseTableSelectPageState extends State<CourseTableSelectPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _deleteImportedPerson(String studentId) async {
+    await LocalStorage.instance.deleteImportedCourseTableSharePerson(studentId);
+    await widget.onDeleted?.call(studentId);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -59,6 +67,11 @@ class _CourseTableSelectPageState extends State<CourseTableSelectPage> {
                     ListTile(
                       leading: const Icon(Icons.people_outline),
                       title: Text('${person.studentId}（${person.name}）'),
+                      trailing: IconButton(
+                        tooltip: R.current.delete,
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _deleteImportedPerson(person.studentId),
+                      ),
                       onTap: () => Get.back<String>(result: person.studentId),
                     ),
                 ],

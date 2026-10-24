@@ -221,6 +221,84 @@ class LocalStorage {
     await Future.wait(<Future<void>>[saveImportedCourseTableSharePeople(), saveCourseTableList()]);
   }
 
+  Future<bool> deleteImportedCourseTableSharePerson(String studentId) async {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty || normalized == getAccount().trim()) return false;
+
+    final deletedCourseIds = <String>{};
+    final imported = getImportedCourseTableSharePerson(normalized);
+    if (imported != null) {
+      for (final courses in imported.semesters.values) {
+        for (final course in courses) {
+          final courseId = course.snum.trim();
+          if (courseId.isNotEmpty) deletedCourseIds.add(courseId);
+        }
+      }
+    }
+
+    for (final table in _courseTableList.where((table) => table.studentId.trim() == normalized)) {
+      deletedCourseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    final currentCourseTable = _setting.course.info;
+    final wasCurrent = currentCourseTable.studentId.trim() == normalized;
+    if (wasCurrent) {
+      deletedCourseIds.addAll(currentCourseTable.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    _importedCourseTableSharePeople.removeWhere((person) => person.studentId.trim() == normalized);
+    _courseTableList.removeWhere((table) => table.studentId.trim() == normalized);
+
+    if (wasCurrent) {
+      _setting.course = CourseSettingJson();
+      _courseSemesterList.clear();
+    }
+
+    final remainingCourseIds = _referencedCourseIds();
+    final orphanedCourseIds = deletedCourseIds.difference(remainingCourseIds);
+    if (orphanedCourseIds.isNotEmpty) {
+      _courseExtraInfoCache.removeWhere((courseId, _) => orphanedCourseIds.contains(courseId.trim()));
+      _courseClassroomCache.removeWhere((_, cache) => orphanedCourseIds.contains(cache.courseId.trim()));
+    }
+
+    final writes = <Future<void>>[
+      saveImportedCourseTableSharePeople(),
+      saveCourseTableList(),
+      saveCourseExtraInfoCache(),
+      saveCourseClassroomCache(),
+    ];
+    if (wasCurrent) {
+      writes.add(saveCourseSetting());
+      writes.add(_remove(_courseSemesterJsonKey));
+    }
+    await Future.wait(writes);
+    return wasCurrent;
+  }
+
+  Set<String> _referencedCourseIds() {
+    final courseIds = <String>{};
+
+    for (final person in _importedCourseTableSharePeople) {
+      for (final courses in person.semesters.values) {
+        for (final course in courses) {
+          final courseId = course.snum.trim();
+          if (courseId.isNotEmpty) courseIds.add(courseId);
+        }
+      }
+    }
+
+    for (final table in _courseTableList) {
+      courseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    final currentCourseTable = _setting.course.info;
+    if (!currentCourseTable.isEmpty) {
+      courseIds.addAll(currentCourseTable.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+
+    return courseIds;
+  }
+
   Future<void> saveImportedCourseTableSharePeople() => _writeStringList(
     _importedCourseTableShareKey,
     _importedCourseTableSharePeople.map((person) => json.encode(person.toJson())).toList(),
