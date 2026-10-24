@@ -2,12 +2,14 @@ import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/util/feedback_form_util.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:qaq_app/ui/other/list_view_animator.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import 'package:qaq_app/ui/other/route_utils.dart';
 
-enum OnListViewPress { contribution, privacyPolicy, version, dev }
+enum OnListViewPress { contribution, privacyPolicy, feedback, version, dev }
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -41,6 +43,12 @@ class _AboutPageState extends State<AboutPage> {
         "color": Colors.blueGrey,
         "title": R.current.PrivacyPolicy,
         "onPress": OnListViewPress.privacyPolicy,
+      },
+      {
+        "icon": EvaIcons.messageSquareOutline,
+        "color": Colors.cyan,
+        "title": R.current.feedbackForm,
+        "onPress": OnListViewPress.feedback,
       },
       {
         "icon": EvaIcons.infoOutline,
@@ -87,6 +95,10 @@ class _AboutPageState extends State<AboutPage> {
             _addDevListItem();
           }
         }
+        break;
+      case OnListViewPress.feedback:
+        final link = await FeedbackFormUtil.buildUrl();
+        await launchUrl(link, mode: LaunchMode.externalApplication);
         break;
       case OnListViewPress.privacyPolicy:
         RouteUtils.toPrivacyPolicyPage();

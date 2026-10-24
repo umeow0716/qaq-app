@@ -5,16 +5,15 @@ import 'dart:ui' as ui;
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qaq_app/debug/log/log.dart';
-import 'package:qaq_app/src/config/app_config.dart';
 import 'package:qaq_app/src/config/app_link.dart';
 import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/file_store.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/util/language_util.dart';
+import 'package:qaq_app/src/util/feedback_form_util.dart';
 import 'package:qaq_app/src/task/ntut/ntut_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
@@ -30,7 +29,6 @@ enum OnListViewPress {
   setting,
   fileViewer,
   logout,
-  feedback,
   feedbackUploadTest,
   localUploadHtmlTest,
   about,
@@ -50,8 +48,6 @@ class OtherPage extends StatefulWidget {
 }
 
 class _OtherPageState extends State<OtherPage> {
-  static const _platform = MethodChannel(AppConfig.methodChannelName);
-
   final ImagePicker _imagePicker = ImagePicker();
   Future<Uint8List?>? _avatarFuture;
   Uint8List? _lastAvatarBytes;
@@ -90,12 +86,6 @@ class _OtherPageState extends State<OtherPage> {
       },
     if (LocalStorage.instance.getPassword().isEmpty)
       {"icon": EvaIcons.logIn, "color": Colors.teal[400], "title": R.current.login, "onPress": OnListViewPress.login},
-    {
-      "icon": EvaIcons.messageSquareOutline,
-      "color": Colors.cyan,
-      "title": R.current.feedbackForm,
-      "onPress": OnListViewPress.feedback,
-    },
     {
       "icon": EvaIcons.infoOutline,
       "color": Colors.lightBlue,
@@ -297,10 +287,6 @@ class _OtherPageState extends State<OtherPage> {
           RouteUtils.toFileViewerPage(R.current.fileViewer, filePath);
         });
         break;
-      case OnListViewPress.feedback:
-        final link = await _buildFeedbackUrl();
-        await launchUrl(link, mode: LaunchMode.externalApplication);
-        break;
       case OnListViewPress.about:
         RouteUtils.toAboutPage();
         break;
@@ -308,7 +294,7 @@ class _OtherPageState extends State<OtherPage> {
         RouteUtils.toSettingPage(widget.pageController);
         break;
       case OnListViewPress.feedbackUploadTest:
-        final link = await _buildFeedbackUrl();
+        final link = await FeedbackFormUtil.buildUrl();
         await Get.to(() => QAQWebView(initialUrl: link, title: R.current.feedbackUploadTest));
         break;
       case OnListViewPress.localUploadHtmlTest:
@@ -374,22 +360,6 @@ class _OtherPageState extends State<OtherPage> {
   </script>
 </body>
 </html>''';
-  }
-
-  Future<Uri> _buildFeedbackUrl() async {
-    try {
-      final deviceInfo = await _platform.invokeMapMethod<String, dynamic>('get_feedback_device_info');
-      final model = deviceInfo?['model']?.toString().trim();
-      final androidRelease = deviceInfo?['androidRelease']?.toString().trim();
-      if (model != null && model.isNotEmpty && androidRelease != null && androidRelease.isNotEmpty) {
-        return AppLink.feedbackFormUrl(deviceModel: model, androidRelease: androidRelease);
-      }
-    } on PlatformException catch (error, stackTrace) {
-      Log.eWithStack(error, stackTrace);
-    } on MissingPluginException catch (error, stackTrace) {
-      Log.eWithStack(error, stackTrace);
-    }
-    return AppLink.feedbackFormBaseUrl;
   }
 
   @override
