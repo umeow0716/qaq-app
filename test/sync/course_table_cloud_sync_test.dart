@@ -19,13 +19,10 @@ CourseTableSharePerson _person(String studentId, String name, int courseCount) =
 
 void main() {
   test('cloud snapshot chunks stay within nPortal content limit and merge back', () {
-    final urls = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[
-        _person('22223333', '李小明', 8),
-        _person('11112222', '王大強', 8),
-      ],
-      generation: 'abc123',
-    );
+    final urls = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('22223333', '李小明', 8),
+      _person('11112222', '王大強', 8),
+    ], generation: 'abc123');
 
     expect(urls, isNotEmpty);
     expect(urls.every((url) => url.length <= CourseTableCloudSync.maxTaskContentLength), isTrue);
@@ -37,10 +34,7 @@ void main() {
   });
 
   test('cloud snapshot can represent an empty imported-person tombstone', () {
-    final urls = CourseTableCloudSync.encodeSnapshotUrls(
-      const <CourseTableSharePerson>[],
-      generation: 'abc124',
-    );
+    final urls = CourseTableCloudSync.encodeSnapshotUrls(const <CourseTableSharePerson>[], generation: 'abc124');
     expect(urls, hasLength(1));
     expect(urls.single.length, lessThanOrEqualTo(CourseTableCloudSync.maxTaskContentLength));
     expect(CourseTableCloudSync.decodeSnapshotUrls(urls), isEmpty);
@@ -82,10 +76,7 @@ void main() {
   });
 
   test('malformed or incomplete-only snapshots are rejected for recovery', () {
-    expect(
-      () => CourseTableCloudSync.decodeSnapshotUrls(<String>['not-a-qaq-share-url']),
-      throwsFormatException,
-    );
+    expect(() => CourseTableCloudSync.decodeSnapshotUrls(<String>['not-a-qaq-share-url']), throwsFormatException);
 
     final incomplete = CourseTableCloudSync.encodeSnapshotUrls(
       <CourseTableSharePerson>[_person('11112222', '王大強', 8)],
@@ -93,10 +84,6 @@ void main() {
       maxLength: 170,
     );
     expect(incomplete.length, greaterThan(1));
-    expect(
-      () => CourseTableCloudSync.decodeSnapshotUrls(<String>[incomplete.first]),
-      throwsFormatException,
-    );
+    expect(() => CourseTableCloudSync.decodeSnapshotUrls(<String>[incomplete.first]), throwsFormatException);
   });
-
 }

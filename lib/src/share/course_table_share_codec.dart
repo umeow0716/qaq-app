@@ -209,8 +209,7 @@ class CourseTableShareCodec {
       }
     }
 
-    final result = courses.values.toList()
-      ..sort((a, b) => (a['snum'] as String).compareTo(b['snum'] as String));
+    final result = courses.values.toList()..sort((a, b) => (a['snum'] as String).compareTo(b['snum'] as String));
     for (final course in result) {
       final codes = syllabusCodes[course['snum']]?.toList() ?? <String>[];
       codes.sort();

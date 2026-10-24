@@ -22,11 +22,7 @@ void main() {
   test('imported course table cache is persisted separately from favorites', () async {
     final storage = LocalStorage.instance;
     final semester = SemesterJson(year: '115', semester: '1');
-    final table = CourseTableJson(
-      studentId: '11112222',
-      studentName: '王大強',
-      courseSemester: semester,
-    );
+    final table = CourseTableJson(studentId: '11112222', studentName: '王大強', courseSemester: semester);
 
     await storage.cacheImportedCourseTable(table);
 
@@ -126,22 +122,14 @@ void main() {
         ],
       },
     );
-    final remote = CourseTableSharePerson(
-      studentId: local.studentId,
-      name: '遠端舊版本',
-      semesters: local.semesters,
-    );
+    final remote = CourseTableSharePerson(studentId: local.studentId, name: '遠端舊版本', semesters: local.semesters);
 
     await storage.importCourseTableSharePeople(<CourseTableSharePerson>[local]);
     expect(storage.getCourseTableCloudSyncDirty(), isTrue);
 
-    await storage.replaceImportedCourseTableSharePeople(
-      <CourseTableSharePerson>[remote],
-      abortIfCloudDirty: true,
-    );
+    await storage.replaceImportedCourseTableSharePeople(<CourseTableSharePerson>[remote], abortIfCloudDirty: true);
 
     expect(storage.getImportedCourseTableSharePerson(local.studentId)?.name, '本機版本');
     expect(storage.getCourseTableCloudSyncDirty(), isTrue);
   });
-
 }

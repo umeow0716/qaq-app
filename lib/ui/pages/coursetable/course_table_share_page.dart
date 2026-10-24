@@ -90,13 +90,9 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
         final loaded = await NetworkRequestPool.shared.run<CourseTableJson>(
           missingSemesters.map(
             (semester) =>
-                (timeout) => CourseTableTask(_account, semester).loadAfterLogin(
-                  timeout: timeout,
-                  persist: false,
-                ),
+                (timeout) => CourseTableTask(_account, semester).loadAfterLogin(timeout: timeout, persist: false),
           ),
-          shouldRetry: (table) =>
-              table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty),
+          shouldRetry: (table) => table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty),
         );
 
         var savedAny = false;

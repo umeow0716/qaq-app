@@ -37,9 +37,7 @@ class SharedCourseTableTask extends CourseSystemTask<CourseTableJson> {
     final classMeeting = CourseInfoJson(
       main: CourseMainInfoJson(
         course: CourseMainJson(
-          name: LanguageUtil.getLangIndex() == LangEnum.en
-              ? 'Class Meeting and Advisor Time'
-              : '班週會及導師時間',
+          name: LanguageUtil.getLangIndex() == LangEnum.en ? 'Class Meeting and Advisor Time' : '班週會及導師時間',
           time: <Day, String>{Day.Tuesday: '3 4'},
         ),
       ),
@@ -49,11 +47,7 @@ class SharedCourseTableTask extends CourseSystemTask<CourseTableJson> {
     final resolved = await NetworkRequestPool.shared.run<CourseMainInfoJson>(
       sharedCourses.map(
         (sharedCourse) =>
-            (timeout) => CourseConnector.getTWCourseMainInfoByShareIdentifier(
-              sharedCourse,
-              semester,
-              timeout: timeout,
-            ),
+            (timeout) => CourseConnector.getTWCourseMainInfoByShareIdentifier(sharedCourse, semester, timeout: timeout),
       ),
       shouldRetry: (main) => main == null || main.course.id.isEmpty,
     );

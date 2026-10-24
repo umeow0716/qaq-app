@@ -173,10 +173,7 @@ class CourseTableCloudSync {
     // snapshot; the queued dirty push will run next.
     if (storage.getCourseTableCloudSyncDirty() || !_isCurrentAccount(account)) return true;
 
-    await storage.replaceImportedCourseTableSharePeople(
-      _withoutOwnAccount(remote),
-      abortIfCloudDirty: true,
-    );
+    await storage.replaceImportedCourseTableSharePeople(_withoutOwnAccount(remote), abortIfCloudDirty: true);
     return true;
   }
 
@@ -185,10 +182,11 @@ class CourseTableCloudSync {
   Future<List<_CloudTaskRead>?> _readTasks(List<NPortalTaskRef> tasks) async {
     final reads = await NetworkRequestPool.shared.run<_CloudTaskRead>(
       tasks.map(
-        (task) => (timeout) async => _CloudTaskRead(
-          task: task,
-          content: await NPortalTaskConnector.getTaskContent(task.id, timeout: timeout),
-        ),
+        (task) =>
+            (timeout) async => _CloudTaskRead(
+              task: task,
+              content: await NPortalTaskConnector.getTaskContent(task.id, timeout: timeout),
+            ),
       ),
       shouldRetry: (read) => read == null || read.content == null,
     );
@@ -206,10 +204,7 @@ class CourseTableCloudSync {
   /// A network failure during create/rediscovery/completion therefore leaves
   /// the previous complete generation intact. Old tasks are cleanup-only and
   /// are deleted after the new generation has been verified readable.
-  Future<void> _commitSnapshotCopyOnWrite(
-    List<NPortalTaskRef> existingTasks,
-    List<String> contents,
-  ) async {
+  Future<void> _commitSnapshotCopyOnWrite(List<NPortalTaskRef> existingTasks, List<String> contents) async {
     if (contents.isEmpty) throw StateError('Course table cloud snapshot cannot be empty');
 
     var targetDn = LocalStorage.instance.getUserInfo().userDn.trim();
@@ -221,11 +216,7 @@ class CourseTableCloudSync {
     // Stage every chunk as unfinished. Do not reuse/edit/delete old task IDs:
     // they are the rollback copy if the network disappears halfway through.
     for (final content in contents) {
-      final created = await NPortalTaskConnector.createTask(
-        subject: taskTitle,
-        content: content,
-        targetDn: targetDn,
-      );
+      final created = await NPortalTaskConnector.createTask(subject: taskTitle, content: content, targetDn: targetDn);
       if (!created) throw StateError('nPortal rejected course table sync task creation');
     }
 
@@ -235,11 +226,7 @@ class CourseTableCloudSync {
     // generation is still untouched and dirty remains set for a later retry.
     for (final read in staged) {
       final content = read.content!;
-      final updated = await NPortalTaskConnector.updateTask(
-        id: read.task.id,
-        subject: taskTitle,
-        content: content,
-      );
+      final updated = await NPortalTaskConnector.updateTask(id: read.task.id, subject: taskTitle, content: content);
       if (!updated) {
         throw StateError('nPortal rejected new course table sync task completion ${read.task.id}');
       }
@@ -273,10 +260,7 @@ class CourseTableCloudSync {
     }
   }
 
-  Future<List<_CloudTaskRead>> _rediscoverStagedTasks(
-    Set<String> knownTaskIds,
-    List<String> expectedContents,
-  ) async {
+  Future<List<_CloudTaskRead>> _rediscoverStagedTasks(Set<String> knownTaskIds, List<String> expectedContents) async {
     for (var attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
 
@@ -438,9 +422,7 @@ class CourseTableCloudSync {
       ..sort((a, b) => b.generationValue.compareTo(a.generationValue));
     if (completeGroups.isNotEmpty) {
       final group = completeGroups.first;
-      return _decodeCompleteSnapshot(
-        List<String>.generate(group.total, (index) => group.parts[index + 1]!),
-      );
+      return _decodeCompleteSnapshot(List<String>.generate(group.total, (index) => group.parts[index + 1]!));
     }
 
     if (legacy.isNotEmpty && groups.isEmpty) return _decodeCompleteSnapshot(legacy);
@@ -463,11 +445,7 @@ class CourseTableCloudSync {
     for (final unit in units) {
       final person = people.putIfAbsent(
         unit.studentId,
-        () => <String, dynamic>{
-          'studentId': unit.studentId,
-          'name': unit.name,
-          'semesters': <String, dynamic>{},
-        },
+        () => <String, dynamic>{'studentId': unit.studentId, 'name': unit.name, 'semesters': <String, dynamic>{}},
       );
       if ((person['name'] as String).isEmpty && unit.name.isNotEmpty) person['name'] = unit.name;
       final semesters = person['semesters'] as Map<String, dynamic>;
@@ -512,13 +490,11 @@ class CourseTableCloudSync {
       final semesters = <String, List<CourseTableShareCourse>>{};
       final keys = person.semesters.keys.toList()..sort(_compareSemesterKeys);
       for (final key in keys) {
-        final courses = person.semesters[key]!.values.toList()
-          ..sort((a, b) => a.snum.compareTo(b.snum));
+        final courses = person.semesters[key]!.values.toList()..sort((a, b) => a.snum.compareTo(b.snum));
         semesters[key] = courses;
       }
       return CourseTableSharePerson(studentId: person.studentId, name: person.name, semesters: semesters);
-    }).toList()
-      ..sort((a, b) => a.studentId.compareTo(b.studentId));
+    }).toList()..sort((a, b) => a.studentId.compareTo(b.studentId));
     return result;
   }
 
@@ -600,6 +576,5 @@ class _MutableCloudPerson {
 
   final String studentId;
   String name;
-  final Map<String, Map<String, CourseTableShareCourse>> semesters =
-      <String, Map<String, CourseTableShareCourse>>{};
+  final Map<String, Map<String, CourseTableShareCourse>> semesters = <String, Map<String, CourseTableShareCourse>>{};
 }

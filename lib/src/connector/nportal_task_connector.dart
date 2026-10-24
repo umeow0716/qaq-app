@@ -38,32 +38,26 @@ class NPortalTaskConnector {
     return _findTasksBySubjectState(normalizedSubject, _completedStatus);
   }
 
-  static Future<List<NPortalTaskRef>> _findTasksBySubjectState(
-    String subject,
-    String state,
-  ) async {
+  static Future<List<NPortalTaskRef>> _findTasksBySubjectState(String subject, String state) async {
     final result = <NPortalTaskRef>[];
     final seenPageFingerprints = <String>{};
-    final firstPage = await NetworkRequestPool.shared.execute<String>(
-      (timeout) async {
-        final response = await dio.get<String>(
-          _taskListUrl,
-          queryParameters: <String, String>{
-            'type': '3',
-            'state': state,
-            'name': 'sendDate',
-            'mode': 'desc',
-            'key': '0',
-            'page': '1',
-            'creator': '',
-            'sortShow': 'sendDate:desc',
-          },
-          options: _portalOptions(timeout: timeout),
-        );
-        return response.data;
-      },
-      shouldRetry: (value) => value == null || value.trim().isEmpty,
-    );
+    final firstPage = await NetworkRequestPool.shared.execute<String>((timeout) async {
+      final response = await dio.get<String>(
+        _taskListUrl,
+        queryParameters: <String, String>{
+          'type': '3',
+          'state': state,
+          'name': 'sendDate',
+          'mode': 'desc',
+          'key': '0',
+          'page': '1',
+          'creator': '',
+          'sortShow': 'sendDate:desc',
+        },
+        options: _portalOptions(timeout: timeout),
+      );
+      return response.data;
+    }, shouldRetry: (value) => value == null || value.trim().isEmpty);
     if (firstPage == null) {
       throw StateError('Unable to load nPortal task list for state $state');
     }
@@ -98,12 +92,13 @@ class NPortalTaskConnector {
     // 1-retry / 200ms retry-delay policy as score and imported-course loading.
     while (nextPage <= _maxListPages) {
       final batchSize = NetworkRequestPool.shared.maxConnections;
-      final batchEnd = (nextPage + batchSize - 1) > _maxListPages
-          ? _maxListPages
-          : nextPage + batchSize - 1;
+      final batchEnd = (nextPage + batchSize - 1) > _maxListPages ? _maxListPages : nextPage + batchSize - 1;
       final pages = <int>[for (var page = nextPage; page <= batchEnd; page++) page];
       final batch = await NetworkRequestPool.shared.run<List<dynamic>>(
-        pages.map((page) => (timeout) => _fetchTaskListPage(page, state, timeout)),
+        pages.map(
+          (page) =>
+              (timeout) => _fetchTaskListPage(page, state, timeout),
+        ),
       );
 
       var stop = false;
@@ -125,11 +120,7 @@ class NPortalTaskConnector {
     return deduped;
   }
 
-  static Future<List<dynamic>?> _fetchTaskListPage(
-    int page,
-    String state,
-    Duration timeout,
-  ) async {
+  static Future<List<dynamic>?> _fetchTaskListPage(int page, String state, Duration timeout) async {
     final response = await dio.get<dynamic>(
       _taskListNextUrl,
       queryParameters: <String, String>{
@@ -158,10 +149,12 @@ class NPortalTaskConnector {
       return false;
     }
 
-    final fingerprint = pageData.map((item) {
-      if (item is! Map) return item.toString();
-      return '${item['id'] ?? ''}|${item['subject'] ?? ''}';
-    }).join('\\u0001');
+    final fingerprint = pageData
+        .map((item) {
+          if (item is! Map) return item.toString();
+          return '${item['id'] ?? ''}|${item['subject'] ?? ''}';
+        })
+        .join('\\u0001');
     if (!seenPageFingerprints.add(fingerprint)) {
       return false;
     }
@@ -218,11 +211,7 @@ class NPortalTaskConnector {
     return (targetDn == null || targetDn.isEmpty) ? null : targetDn;
   }
 
-  static Future<bool> createTask({
-    required String subject,
-    required String content,
-    required String targetDn,
-  }) async {
+  static Future<bool> createTask({required String subject, required String content, required String targetDn}) async {
     final response = await dio.post<String>(
       _taskSaveUrl,
       data: <String, String>{
@@ -245,11 +234,7 @@ class NPortalTaskConnector {
     return success;
   }
 
-  static Future<bool> updateTask({
-    required String id,
-    required String subject,
-    required String content,
-  }) async {
+  static Future<bool> updateTask({required String id, required String subject, required String content}) async {
     final normalizedId = id.trim();
     if (normalizedId.isEmpty) return false;
 
@@ -286,10 +271,7 @@ class NPortalTaskConnector {
 
     final response = await dio.post<String>(
       _taskSaveUrl,
-      data: <String, String>{
-        'id': normalizedId,
-        'taskStatus': _completedStatus,
-      },
+      data: <String, String>{'id': normalizedId, 'taskStatus': _completedStatus},
       options: _portalOptions(),
     );
     final success = _saveSucceeded(response.data, allowEmpty: true);
@@ -308,11 +290,7 @@ class NPortalTaskConnector {
     if (!success) throw StateError('nPortal rejected task deletion for $normalizedId');
   }
 
-  static List<NPortalTaskRef>? _parseMobileTaskGroups(
-    String source,
-    String subject,
-    String state,
-  ) {
+  static List<NPortalTaskRef>? _parseMobileTaskGroups(String source, String subject, String state) {
     final value = source.trim();
     if (!value.startsWith('[')) return null;
 
@@ -373,11 +351,9 @@ class NPortalTaskConnector {
     final idPattern = RegExp(r'''taskShow\(["'](\d+)["']\)''');
 
     final anchors = document.querySelectorAll('a[onclick]');
-    var taskShowAnchors = 0;
     for (final anchor in anchors) {
       final match = idPattern.firstMatch(anchor.attributes['onclick'] ?? '');
       if (match == null) continue;
-      taskShowAnchors++;
       final itemSubject = anchor.children.isNotEmpty ? anchor.children.first.text.trim() : anchor.text.trim();
       if (itemSubject != subject) continue;
       final id = match.group(1)?.trim() ?? '';

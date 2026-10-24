@@ -57,10 +57,7 @@ class RouteUtils {
   }
 
   static Future<String?> toCourseTableSelectPage({Future<void> Function(String studentId)? onDeleted}) async {
-    return await Get.to<String>(
-      () => CourseTableSelectPage(onDeleted: onDeleted),
-      transition: transition,
-    );
+    return await Get.to<String>(() => CourseTableSelectPage(onDeleted: onDeleted), transition: transition);
   }
 
   static Future<dynamic> toPrivacyPolicyPage() async {

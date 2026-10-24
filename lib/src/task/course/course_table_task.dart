@@ -60,11 +60,7 @@ class CourseTableTask extends CourseSystemTask<CourseTableJson> {
   }
 
   CourseTableJson _buildCourseTable(CourseMainInfo value) {
-    final courseTable = CourseTableJson(
-      courseSemester: semester,
-      studentId: studentId,
-      studentName: value.studentName,
-    );
+    final courseTable = CourseTableJson(courseSemester: semester, studentId: studentId, studentName: value.studentName);
     final storage = LocalStorage.instance;
 
     for (final courseMainInfo in value.json) {

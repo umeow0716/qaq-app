@@ -524,25 +524,16 @@ class CourseConnector {
     }
   }
 
-  static CourseMainInfoJson _parseQueryCourseRow(
-    List<Element> cells,
-    CourseTableShareCourse sharedCourse,
-  ) {
-    const dayOrder = <Day>[
-      Day.Sunday,
-      Day.Monday,
-      Day.Tuesday,
-      Day.Wednesday,
-      Day.Thursday,
-      Day.Friday,
-      Day.Saturday,
-    ];
+  static CourseMainInfoJson _parseQueryCourseRow(List<Element> cells, CourseTableShareCourse sharedCourse) {
+    const dayOrder = <Day>[Day.Sunday, Day.Monday, Day.Tuesday, Day.Wednesday, Day.Thursday, Day.Friday, Day.Saturday];
 
     final courseAnchor = cells[1].querySelector('a[href]');
     final course = CourseMainJson(
       id: strQ2B(cells[0].text).replaceAll(RegExp(r'\s'), ''),
       name: courseAnchor?.text.trim() ?? cells[1].text.trim(),
-      href: courseAnchor == null ? '' : Uri.parse(_courseCNHost).resolve(courseAnchor.attributes['href'] ?? '').toString(),
+      href: courseAnchor == null
+          ? ''
+          : Uri.parse(_courseCNHost).resolve(courseAnchor.attributes['href'] ?? '').toString(),
       stage: strQ2B(cells[2].text).trim(),
       credits: strQ2B(cells[3].text).trim(),
       hours: strQ2B(cells[4].text).trim(),

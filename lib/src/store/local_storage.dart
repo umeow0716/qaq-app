@@ -247,8 +247,7 @@ class LocalStorage {
 
   bool getCourseTableCloudSyncDirty() => _preferences.getBool(_courseTableCloudSyncDirtyKey) ?? false;
 
-  Future<void> setCourseTableCloudSyncDirty(bool value) =>
-      _preferences.setBool(_courseTableCloudSyncDirtyKey, value);
+  Future<void> setCourseTableCloudSyncDirty(bool value) => _preferences.setBool(_courseTableCloudSyncDirtyKey, value);
 
   CourseTableSharePerson? getImportedCourseTableSharePerson(String studentId) {
     final normalized = studentId.trim();
@@ -317,9 +316,7 @@ class LocalStorage {
     });
   }
 
-  Future<void> _replaceImportedCourseTableSharePeopleUnlocked(
-    Iterable<CourseTableSharePerson> people,
-  ) async {
+  Future<void> _replaceImportedCourseTableSharePeopleUnlocked(Iterable<CourseTableSharePerson> people) async {
     final account = getAccount().trim();
     final incoming = <String, CourseTableSharePerson>{};
     for (final person in people) {
@@ -349,10 +346,7 @@ class LocalStorage {
     }
   }
 
-  Future<bool> deleteImportedCourseTableSharePerson(
-    String studentId, {
-    bool markCloudDirty = true,
-  }) async {
+  Future<bool> deleteImportedCourseTableSharePerson(String studentId, {bool markCloudDirty = true}) async {
     final normalized = studentId.trim();
     if (normalized.isEmpty || normalized == getAccount().trim()) return false;
 

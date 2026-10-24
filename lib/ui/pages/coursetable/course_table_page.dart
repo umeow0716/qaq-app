@@ -199,9 +199,7 @@ class _CourseTablePageState extends State<CourseTablePage> {
       ..sort((a, b) {
         final year = (int.tryParse(b.courseSemester.year) ?? -1).compareTo(int.tryParse(a.courseSemester.year) ?? -1);
         if (year != 0) return year;
-        return (int.tryParse(b.courseSemester.semester) ?? -1).compareTo(
-          int.tryParse(a.courseSemester.semester) ?? -1,
-        );
+        return (int.tryParse(b.courseSemester.semester) ?? -1).compareTo(int.tryParse(a.courseSemester.semester) ?? -1);
       });
 
     storage.clearSemesterJsonList();

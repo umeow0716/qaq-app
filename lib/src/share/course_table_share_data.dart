@@ -32,10 +32,13 @@ class CourseTableShareCourse {
 }
 
 class CourseTableSharePerson {
-  CourseTableSharePerson({required this.studentId, required this.name, required Map<String, List<CourseTableShareCourse>> semesters})
-    : semesters = Map<String, List<CourseTableShareCourse>>.unmodifiable(
-        semesters.map((key, value) => MapEntry(key, List<CourseTableShareCourse>.unmodifiable(value))),
-      );
+  CourseTableSharePerson({
+    required this.studentId,
+    required this.name,
+    required Map<String, List<CourseTableShareCourse>> semesters,
+  }) : semesters = Map<String, List<CourseTableShareCourse>>.unmodifiable(
+         semesters.map((key, value) => MapEntry(key, List<CourseTableShareCourse>.unmodifiable(value))),
+       );
 
   final String studentId;
   final String name;
@@ -99,9 +102,7 @@ class CourseTableSharePerson {
   Map<String, dynamic> toJson() => <String, dynamic>{
     'studentId': studentId,
     'name': name,
-    'semesters': semesters.map(
-      (key, value) => MapEntry(key, value.map((course) => course.toJson()).toList()),
-    ),
+    'semesters': semesters.map((key, value) => MapEntry(key, value.map((course) => course.toJson()).toList())),
   };
 
   static SemesterJson? _semesterFromKey(String value) {
