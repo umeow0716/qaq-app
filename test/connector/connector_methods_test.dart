@@ -325,6 +325,25 @@ void main() {
       expect(adapter.requests.where((request) => request.uri.path == '/taskListNext.do'), isEmpty);
     });
 
+    test('partially shaped mobile task groups fail closed', () async {
+      respond((request) => _ok('[{"typeId":3}]'));
+      await expectLater(NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步'), throwsStateError);
+    });
+
+    test('login HTML is not interpreted as an empty task list', () async {
+      respond((request) => _ok('<html><body><form id="loginForm"></form></body></html>'));
+      await expectLater(NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步'), throwsStateError);
+    });
+
+    test('malformed mobile task listing never becomes an empty cloud', () async {
+      respond((request) => _ok('[{malformed json]'));
+      await expectLater(
+        NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步'),
+        throwsStateError,
+      );
+      expect(adapter.requests.where((request) => request.uri.path == '/taskListNext.do'), isEmpty);
+    });
+
     test('findTasksBySubject stops repeated final page for completed state', () async {
       respond((request) {
         if (request.uri.path == '/task5List.do') {
@@ -368,6 +387,11 @@ void main() {
 
       body('<html><form id="loginForm"></form></html>');
       await expectLater(NPortalTaskConnector.getTaskContent('215563'), throwsStateError);
+    });
+
+    test('an explicitly blank task content is readable evidence, not network failure', () async {
+      body('{"content":""}');
+      expect(await NPortalTaskConnector.getTaskContent('215563'), '');
     });
 
     test('getDefaultTargetDn reads the self target from the new-task form', () async {
