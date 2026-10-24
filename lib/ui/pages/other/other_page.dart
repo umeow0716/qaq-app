@@ -37,6 +37,7 @@ enum OnListViewPress {
   login,
   subSystem,
   installDesktopApp,
+  emptyClassroom,
 }
 
 class OtherPage extends StatefulWidget {
@@ -61,6 +62,12 @@ class _OtherPageState extends State<OtherPage> {
       "color": Colors.orange,
       "title": R.current.setting,
       "onPress": OnListViewPress.setting,
+    },
+    {
+      "icon": Icons.meeting_room_outlined,
+      "color": Colors.deepPurpleAccent,
+      "title": LanguageUtil.getLangIndex() == LangEnum.en ? "Find Empty Classrooms" : "尋找空教室",
+      "onPress": OnListViewPress.emptyClassroom,
     },
     {
       "icon": Icons.computer,
@@ -260,6 +267,9 @@ class _OtherPageState extends State<OtherPage> {
 
   void _onListViewPress(OnListViewPress value) async {
     switch (value) {
+      case OnListViewPress.emptyClassroom:
+        RouteUtils.toEmptyClassroomPage();
+        break;
       case OnListViewPress.subSystem:
         RouteUtils.toSubSystemPage(R.current.informationSystem, null);
         break;

@@ -25,6 +25,7 @@ import 'package:qaq_app/ui/pages/other/page/sub_system_page.dart';
 import 'package:qaq_app/ui/pages/calendar/calendar_page.dart';
 import 'package:qaq_app/ui/pages/coursedetail/desktop_course_inspector.dart';
 import 'package:qaq_app/ui/pages/coursetable/course_table_page.dart';
+import 'package:qaq_app/ui/pages/emptyclassroom/empty_classroom_page.dart';
 import 'package:qaq_app/ui/pages/score/score_page.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_web_view.dart';
 import 'package:provider/provider.dart';
@@ -47,6 +48,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
   static const double _workspaceBottomClearance = 42.0;
 
   int _workspaceIndex = 0;
+  bool _emptyClassroomOpened = false;
   CourseInfoJson? _selectedCourse;
   late final AnimationController _courseInspectorController;
   bool _courseTableCompactLayout = false;
@@ -60,6 +62,7 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
 
   bool get _isEnglish => LanguageUtil.getLangIndex() == LangEnum.en;
   String get _courseSystemLabel => _isEnglish ? 'Course system' : '課程系統';
+  String get _emptyClassroomLabel => _isEnglish ? 'Empty classrooms' : '尋找空教室';
   String get _vpnLabel => 'VPN';
   String get _chooseAvatarLabel => _isEnglish ? 'Choose from files' : '從檔案選擇';
 
@@ -173,6 +176,9 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
     }
     setState(() {
       _workspaceIndex = index;
+      if (index == 3) {
+        _emptyClassroomOpened = true;
+      }
       if (index != 0) {
         _selectedCourse = null;
         _courseTableCompactLayout = false;
@@ -428,6 +434,10 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                   TickerMode(enabled: _workspaceIndex == 2, child: const ScoreViewerPage()),
                   TickerMode(
                     enabled: _workspaceIndex == 3,
+                    child: _emptyClassroomOpened ? const EmptyClassroomPage(embedded: true) : const SizedBox.shrink(),
+                  ),
+                  TickerMode(
+                    enabled: _workspaceIndex == 4,
                     child: SubSystemPage(
                       title: R.current.informationSystem,
                       embedded: true,
@@ -461,9 +471,14 @@ class _DesktopMainScreenState extends State<DesktopMainScreen> with SingleTicker
                 onTap: () => _selectWorkspace(2),
               ),
               _WorkspaceTab(
-                label: _courseSystemLabel,
+                label: _emptyClassroomLabel,
                 selected: _workspaceIndex == 3,
                 onTap: () => _selectWorkspace(3),
+              ),
+              _WorkspaceTab(
+                label: _courseSystemLabel,
+                selected: _workspaceIndex == 4,
+                onTap: () => _selectWorkspace(4),
               ),
             ],
           ),

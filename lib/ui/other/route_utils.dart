@@ -5,6 +5,7 @@ import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/ui/pages/coursedetail/course_detail_page.dart';
 import 'package:qaq_app/ui/pages/coursetable/course_table_share_page.dart';
 import 'package:qaq_app/ui/pages/coursetable/course_table_select_page.dart';
+import 'package:qaq_app/ui/pages/emptyclassroom/empty_classroom_page.dart';
 import 'package:qaq_app/ui/pages/coursedetail/screen/ischoolplus/iplus_announcement_detail_page.dart';
 import 'package:qaq_app/ui/pages/fileviewer/file_viewer_page.dart';
 import 'package:qaq_app/ui/pages/logconsole/log_console.dart';
@@ -58,6 +59,10 @@ class RouteUtils {
 
   static Future<String?> toCourseTableSelectPage({Future<void> Function(String studentId)? onDeleted}) async {
     return await Get.to<String>(() => CourseTableSelectPage(onDeleted: onDeleted), transition: transition);
+  }
+
+  static Future<dynamic> toEmptyClassroomPage() async {
+    return await Get.to(() => const EmptyClassroomPage(), transition: transition);
   }
 
   static Future<dynamic> toPrivacyPolicyPage() async {
