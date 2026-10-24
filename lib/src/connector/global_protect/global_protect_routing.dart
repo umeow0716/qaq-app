@@ -13,9 +13,9 @@ class GlobalProtectRouting {
   GlobalProtectRouting._();
 
   static const portalHost = 'nportal.ntut.edu.tw';
-  static const studyHosts = <String>['istudy.ntut.edu.tw', 'istudycloud.ntut.edu.tw'];
+  static const studyHosts = <String>['istudy.ntut.edu.tw', 'istudycloud.ntut.edu.tw', 'postman.ntut.edu.tw'];
   // Keep the portal on its login route: switching its session onto GP makes
-  // the server ask for login again. Only the destination iStudy hosts use GP.
+  // the server ask for login again. Only the destination VPN target hosts use GP.
   static const webViewProxyHosts = studyHosts;
 
   static String normalizeHost(String host) => host.toLowerCase().replaceFirst(RegExp(r'\.$'), '');
@@ -25,7 +25,7 @@ class GlobalProtectRouting {
   static bool isStudySso(Uri uri) =>
       normalizeHost(uri.host) == portalHost &&
       uri.path == '/ssoIndex.do' &&
-      const {'ischool_plus', 'ischool_plus_oauth'}.contains(uri.queryParameters['apOu']);
+      const {'ischool_plus', 'ischool_plus_oauth', 'test_postman'}.contains(uri.queryParameters['apOu']);
 
   static bool requiresStudyRoute(Uri uri, {String? ssoRedirectUri}) {
     if (isStudyHost(uri.host) || isStudySso(uri)) return true;

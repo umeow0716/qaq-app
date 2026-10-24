@@ -22,6 +22,10 @@ void main() {
         GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'istudycloud.ntut.edu.tw', vpnHosts: vpnHosts),
         isTrue,
       );
+      expect(
+        GlobalProtectProxyBridge.shouldRouteThroughGlobalProtect(host: 'postman.ntut.edu.tw', vpnHosts: vpnHosts),
+        isTrue,
+      );
     });
 
     test('keeps portal authentication direct while tunneling study downloads', () {
@@ -64,6 +68,7 @@ void main() {
       expect(response, contains('HTTP/1.1 200 OK'));
       expect(response, contains('"istudy.ntut.edu.tw"'));
       expect(response, contains('"istudycloud.ntut.edu.tw"'));
+      expect(response, contains('"postman.ntut.edu.tw"'));
       expect(response, isNot(contains('"nportal.ntut.edu.tw"')));
       expect(response, contains('PROXY 127.0.0.1:$port'));
       expect(response, contains('return "DIRECT"'));
