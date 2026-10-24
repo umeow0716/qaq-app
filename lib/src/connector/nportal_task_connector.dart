@@ -32,10 +32,19 @@ class NPortalTaskConnector {
     if (normalizedSubject.isEmpty) return const <NPortalTaskRef>[];
 
     // Cloud snapshots are authoritative only when they are private completed
-    // tasks. Unfinished/processing tasks are deliberately ignored: they may be
-    // abandoned staging writes from an interrupted copy-on-write commit, and
-    // are never needed to recover the last complete generation.
+    // tasks. Unfinished/processing tasks are deliberately ignored by readers.
     return _findTasksBySubjectState(normalizedSubject, _completedStatus);
+  }
+
+  /// Finds private unfinished tasks only for the copy-on-write staging flow.
+  ///
+  /// These tasks are never treated as an authoritative cloud snapshot. The
+  /// writer needs their IDs after taskSave.do creates them so it can atomically
+  /// promote the whole generation to completed state.
+  static Future<List<NPortalTaskRef>> findStagedTasksBySubject(String subject) async {
+    final normalizedSubject = subject.trim();
+    if (normalizedSubject.isEmpty) return const <NPortalTaskRef>[];
+    return _findTasksBySubjectState(normalizedSubject, '0');
   }
 
   static Future<List<NPortalTaskRef>> _findTasksBySubjectState(String subject, String state) async {

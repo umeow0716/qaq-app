@@ -254,6 +254,42 @@ void main() {
       );
     });
 
+    test('findStagedTasksBySubject scans only private unfinished tasks', () async {
+      respond((request) {
+        if (request.uri.path != '/task5List.do') {
+          throw StateError('Mobile grouped JSON should not request taskListNext.do');
+        }
+        expect(request.uri.queryParameters['type'], '3');
+        expect(request.uri.queryParameters['state'], '0');
+        return _ok(
+          json.encode(<Map<String, dynamic>>[
+            <String, dynamic>{
+              'typeId': 1,
+              'typeName': '系統通知',
+              'taskList': <Map<String, dynamic>>[
+                <String, dynamic>{'id': 215820, 'subject': 'QAQ 課表跨裝置同步', 'status': 0},
+              ],
+            },
+            <String, dynamic>{
+              'typeId': 3,
+              'typeName': '私人事項',
+              'taskList': <Map<String, dynamic>>[
+                <String, dynamic>{'id': 215821, 'subject': 'QAQ 課表跨裝置同步', 'status': 0},
+                <String, dynamic>{'id': 215822, 'subject': 'QAQ 課表跨裝置同步', 'status': 100},
+                <String, dynamic>{'id': 215823, 'subject': '其他事項', 'status': 0},
+              ],
+            },
+          ]),
+        );
+      });
+
+      final tasks = await NPortalTaskConnector.findStagedTasksBySubject('QAQ 課表跨裝置同步');
+
+      expect(tasks.map((task) => task.id), <String>['215821']);
+      expect(adapter.requests.where((request) => request.uri.path == '/task5List.do'), hasLength(1));
+      expect(adapter.requests.where((request) => request.uri.path == '/taskListNext.do'), isEmpty);
+    });
+
     test('findTasksBySubject filters mobile grouped JSON to private completed only', () async {
       respond((request) {
         if (request.uri.path != '/task5List.do') {

@@ -16,6 +16,7 @@ class CourseTableCloudSync {
   static const int maxTaskContentLength = 255;
   static const int _fragmentReserve = 32;
   static const int _maxCloudParts = 999;
+  static const Duration _abandonedStagingMinAge = Duration(minutes: 30);
   static const List<Duration> _retryDelays = <Duration>[
     Duration(seconds: 30),
     Duration(minutes: 2),
@@ -247,6 +248,12 @@ class CourseTableCloudSync {
     // Also prove the staged fragments form one complete decodable generation.
     decodeSnapshotUrls(verifyReads.map((read) => read.content!).toList(growable: false));
 
+    // Content reads alone do not prove another device can discover this
+    // generation, because readers intentionally query state=100 only. Wait
+    // until every newly committed ID is visible through the completed-task
+    // finder before removing the rollback generation.
+    await _waitUntilCompletedTasksAreDiscoverable(staged.map((read) => read.task.id).toSet());
+
     // Commit succeeded. Old-task cleanup must never make a successful new
     // snapshot look failed: stale generations are harmless because decoding
     // selects the newest complete generation, and a future successful push will
@@ -258,13 +265,62 @@ class CourseTableCloudSync {
         Log.eWithStack('Deferred cleanup of old course table sync task ${task.id}: $error', stackTrace);
       }
     }
+
+    // A crash/network loss can leave old state=0 staging tasks behind. They are
+    // never authoritative, but repeated retries would otherwise accumulate
+    // them forever. Only remove same-title QAQ staging fragments that are old
+    // enough to be abandoned; this avoids deleting another device's active
+    // copy-on-write generation. Unknown/manual tasks are left alone.
+    await _cleanupAbandonedStagingTasks(staged.map((read) => read.task.id).toSet());
+  }
+
+  Future<void> _waitUntilCompletedTasksAreDiscoverable(Set<String> expectedTaskIds) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      final completed = await _findCloudTasks();
+      final completedIds = completed.map((task) => task.id).toSet();
+      if (expectedTaskIds.every(completedIds.contains)) return;
+    }
+    throw StateError('New nPortal sync generation is not visible as completed tasks');
+  }
+
+  Future<void> _cleanupAbandonedStagingTasks(Set<String> protectedTaskIds) async {
+    try {
+      final tasks = await NPortalTaskConnector.findStagedTasksBySubject(taskTitle);
+      if (tasks.isEmpty) return;
+
+      final reads = await NetworkRequestPool.shared.run<_CloudTaskRead>(
+        tasks.map(
+          (task) =>
+              (timeout) async => _CloudTaskRead(
+                task: task,
+                content: await NPortalTaskConnector.getTaskContent(task.id, timeout: timeout),
+              ),
+        ),
+        shouldRetry: (read) => read == null || read.content == null,
+      );
+      for (final read in reads.whereType<_CloudTaskRead>()) {
+        if (protectedTaskIds.contains(read.task.id)) continue;
+        final content = read.content?.trim() ?? '';
+        if (!_looksLikeSnapshotUrl(content) || !_isAbandonedStagingSnapshot(content)) continue;
+        try {
+          await NPortalTaskConnector.deleteTask(read.task.id);
+        } catch (error, stackTrace) {
+          Log.eWithStack('Deferred cleanup of staged course table sync task ${read.task.id}: $error', stackTrace);
+        }
+      }
+    } catch (error, stackTrace) {
+      // Cleanup is best-effort and must never turn a verified commit into a
+      // failed sync. A later successful push will retry it.
+      Log.eWithStack('Deferred cleanup of staged course table sync tasks: $error', stackTrace);
+    }
   }
 
   Future<List<_CloudTaskRead>> _rediscoverStagedTasks(Set<String> knownTaskIds, List<String> expectedContents) async {
     for (var attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
 
-      final discovered = await _findCloudTasks();
+      final discovered = await NPortalTaskConnector.findStagedTasksBySubject(taskTitle);
       final candidates = discovered.where((task) => !knownTaskIds.contains(task.id)).toList(growable: false);
       if (candidates.length < expectedContents.length) continue;
 
@@ -292,6 +348,20 @@ class CourseTableCloudSync {
     }
 
     throw StateError('Unable to rediscover a complete staged nPortal sync generation');
+  }
+
+  static bool _isAbandonedStagingSnapshot(String content) {
+    try {
+      final uri = Uri.parse(content);
+      final generation = Uri.splitQueryString(uri.fragment)['g'];
+      if (generation == null) return false;
+      final createdMicros = int.tryParse(generation, radix: 36);
+      if (createdMicros == null) return false;
+      final ageMicros = DateTime.now().microsecondsSinceEpoch - createdMicros;
+      return ageMicros >= _abandonedStagingMinAge.inMicroseconds;
+    } catch (_) {
+      return false;
+    }
   }
 
   static bool _looksLikeSnapshotUrl(String content) {
