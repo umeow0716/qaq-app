@@ -462,6 +462,15 @@ class _CourseTablePageState extends State<CourseTablePage> {
                   ),
                 )
               : const SizedBox.shrink(),
+          if (!isLoading && courseTableData?.studentId.trim() == LocalStorage.instance.getAccount().trim())
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: IconButton(
+                tooltip: R.current.courseShareTitle,
+                onPressed: RouteUtils.toCourseTableSharePage,
+                icon: const Icon(Icons.share_outlined),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 20),
             child: InkWell(
@@ -578,6 +587,14 @@ class _CourseTablePageState extends State<CourseTablePage> {
                       ),
                       const SizedBox(width: 8),
                     ],
+                    if (!isLoading && studentId == LocalStorage.instance.getAccount().trim())
+                      Tooltip(
+                        message: R.current.courseShareTitle,
+                        child: IconButton(
+                          onPressed: _desktopRefreshing ? null : RouteUtils.toCourseTableSharePage,
+                          icon: const Icon(Icons.share_outlined),
+                        ),
+                      ),
                     Tooltip(
                       message: R.current.refresh,
                       child: IconButton(

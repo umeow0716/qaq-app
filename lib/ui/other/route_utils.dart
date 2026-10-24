@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/ui/pages/coursedetail/course_detail_page.dart';
+import 'package:qaq_app/ui/pages/coursetable/course_table_share_page.dart';
 import 'package:qaq_app/ui/pages/coursedetail/screen/ischoolplus/iplus_announcement_detail_page.dart';
 import 'package:qaq_app/ui/pages/fileviewer/file_viewer_page.dart';
 import 'package:qaq_app/ui/pages/logconsole/log_console.dart';
@@ -48,6 +49,10 @@ class RouteUtils {
 
   static Future<dynamic> toISchoolPage(String studentId, CourseInfoJson courseInfo) async {
     return await Get.to(() => ISchoolPage(studentId, courseInfo), transition: transition);
+  }
+
+  static Future<dynamic> toCourseTableSharePage() async {
+    return await Get.to(() => const CourseTableSharePage(), transition: transition);
   }
 
   static Future<dynamic> toPrivacyPolicyPage() async {
