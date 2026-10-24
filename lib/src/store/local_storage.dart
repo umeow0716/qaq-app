@@ -45,6 +45,7 @@ class LocalStorage {
   final _userDataJsonKey = "UserDataJsonKey";
   final _courseTableJsonKey = "CourseTableJsonListKey";
   final _importedCourseTableShareKey = "ImportedCourseTableShareKey";
+  final _importedCourseTableCacheKey = "ImportedCourseTableCacheKey";
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
@@ -53,6 +54,7 @@ class LocalStorage {
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
+  final _importedCourseTableCacheList = <CourseTableJson>[];
   final _importedCourseTableSharePeople = <CourseTableSharePerson>[];
 
   CookieJar? _cookieJar;
@@ -202,6 +204,42 @@ class LocalStorage {
     );
   }
 
+  CourseTableJson? getImportedCourseTableCache(String studentId, SemesterJson courseSemester) {
+    final normalized = studentId.trim();
+    if (normalized.isEmpty) return null;
+
+    return _importedCourseTableCacheList.firstWhereOrNull(
+      (courseTable) => courseTable.courseSemester == courseSemester && courseTable.studentId.trim() == normalized,
+    );
+  }
+
+  Future<void> cacheImportedCourseTable(CourseTableJson courseTable) {
+    final studentId = courseTable.studentId.trim();
+    if (studentId.isEmpty) return Future<void>.value();
+
+    _importedCourseTableCacheList.removeWhere(
+      (saved) => saved.courseSemester == courseTable.courseSemester && saved.studentId.trim() == studentId,
+    );
+    _importedCourseTableCacheList.add(courseTable);
+    return saveImportedCourseTableCache();
+  }
+
+  Future<void> saveImportedCourseTableCache() => _save(_importedCourseTableCacheKey, _importedCourseTableCacheList);
+
+  void _loadImportedCourseTableCache() {
+    final readJsonList = _readStringList(_importedCourseTableCacheKey);
+    _importedCourseTableCacheList.clear();
+    if (readJsonList == null) return;
+
+    for (final readJson in readJsonList) {
+      try {
+        _importedCourseTableCacheList.add(CourseTableJson.fromJson(json.decode(readJson)));
+      } catch (_) {
+        // Ignore malformed imported course table cache entries.
+      }
+    }
+  }
+
   List<CourseTableSharePerson> getImportedCourseTableSharePeople() =>
       List<CourseTableSharePerson>.unmodifiable(_importedCourseTableSharePeople);
 
@@ -217,8 +255,13 @@ class LocalStorage {
       _importedCourseTableSharePeople.removeWhere((saved) => saved.studentId == studentId);
       _importedCourseTableSharePeople.add(person);
       _courseTableList.removeWhere((table) => table.studentId.trim() == studentId);
+      _importedCourseTableCacheList.removeWhere((table) => table.studentId.trim() == studentId);
     }
-    await Future.wait(<Future<void>>[saveImportedCourseTableSharePeople(), saveCourseTableList()]);
+    await Future.wait(<Future<void>>[
+      saveImportedCourseTableSharePeople(),
+      saveCourseTableList(),
+      saveImportedCourseTableCache(),
+    ]);
   }
 
   Future<bool> deleteImportedCourseTableSharePerson(String studentId) async {
@@ -239,6 +282,9 @@ class LocalStorage {
     for (final table in _courseTableList.where((table) => table.studentId.trim() == normalized)) {
       deletedCourseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
     }
+    for (final table in _importedCourseTableCacheList.where((table) => table.studentId.trim() == normalized)) {
+      deletedCourseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
 
     final currentCourseTable = _setting.course.info;
     final wasCurrent = currentCourseTable.studentId.trim() == normalized;
@@ -248,6 +294,7 @@ class LocalStorage {
 
     _importedCourseTableSharePeople.removeWhere((person) => person.studentId.trim() == normalized);
     _courseTableList.removeWhere((table) => table.studentId.trim() == normalized);
+    _importedCourseTableCacheList.removeWhere((table) => table.studentId.trim() == normalized);
 
     if (wasCurrent) {
       _setting.course = CourseSettingJson();
@@ -264,6 +311,7 @@ class LocalStorage {
     final writes = <Future<void>>[
       saveImportedCourseTableSharePeople(),
       saveCourseTableList(),
+      saveImportedCourseTableCache(),
       saveCourseExtraInfoCache(),
       saveCourseClassroomCache(),
     ];
@@ -288,6 +336,9 @@ class LocalStorage {
     }
 
     for (final table in _courseTableList) {
+      courseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
+    }
+    for (final table in _importedCourseTableCacheList) {
       courseIds.addAll(table.getCourseIdList().map((id) => id.trim()).where((id) => id.isNotEmpty));
     }
 
@@ -679,6 +730,7 @@ class LocalStorage {
     );
     await _loadUserData();
     _loadCourseTableList();
+    _loadImportedCourseTableCache();
     _loadImportedCourseTableSharePeople();
     _loadSetting();
     _loadCourseScoreCredit();
@@ -724,6 +776,7 @@ class LocalStorage {
   void _resetUserScopedMemory() {
     _userData = UserDataJson();
     _courseTableList.clear();
+    _importedCourseTableCacheList.clear();
     _importedCourseTableSharePeople.clear();
     _courseSemesterList.clear();
     _courseScoreList = CourseScoreCreditJson();
@@ -740,6 +793,7 @@ class LocalStorage {
       _secureStorage.delete(key: _ntutPasswordStorageKey),
       _remove(_userDataJsonKey),
       _remove(_courseTableJsonKey),
+      _remove(_importedCourseTableCacheKey),
       _remove(_importedCourseTableShareKey),
       _remove(_courseSemesterJsonKey),
       _remove(_scoreCreditJsonKey),

@@ -304,13 +304,16 @@ class _CourseTablePageState extends State<CourseTablePage> {
       }
       if (semesterJson == null) return;
 
+      final storage = LocalStorage.instance;
+      final imported = storage.getImportedCourseTableSharePerson(effectiveStudentId);
       CourseTableJson? courseTable;
       if (!refresh) {
-        courseTable = LocalStorage.instance.getCourseTable(effectiveStudentId, semesterJson); //去取找是否已經暫存
+        courseTable = imported != null
+            ? storage.getImportedCourseTableCache(effectiveStudentId, semesterJson)
+            : storage.getCourseTable(effectiveStudentId, semesterJson);
       }
       if (courseTable == null) {
         final taskFlow = TaskFlow();
-        final imported = LocalStorage.instance.getImportedCourseTableSharePerson(effectiveStudentId);
         if (imported != null) {
           final task = SharedCourseTableTask(imported, semesterJson)..openLoadingDialog = !_isDesktop;
           taskFlow.addTask(task);
