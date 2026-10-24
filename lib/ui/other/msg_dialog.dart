@@ -55,12 +55,15 @@ class MsgDialog {
   const factory MsgDialog(MsgDialogParameter parameter) = MsgDialog._;
   const MsgDialog._(this.parameter);
 
+  static bool _isShowing = false;
+
   final MsgDialogParameter parameter;
 
   Future<void> show({BuildContext? context}) {
     final dialogContext = context ?? AppNavigator.key.currentContext;
-    if (dialogContext == null) return Future<void>.value();
+    if (dialogContext == null || _isShowing) return Future<void>.value();
 
+    _isShowing = true;
     final disableTransition = Platform.isWindows || Platform.isLinux;
 
     return showGeneralDialog<void>(
@@ -103,7 +106,7 @@ class MsgDialog {
           ),
         };
       },
-    );
+    ).whenComplete(() => _isShowing = false);
   }
 }
 
