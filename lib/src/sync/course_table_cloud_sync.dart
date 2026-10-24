@@ -182,7 +182,10 @@ class CourseTableCloudSync {
     }
     if (_samePeople(merged, cloud.people!)) {
       return storage.applyVerifiedCourseTableCloudSnapshot(
-        merged, account: account, expectedRevision: revision, completeLocalUpload: true,
+        merged,
+        account: account,
+        expectedRevision: revision,
+        completeLocalUpload: true,
       );
     }
     return _publishVerifiedSnapshot(account, revision, cloud, merged);
@@ -199,14 +202,15 @@ class CourseTableCloudSync {
     // Authentication can expire between the initial read and this write.
     if (!await NTUTConnector.checkSession()) return false;
     final nextGeneration = _nextGenerationAfter(cloud.signature);
-    await _commitSnapshotCopyOnWrite(
-      cloud, encodeSnapshotUrls(people, generation: nextGeneration), account: account,
-    );
+    await _commitSnapshotCopyOnWrite(cloud, encodeSnapshotUrls(people, generation: nextGeneration), account: account);
     // A user mutation may have started during the upload. The cloud now holds
     // an older snapshot, so leave dirty set and retry instead of hiding it.
     if (!_isCurrentAccount(account) || storage.getCourseTableCloudSyncLocalRevision() != revision) return false;
     return storage.applyVerifiedCourseTableCloudSnapshot(
-      people, account: account, expectedRevision: revision, completeLocalUpload: true,
+      people,
+      account: account,
+      expectedRevision: revision,
+      completeLocalUpload: true,
     );
   }
 
@@ -227,9 +231,7 @@ class CourseTableCloudSync {
     required List<CourseTableSharePerson>? base,
     required List<CourseTableSharePerson> local,
     required List<CourseTableSharePerson> remote,
-  }) =>
-      _samePeople(local, remote) ||
-      (base == null ? local.isEmpty : _samePeople(local, base));
+  }) => _samePeople(local, remote) || (base == null ? local.isEmpty : _samePeople(local, base));
 
   /// Three-way, per-person reconciliation. Only local changes relative to a
   /// previously verified base may delete remote people. Simultaneous changes
@@ -271,8 +273,7 @@ class CourseTableCloudSync {
           final courseJson = course.toJson();
           (courseJson['syllabusCodes'] as List<String>).sort();
           return courseJson;
-        }).toList()
-          ..sort((a, b) => '${a['snum']}:${a['currCode']}'.compareTo('${b['snum']}:${b['currCode']}'))),
+        }).toList()..sort((a, b) => '${a['snum']}:${a['currCode']}'.compareTo('${b['snum']}:${b['currCode']}'))),
     };
     return jsonEncode(payload);
   }
@@ -317,8 +318,7 @@ class CourseTableCloudSync {
       if (_hasRecentIncompleteGeneration(candidateUrls)) return null;
       // An unrelated manual task with the same title is not enough evidence
       // to authorize initialization. Prefer preserving the cloud in doubt.
-      if (contents.any((content) =>
-          content.isNotEmpty && !content.startsWith('qaq://course-table/share?'))) {
+      if (contents.any((content) => content.isNotEmpty && !content.startsWith('qaq://course-table/share?'))) {
         return null;
       }
       // Re-read every entry and require identical content before considering
@@ -359,7 +359,9 @@ class CourseTableCloudSync {
   static String? _taskReadSignature(List<_CloudTaskRead> reads) {
     if (reads.any((read) => read.content == null)) return null;
     final sorted = reads.toList()..sort((a, b) => a.task.id.compareTo(b.task.id));
-    return sorted.map((read) => '${read.task.id.length}:${read.task.id}:${read.content!.length}:${read.content!}').join('|');
+    return sorted
+        .map((read) => '${read.task.id.length}:${read.task.id}:${read.content!.length}:${read.content!}')
+        .join('|');
   }
 
   static bool _sameTaskIds(List<NPortalTaskRef> left, List<NPortalTaskRef> right) {
@@ -468,8 +470,7 @@ class CourseTableCloudSync {
       return;
     }
     final oldReads = await _readTasks(existingTasks);
-    if (oldReads == null ||
-        (before.tasks.isNotEmpty && _taskReadSignature(oldReads) != before.signature)) {
+    if (oldReads == null || (before.tasks.isNotEmpty && _taskReadSignature(oldReads) != before.signature)) {
       Log.e('Old snapshot changed during cleanup; preserving old tasks');
       return;
     }

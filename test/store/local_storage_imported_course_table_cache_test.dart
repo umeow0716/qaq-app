@@ -138,9 +138,14 @@ void main() {
     storage.setAccount('99990000');
     final revision = storage.getCourseTableCloudSyncLocalRevision();
     expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
-    expect(await storage.applyVerifiedCourseTableCloudSnapshot(
-      const <CourseTableSharePerson>[], account: '99990000', expectedRevision: revision,
-    ), isTrue);
+    expect(
+      await storage.applyVerifiedCourseTableCloudSnapshot(
+        const <CourseTableSharePerson>[],
+        account: '99990000',
+        expectedRevision: revision,
+      ),
+      isTrue,
+    );
     expect(storage.getCourseTableCloudSyncBasePeople(), isEmpty);
     storage.setAccount('other-account');
     expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
@@ -151,12 +156,16 @@ void main() {
     storage.setAccount('99990000');
     final initialRevision = storage.getCourseTableCloudSyncLocalRevision();
     await storage.setCourseTableCloudSyncDirty(true);
-    expect(await storage.applyVerifiedCourseTableCloudSnapshot(
-      const <CourseTableSharePerson>[],
-      account: '99990000', expectedRevision: initialRevision, completeLocalUpload: true,
-    ), isFalse);
+    expect(
+      await storage.applyVerifiedCourseTableCloudSnapshot(
+        const <CourseTableSharePerson>[],
+        account: '99990000',
+        expectedRevision: initialRevision,
+        completeLocalUpload: true,
+      ),
+      isFalse,
+    );
     expect(storage.getCourseTableCloudSyncDirty(), isTrue);
     expect(storage.getCourseTableCloudSyncBasePeople(), isNull);
   });
-
 }

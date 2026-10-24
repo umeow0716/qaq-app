@@ -83,8 +83,7 @@ class NPortalTaskConnector {
     // Login/error HTML is not an empty task list. Browser-mode list responses
     // contain task anchors or a task-list <ul>; fail closed otherwise.
     final document = html.parse(firstPage);
-    if (document.querySelector('ul') == null &&
-        !firstPage.contains('taskShow(')) {
+    if (document.querySelector('ul') == null && !firstPage.contains('taskShow(')) {
       throw StateError('Unrecognized nPortal task-list HTML for state $state');
     }
     final firstMatches = _parseFirstPage(firstPage, subject);

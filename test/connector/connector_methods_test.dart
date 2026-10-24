@@ -337,10 +337,7 @@ void main() {
 
     test('malformed mobile task listing never becomes an empty cloud', () async {
       respond((request) => _ok('[{malformed json]'));
-      await expectLater(
-        NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步'),
-        throwsStateError,
-      );
+      await expectLater(NPortalTaskConnector.findTasksBySubject('QAQ 課表跨裝置同步'), throwsStateError);
       expect(adapter.requests.where((request) => request.uri.path == '/taskListNext.do'), isEmpty);
     });
 

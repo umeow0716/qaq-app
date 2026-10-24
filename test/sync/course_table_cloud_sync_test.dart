@@ -98,7 +98,8 @@ void main() {
 
   test('unknown base never treats an absent local person as a deletion', () {
     final result = CourseTableCloudSync.mergeSnapshots(
-      base: null, local: const <CourseTableSharePerson>[],
+      base: null,
+      local: const <CourseTableSharePerson>[],
       remote: <CourseTableSharePerson>[_person('11112222', '雲端', 1)],
     );
     expect(result?.single.studentId, '11112222');
@@ -108,7 +109,8 @@ void main() {
     final deleted = _person('11112222', '刪除', 1);
     final added = _person('22223333', '別台新增', 1);
     final result = CourseTableCloudSync.mergeSnapshots(
-      base: <CourseTableSharePerson>[deleted], local: const <CourseTableSharePerson>[],
+      base: <CourseTableSharePerson>[deleted],
+      local: const <CourseTableSharePerson>[],
       remote: <CourseTableSharePerson>[deleted, added],
     );
     expect(result?.map((person) => person.studentId), <String>['22223333']);
@@ -121,13 +123,16 @@ void main() {
     expect(
       CourseTableCloudSync.mergeSnapshots(
         base: <CourseTableSharePerson>[before],
-        local: <CourseTableSharePerson>[local], remote: <CourseTableSharePerson>[remote],
+        local: <CourseTableSharePerson>[local],
+        remote: <CourseTableSharePerson>[remote],
       ),
       isNull,
     );
     expect(
       CourseTableCloudSync.mergeSnapshots(
-        base: null, local: <CourseTableSharePerson>[local], remote: <CourseTableSharePerson>[remote],
+        base: null,
+        local: <CourseTableSharePerson>[local],
+        remote: <CourseTableSharePerson>[remote],
       ),
       isNull,
     );
@@ -144,56 +149,67 @@ void main() {
   });
 
   test('conflicting duplicate fragments do not become a successful snapshot', () {
-    final first = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[_person('11112222', '第一版', 1)], generation: '100',
-    ).single;
-    final second = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[_person('11112222', '衝突版', 1)], generation: '100',
-    ).single;
+    final first = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('11112222', '第一版', 1),
+    ], generation: '100').single;
+    final second = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('11112222', '衝突版', 1),
+    ], generation: '100').single;
     expect(() => CourseTableCloudSync.decodeSnapshotUrls([first, second]), throwsFormatException);
   });
 
   test('corrupt newer complete generation falls back to valid older generation', () {
-    final old = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[_person('11112222', '保留版', 1)], generation: '100',
-    );
-    final corrupt = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[_person('22223333', '損壞版', 1)], generation: '200',
-    ).single.replaceFirst('data=', 'data=broken');
+    final old = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('11112222', '保留版', 1),
+    ], generation: '100');
+    final corrupt = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('22223333', '損壞版', 1),
+    ], generation: '200').single.replaceFirst('data=', 'data=broken');
     final decoded = CourseTableCloudSync.decodeSnapshotUrls([...old, corrupt]);
     expect(decoded.single.name, '保留版');
   });
 
-
   test('legacy device does not silently replace unverified local people', () {
     final local = <CourseTableSharePerson>[_person('11112222', '未同步', 1)];
-    expect(CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
-      base: null, local: local, remote: const <CourseTableSharePerson>[],
-    ), isFalse);
-    expect(CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
-      base: null, local: local, remote: local,
-    ), isTrue);
-    expect(CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
-      base: const <CourseTableSharePerson>[], local: local, remote: const <CourseTableSharePerson>[],
-    ), isFalse);
-    expect(CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
-      base: local, local: local, remote: const <CourseTableSharePerson>[],
-    ), isTrue);
+    expect(
+      CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
+        base: null,
+        local: local,
+        remote: const <CourseTableSharePerson>[],
+      ),
+      isFalse,
+    );
+    expect(CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(base: null, local: local, remote: local), isTrue);
+    expect(
+      CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
+        base: const <CourseTableSharePerson>[],
+        local: local,
+        remote: const <CourseTableSharePerson>[],
+      ),
+      isFalse,
+    );
+    expect(
+      CourseTableCloudSync.canPullRemoteWithoutDiscardingLocal(
+        base: local,
+        local: local,
+        remote: const <CourseTableSharePerson>[],
+      ),
+      isTrue,
+    );
   });
 
-
   test('legacy fragmentless snapshot remains readable during migration', () {
-    final old = CourseTableCloudSync.encodeSnapshotUrls(
-      <CourseTableSharePerson>[_person('11112222', '舊格式', 1)], generation: '100',
-    ).single;
+    final old = CourseTableCloudSync.encodeSnapshotUrls(<CourseTableSharePerson>[
+      _person('11112222', '舊格式', 1),
+    ], generation: '100').single;
     final legacy = Uri.parse(old).replace(fragment: '').toString();
     final incomplete = CourseTableCloudSync.encodeSnapshotUrls(
       <CourseTableSharePerson>[_person('22223333', '未完成', 8)],
-      generation: '200', maxLength: 170,
+      generation: '200',
+      maxLength: 170,
     );
     expect(incomplete, hasLength(greaterThan(1)));
     final people = CourseTableCloudSync.decodeSnapshotUrls(<String>[legacy, incomplete.first]);
     expect(people.single.name, '舊格式');
   });
-
 }
