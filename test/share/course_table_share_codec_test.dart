@@ -90,6 +90,7 @@ void main() {
     );
 
     final people = payload['people']! as List<dynamic>;
+    expect(payload['version'], 3);
     expect(people, hasLength(1));
     final person = people.single as Map<String, dynamic>;
     expect(person['studentId'], '12345678');
@@ -106,8 +107,69 @@ void main() {
     });
   });
 
-  test('share URL round-trips the gzip compressed JSON payload', () {
+  test('share URL round-trips the gzip compressed binary payload', () {
     final payload = <String, dynamic>{
+      'version': 3,
+      'people': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'studentId': '01234567',
+          'name': '測試學生',
+          'semesters': <String, dynamic>{
+            '115-1': <Map<String, dynamic>>[
+              <String, dynamic>{'snum': '361024', 'currCode': '3314123', 'syllabusCodes': <String>['11126']},
+              <String, dynamic>{'snum': 'A001', 'currCode': '2B05020', 'syllabusCodes': <String>[]},
+            ],
+          },
+        },
+      ],
+    };
+
+    final url = CourseTableShareCodec.encodeUrl(payload);
+    final decoded = CourseTableShareCodec.decodeUrl(url);
+
+    final uri = Uri.parse(url);
+    expect(uri.scheme, CourseTableShareCodec.scheme);
+    expect(uri.host, CourseTableShareCodec.host);
+    expect(uri.path, CourseTableShareCodec.path);
+    expect(decoded, payload);
+  });
+
+  test('binary v3 URL is shorter than the legacy gzip JSON URL', () {
+    final courses = <Map<String, dynamic>>[];
+    for (var index = 0; index < 40; index++) {
+      courses.add(<String, dynamic>{
+        'snum': '${361000 + index}',
+        'currCode': '${3314000 + index}',
+        'syllabusCodes': <String>['${11000 + index}'],
+      });
+    }
+    final payload = <String, dynamic>{
+      'version': 3,
+      'people': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'studentId': '12345678',
+          'name': '測試學生',
+          'semesters': <String, dynamic>{'115-1': courses},
+        },
+      ],
+    };
+
+    final binaryUrl = CourseTableShareCodec.encodeUrl(payload);
+    final legacyPayload = <String, dynamic>{...payload, 'version': 2};
+    final legacyCompressed = gzip.encode(utf8.encode(jsonEncode(legacyPayload)));
+    final legacyEncoded = base64UrlEncode(legacyCompressed).replaceAll('=', '');
+    final legacyUrl = Uri(
+      scheme: CourseTableShareCodec.scheme,
+      host: CourseTableShareCodec.host,
+      path: CourseTableShareCodec.path,
+      queryParameters: <String, String>{'data': legacyEncoded},
+    ).toString();
+
+    expect(binaryUrl.length, lessThan(legacyUrl.length));
+  });
+
+  test('decodes legacy gzip JSON share URLs', () {
+    final legacyPayload = <String, dynamic>{
       'version': 2,
       'people': <Map<String, dynamic>>[
         <String, dynamic>{
@@ -121,16 +183,15 @@ void main() {
         },
       ],
     };
+    final compressed = gzip.encode(utf8.encode(jsonEncode(legacyPayload)));
+    final encoded = base64UrlEncode(compressed).replaceAll('=', '');
+    final url = Uri(
+      scheme: CourseTableShareCodec.scheme,
+      host: CourseTableShareCodec.host,
+      path: CourseTableShareCodec.path,
+      queryParameters: <String, String>{'data': encoded},
+    ).toString();
 
-    final url = CourseTableShareCodec.encodeUrl(payload);
-    final uri = Uri.parse(url);
-    final encoded = uri.queryParameters['data']!;
-    final padded = encoded.padRight(encoded.length + ((4 - encoded.length % 4) % 4), '=');
-    final decoded = jsonDecode(utf8.decode(gzip.decode(base64Url.decode(padded))));
-
-    expect(uri.scheme, CourseTableShareCodec.scheme);
-    expect(uri.host, CourseTableShareCodec.host);
-    expect(uri.path, CourseTableShareCodec.path);
-    expect(decoded, payload);
+    expect(CourseTableShareCodec.decodeUrl(url), legacyPayload);
   });
 }
