@@ -10,6 +10,9 @@ import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/share/course_table_share_codec.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
+import 'package:qaq_app/src/task/course/course_semester_task.dart';
+import 'package:qaq_app/src/task/course/course_table_task.dart';
+import 'package:qaq_app/src/task/task_flow.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -24,10 +27,11 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
   MobileScannerController? _scannerController;
 
   late final String _account;
-  late final List<CourseTableJson> _courseTables;
-  late final List<String> _semesterKeys;
+  List<CourseTableJson> _courseTables = <CourseTableJson>[];
+  List<String> _semesterKeys = <String>[];
   final Set<String> _selectedSemesterKeys = <String>{};
 
+  bool _loading = true;
   bool _scanning = false;
   bool _scanHandled = false;
   bool _exporting = false;
@@ -46,20 +50,80 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
       );
     }
     _account = LocalStorage.instance.getAccount().trim();
-    _courseTables = LocalStorage.instance
+    unawaited(_loadAllCourseTables());
+  }
+
+  Future<void> _loadAllCourseTables() async {
+    final storage = LocalStorage.instance;
+    final semesterTask = CourseSemesterTask(_account)
+      ..openLoadingDialog = false
+      ..openErrorDialog = false;
+    final semesterFlow = TaskFlow()..addTask(semesterTask);
+
+    var semesterLoadSucceeded = false;
+    try {
+      semesterLoadSucceeded = await semesterFlow.start();
+    } catch (_) {
+      semesterLoadSucceeded = false;
+    }
+
+    final semesters = semesterTask.result;
+    if (semesterLoadSucceeded && semesters != null) {
+      storage.setSemesterJsonList(semesters);
+
+      var failedToLoadCourseTable = false;
+      for (final semester in semesters) {
+        if (!mounted) return;
+        var table = storage.getCourseTable(_account, semester);
+        if (table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty)) {
+          final tableTask = CourseTableTask(_account, semester)
+            ..openLoadingDialog = false
+            ..openErrorDialog = false;
+          final tableFlow = TaskFlow()..addTask(tableTask);
+
+          var success = false;
+          try {
+            success = await tableFlow.start();
+          } catch (_) {
+            success = false;
+          }
+          if (success) table = tableTask.result;
+          if (table == null || !table.getCourseIdList().any((id) => id.trim().isNotEmpty)) {
+            failedToLoadCourseTable = true;
+            continue;
+          }
+        }
+      }
+
+      if (failedToLoadCourseTable && mounted) {
+        _showInfo(R.current.getCourseError, type: DialogType.error);
+      }
+    } else if (mounted) {
+      _showInfo(R.current.getCourseSemesterError, type: DialogType.error);
+    }
+
+    final loadedTables = storage
         .getCourseTableList()
         .where((table) => table.studentId.trim() == _account)
         .where((table) => table.getCourseIdList().any((id) => id.trim().isNotEmpty))
         .toList();
 
     final semesterKeys = <String>[];
-    for (final table in _courseTables) {
+    for (final table in loadedTables) {
       final key = CourseTableShareCodec.semesterKeyOf(table);
       if (key != '-' && !semesterKeys.contains(key)) semesterKeys.add(key);
     }
     semesterKeys.sort(_compareSemesterKeys);
-    _semesterKeys = semesterKeys;
-    _selectedSemesterKeys.addAll(_semesterKeys);
+
+    if (!mounted) return;
+    setState(() {
+      _courseTables = loadedTables;
+      _semesterKeys = semesterKeys;
+      _selectedSemesterKeys
+        ..clear()
+        ..addAll(semesterKeys);
+      _loading = false;
+    });
   }
 
   @override
@@ -74,7 +138,9 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
     return Scaffold(
       appBar: AppBar(title: Text(R.current.courseShareTitle)),
       body: SafeArea(
-        child: _semesterKeys.isEmpty
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _semesterKeys.isEmpty
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
