@@ -4,11 +4,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/src/share/course_table_share_codec.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:qaq_app/src/task/course/course_semester_task.dart';
 import 'package:qaq_app/src/task/course/course_table_task.dart';
@@ -35,6 +37,7 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
   bool _scanning = false;
   bool _scanHandled = false;
   bool _exporting = false;
+  bool _importing = false;
 
   bool get _isDesktop => Platform.isWindows || Platform.isLinux;
   bool get _canScan => Platform.isAndroid || Platform.isIOS;
@@ -199,7 +202,7 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
                               _wideButton(
                                 icon: Icons.file_open_outlined,
                                 label: R.current.courseShareImportFile,
-                                onPressed: _showImportComingSoon,
+                                onPressed: _importing ? null : _importFile,
                               ),
                               const SizedBox(height: 14),
                               _wideButton(
@@ -254,7 +257,7 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
           _wideButton(
             icon: Icons.file_open_outlined,
             label: R.current.courseShareImportFile,
-            onPressed: _showImportComingSoon,
+            onPressed: _importing ? null : _importFile,
           ),
           const SizedBox(height: 10),
           _wideButton(
@@ -415,10 +418,48 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
     _scanHandled = true;
     unawaited(_scannerController!.stop());
     if (mounted) setState(() => _scanning = false);
-    _showInfo(R.current.courseShareImportComingSoon);
+    unawaited(_importShareUrl(value));
   }
 
-  void _showImportComingSoon() => _showInfo(R.current.courseShareImportComingSoon);
+  Future<void> _importFile() async {
+    if (_importing) return;
+    try {
+      final file = await openFile(
+        acceptedTypeGroups: const <XTypeGroup>[
+          XTypeGroup(label: 'QAQ Schedule', extensions: <String>[CourseTableShareCodec.fileExtension]),
+        ],
+      );
+      if (file == null) return;
+
+      final value = (await file.readAsString()).trim();
+      await _importShareUrl(value);
+    } catch (_) {
+      _showInfo(R.current.courseShareImportFailed, type: DialogType.error);
+    }
+  }
+
+  Future<void> _importShareUrl(String value) async {
+    if (_importing) return;
+    setState(() => _importing = true);
+    try {
+      final payload = CourseTableShareCodec.decodeUrl(value.trim());
+      final people = CourseTableSharePerson.fromPayload(payload);
+      if (people.isEmpty) throw const FormatException('No shared course tables');
+
+      final account = LocalStorage.instance.getAccount().trim();
+      if (people.any((person) => person.studentId.trim() == account)) {
+        _showInfo(R.current.courseShareImportOwnAccount, type: DialogType.warning);
+        return;
+      }
+
+      await LocalStorage.instance.importCourseTableSharePeople(people);
+      _showInfo(R.current.courseShareImportSuccess, type: DialogType.success);
+    } catch (_) {
+      _showInfo(R.current.courseShareImportFailed, type: DialogType.error);
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
 
   Future<void> _exportFile() async {
     if (_selectedSemesterKeys.isEmpty || _exporting) return;

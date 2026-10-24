@@ -241,5 +241,10 @@
   "courseShareCameraUnavailable": "無法使用相機，請確認已允許相機權限",
   "courseShareExportedToDownloads": "課表已匯出到 Downloads 資料夾",
   "courseShareExportedToFiles": "課表已匯出到「檔案」App 選擇的位置",
-  "courseShareExportFailed": "課表匯出失敗"
+  "courseShareExportFailed": "課表匯出失敗",
+  "courseShareImportOwnAccount": "不能匯入目前登入帳號自己的課表",
+  "courseShareImportSuccess": "課表已匯入",
+  "courseShareImportFailed": "課表匯入失敗或格式不支援",
+  "courseTableSelectTitle": "選擇課表",
+  "courseTableSearchHint": "搜尋學號或姓名"
 }

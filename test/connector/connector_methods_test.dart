@@ -15,6 +15,7 @@ import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/model/ischoolplus/ischool_plus_announcement_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/local_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -343,6 +344,51 @@ void main() {
       expect(info!.json.single.course.name, 'Test Course');
       expect(info.studentName, 'TestStudent');
       expect(info.json.single.classroom.single.href, contains('/course/en/Croom.jsp'));
+    });
+    test('getTWCourseMainInfoByShareIdentifier parses public course search rows', () async {
+      final row = <String>[
+        '361024',
+        '<a href="Curr.jsp?format=-2&amp;code=3314123">材料光電磁性質</a>',
+        '1',
+        '3.0',
+        '3',
+        '★',
+        '<a href="Subj.jsp?format=-4&amp;year=115&amp;sem=1&amp;code=2900">材資四甲</a>',
+        '<a href="Teach.jsp?format=-3&amp;year=115&amp;sem=1&amp;code=11126">王錫九</a>',
+        '',
+        '5 6',
+        '',
+        '',
+        '',
+        '6',
+        '',
+        '<a href="Croom.jsp?format=-3&amp;year=115&amp;sem=1&amp;code=70">四教102(e)</a>',
+        '24',
+        '0',
+        '',
+        '<a href="ShowSyllabus.jsp?snum=361024&amp;code=11126">查詢</a>',
+        '備註',
+        '',
+        '',
+        '',
+      ];
+      body(_table([List.filled(24, '欄位'), row]));
+
+      final info = await CourseConnector.getTWCourseMainInfoByShareIdentifier(
+        const CourseTableShareCourse(snum: '361024', currCode: '3314123', syllabusCodes: <String>['11126']),
+        SemesterJson(year: '115', semester: '1'),
+      );
+
+      expect(info!.course.id, '361024');
+      expect(info.course.href, contains('Curr.jsp'));
+      expect(info.course.time[Day.Monday], '5 6');
+      expect(info.course.time[Day.Friday], '6');
+      expect(info.teacher.single.name, '王錫九');
+      expect(info.classroom.single.name, '四教102(e)');
+      expect(info.openClass.single.name, '材資四甲');
+      expect(info.course.scheduleHref, contains('ShowSyllabus.jsp'));
+      expect(adapter.requests.single.uri.path, '/course/tw/QueryCourse.jsp');
+      expect(adapter.requests.single.data['ccode'], '3314123');
     });
     test('getTWTeacherCourseMainInfoList parses teacher timetable', () async {
       final cells = _twCells();

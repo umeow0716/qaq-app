@@ -21,6 +21,7 @@ import 'package:qaq_app/src/model/coursetable/course_classroom_cache.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/model/setting/setting_json.dart';
 import 'package:qaq_app/src/model/userdata/user_data_json.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 import 'package:qaq_app/src/store/user_session_artifacts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,7 @@ class LocalStorage {
 
   final _userDataJsonKey = "UserDataJsonKey";
   final _courseTableJsonKey = "CourseTableJsonListKey";
+  final _importedCourseTableShareKey = "ImportedCourseTableShareKey";
   final _courseSemesterJsonKey = "CourseSemesterListJson";
   final _scoreCreditJsonKey = "ScoreCreditJsonKey";
   final _courseCategoryCacheKey = "CourseCategoryCacheKey";
@@ -51,6 +53,7 @@ class LocalStorage {
   final _settingJsonKey = "SettingJsonKey";
   final _firstRun = <String, bool>{};
   final _courseTableList = <CourseTableJson>[];
+  final _importedCourseTableSharePeople = <CourseTableSharePerson>[];
 
   CookieJar? _cookieJar;
 
@@ -197,6 +200,49 @@ class LocalStorage {
     return _courseTableList.firstWhereOrNull(
       (courseTable) => courseTable.courseSemester == courseSemester && courseTable.studentId == studentId,
     );
+  }
+
+  List<CourseTableSharePerson> getImportedCourseTableSharePeople() =>
+      List<CourseTableSharePerson>.unmodifiable(_importedCourseTableSharePeople);
+
+  CourseTableSharePerson? getImportedCourseTableSharePerson(String studentId) {
+    final normalized = studentId.trim();
+    return _importedCourseTableSharePeople.firstWhereOrNull((person) => person.studentId == normalized);
+  }
+
+  Future<void> importCourseTableSharePeople(Iterable<CourseTableSharePerson> people) async {
+    for (final person in people) {
+      final studentId = person.studentId.trim();
+      if (studentId.isEmpty) continue;
+      _importedCourseTableSharePeople.removeWhere((saved) => saved.studentId == studentId);
+      _importedCourseTableSharePeople.add(person);
+      _courseTableList.removeWhere((table) => table.studentId.trim() == studentId);
+    }
+    await Future.wait(<Future<void>>[saveImportedCourseTableSharePeople(), saveCourseTableList()]);
+  }
+
+  Future<void> saveImportedCourseTableSharePeople() => _writeStringList(
+    _importedCourseTableShareKey,
+    _importedCourseTableSharePeople.map((person) => json.encode(person.toJson())).toList(),
+  );
+
+  void _loadImportedCourseTableSharePeople() {
+    _importedCourseTableSharePeople.clear();
+    final saved = _readStringList(_importedCourseTableShareKey);
+    if (saved == null) return;
+    for (final value in saved) {
+      try {
+        final decoded = json.decode(value);
+        if (decoded is Map<String, dynamic>) {
+          final person = CourseTableSharePerson.fromJson(decoded);
+          if (person.studentId.isNotEmpty && person.semesters.isNotEmpty) {
+            _importedCourseTableSharePeople.add(person);
+          }
+        }
+      } catch (_) {
+        // Ignore malformed imported share records.
+      }
+    }
   }
 
   Future<void> _saveSetting() => _save(_settingJsonKey, _setting);
@@ -555,6 +601,7 @@ class LocalStorage {
     );
     await _loadUserData();
     _loadCourseTableList();
+    _loadImportedCourseTableSharePeople();
     _loadSetting();
     _loadCourseScoreCredit();
     final courseExtraInfoCacheChanged = _loadCourseExtraInfoCache();
@@ -599,6 +646,7 @@ class LocalStorage {
   void _resetUserScopedMemory() {
     _userData = UserDataJson();
     _courseTableList.clear();
+    _importedCourseTableSharePeople.clear();
     _courseSemesterList.clear();
     _courseScoreList = CourseScoreCreditJson();
     _courseExtraInfoCache.clear();
@@ -614,6 +662,7 @@ class LocalStorage {
       _secureStorage.delete(key: _ntutPasswordStorageKey),
       _remove(_userDataJsonKey),
       _remove(_courseTableJsonKey),
+      _remove(_importedCourseTableShareKey),
       _remove(_courseSemesterJsonKey),
       _remove(_scoreCreditJsonKey),
       _remove(_courseCategoryCacheKey),

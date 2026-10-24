@@ -6,6 +6,7 @@ import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
 import 'package:qaq_app/src/share/course_table_share_codec.dart';
+import 'package:qaq_app/src/share/course_table_share_data.dart';
 
 CourseTableJson table({
   required String studentId,
@@ -105,6 +106,29 @@ void main() {
         },
       ],
     });
+  });
+
+  test('decoded share payload becomes searchable imported people', () {
+    final people = CourseTableSharePerson.fromPayload(<String, dynamic>{
+      'version': 3,
+      'people': <Map<String, dynamic>>[
+        <String, dynamic>{
+          'studentId': '12345678',
+          'name': '測試學生',
+          'semesters': <String, dynamic>{
+            '115-1': <Map<String, dynamic>>[
+              <String, dynamic>{'snum': '361024', 'currCode': '3314123', 'syllabusCodes': <String>['11126']},
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(people, hasLength(1));
+    expect(people.single.matches('測試'), isTrue);
+    expect(people.single.matches('1234'), isTrue);
+    expect(people.single.semesterList, <SemesterJson>[SemesterJson(year: '115', semester: '1')]);
+    expect(people.single.coursesForSemester(SemesterJson(year: '115', semester: '1')).single.currCode, '3314123');
   });
 
   test('share URL round-trips the gzip compressed binary payload', () {
