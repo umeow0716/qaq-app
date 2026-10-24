@@ -377,6 +377,7 @@ void main() {
       final info = await CourseConnector.getTWCourseMainInfoByShareIdentifier(
         const CourseTableShareCourse(snum: '361024', currCode: '3314123', syllabusCodes: <String>['11126']),
         SemesterJson(year: '115', semester: '1'),
+        timeout: const Duration(seconds: 4),
       );
 
       expect(info!.course.id, '361024');
@@ -389,6 +390,9 @@ void main() {
       expect(info.course.scheduleHref, contains('ShowSyllabus.jsp'));
       expect(adapter.requests.single.uri.path, '/course/tw/QueryCourse.jsp');
       expect(adapter.requests.single.data['ccode'], '3314123');
+      expect(adapter.requests.single.connectTimeout, const Duration(seconds: 4));
+      expect(adapter.requests.single.receiveTimeout, const Duration(seconds: 4));
+      expect(adapter.requests.single.sendTimeout, const Duration(seconds: 4));
     });
     test('getTWTeacherCourseMainInfoList parses teacher timetable', () async {
       final cells = _twCells();

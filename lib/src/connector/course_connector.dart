@@ -461,8 +461,9 @@ class CourseConnector {
 
   static Future<CourseMainInfoJson?> getTWCourseMainInfoByShareIdentifier(
     CourseTableShareCourse sharedCourse,
-    SemesterJson semester,
-  ) async {
+    SemesterJson semester, {
+    Duration? timeout,
+  }) async {
     try {
       final currCode = sharedCourse.currCode.trim();
       if (currCode.isEmpty) return null;
@@ -493,7 +494,11 @@ class CourseConnector {
         'P13': 'ON',
       };
 
-      final response = await dio.post<String>(_queryCourseCNUrl, data: data);
+      final response = await dio.post<String>(
+        _queryCourseCNUrl,
+        data: data,
+        options: Options(connectTimeout: timeout, receiveTimeout: timeout, sendTimeout: timeout),
+      );
       final document = parse(response.data ?? '');
       final tables = document.getElementsByTagName('table');
       if (tables.isEmpty) return null;

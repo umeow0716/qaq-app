@@ -1,3 +1,4 @@
+import 'package:qaq_app/src/connector/core/network_request_pool.dart';
 import 'package:qaq_app/src/connector/course_connector.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/course/course_main_extra_json.dart';
@@ -45,8 +46,21 @@ class SharedCourseTableTask extends CourseSystemTask<CourseTableJson> {
     );
     courseTable.setCourseDetailByTimeString(Day.Tuesday, '3 4', classMeeting);
 
-    for (final sharedCourse in sharedCourses) {
-      final main = await CourseConnector.getTWCourseMainInfoByShareIdentifier(sharedCourse, semester);
+    final resolved = await NetworkRequestPool.shared.run<CourseMainInfoJson>(
+      sharedCourses.map(
+        (sharedCourse) =>
+            (timeout) => CourseConnector.getTWCourseMainInfoByShareIdentifier(
+              sharedCourse,
+              semester,
+              timeout: timeout,
+            ),
+      ),
+      shouldRetry: (main) => main == null || main.course.id.isEmpty,
+    );
+
+    // Keep network work parallel, but assemble the timetable and mutate local
+    // caches serially so CourseTableJson/LocalStorage never see concurrent writes.
+    for (final main in resolved) {
       if (main == null || main.course.id.isEmpty) continue;
 
       resolvedCourses++;
