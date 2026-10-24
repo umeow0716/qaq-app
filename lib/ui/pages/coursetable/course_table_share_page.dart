@@ -319,19 +319,25 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
   }
 
   Widget _buildSemesterSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final semester in _semesterKeys) ...[
-            FilterChip(
-              label: Text(semester),
-              selected: _selectedSemesterKeys.contains(semester),
-              onSelected: (selected) => _setSemesterSelected(semester, selected),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 132),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final semester in _semesterKeys)
+                FilterChip(
+                  label: Text(semester),
+                  selected: _selectedSemesterKeys.contains(semester),
+                  onSelected: (selected) => _setSemesterSelected(semester, selected),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
