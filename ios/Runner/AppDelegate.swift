@@ -30,10 +30,70 @@ import WebKit
       switch call.method {
       case "set_webview_cookie":
         Self.setWebViewCookie(call, result: result)
+      case "share_file":
+        self.shareFile(call, result: result)
       default:
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  private func shareFile(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard
+      let arguments = call.arguments as? [String: Any],
+      let path = arguments["path"] as? String,
+      !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+      result(FlutterError(code: "INVALID_SHARE_PATH", message: "A file path is required.", details: nil))
+      return
+    }
+
+    guard FileManager.default.fileExists(atPath: path) else {
+      result(FlutterError(code: "SHARE_FILE_NOT_FOUND", message: "The file does not exist.", details: nil))
+      return
+    }
+
+    DispatchQueue.main.async {
+      guard let presenter = Self.topViewController() else {
+        result(FlutterError(code: "SHARE_FILE_FAILED", message: "Unable to find a view controller.", details: nil))
+        return
+      }
+
+      let controller = UIActivityViewController(activityItems: [URL(fileURLWithPath: path)], applicationActivities: nil)
+      if let popover = controller.popoverPresentationController {
+        popover.sourceView = presenter.view
+        popover.sourceRect = CGRect(
+          x: presenter.view.bounds.midX,
+          y: presenter.view.bounds.midY,
+          width: 1,
+          height: 1
+        )
+        popover.permittedArrowDirections = []
+      }
+      presenter.present(controller, animated: true) {
+        result(true)
+      }
+    }
+  }
+
+  private static func topViewController() -> UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let root = scenes
+      .flatMap { $0.windows }
+      .first(where: { $0.isKeyWindow })?
+      .rootViewController
+
+    var current = root
+    while let presented = current?.presentedViewController {
+      current = presented
+    }
+    if let navigation = current as? UINavigationController {
+      return navigation.visibleViewController ?? navigation
+    }
+    if let tab = current as? UITabBarController {
+      return tab.selectedViewController ?? tab
+    }
+    return current
   }
 
   private static func setWebViewCookie(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

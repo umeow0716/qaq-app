@@ -11,8 +11,10 @@ class FilePopup extends StatelessWidget {
   Widget build(BuildContext context) => PopupMenuButton<int>(
     onSelected: popTap,
     itemBuilder: (context) => [
+      PopupMenuItem(value: 2, child: Text(R.current.saveAs)),
       PopupMenuItem(value: 0, child: Text(R.current.rename)),
       PopupMenuItem(value: 1, child: Text(R.current.delete)),
+      PopupMenuItem(value: 3, child: Text(R.current.share)),
     ],
     icon: Icon(Icons.arrow_drop_down, color: Theme.of(context).textTheme.titleLarge?.color),
     color: Theme.of(context).scaffoldBackgroundColor,

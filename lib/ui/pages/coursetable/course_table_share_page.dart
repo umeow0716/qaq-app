@@ -7,6 +7,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qaq_app/src/connector/core/network_request_pool.dart';
 import 'package:qaq_app/src/model/course/course_class_json.dart';
 import 'package:qaq_app/src/model/coursetable/course_table_json.dart';
@@ -18,6 +19,7 @@ import 'package:qaq_app/src/sync/course_table_cloud_sync.dart';
 import 'package:qaq_app/src/task/course/course_semester_task.dart';
 import 'package:qaq_app/src/task/course/course_table_task.dart';
 import 'package:qaq_app/src/task/task_flow.dart';
+import 'package:qaq_app/src/util/file_action_util.dart';
 import 'package:qaq_app/ui/other/msg_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -40,6 +42,7 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
   bool _scanning = false;
   bool _scanHandled = false;
   bool _exporting = false;
+  bool _sharing = false;
   bool _importing = false;
 
   bool get _isDesktop => Platform.isWindows || Platform.isLinux;
@@ -133,9 +136,8 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
     setState(() {
       _courseTables = loadedTables;
       _semesterKeys = semesterKeys;
-      _selectedSemesterKeys
-        ..clear()
-        ..addAll(semesterKeys);
+      _selectedSemesterKeys.clear();
+      if (semesterKeys.isNotEmpty) _selectedSemesterKeys.add(semesterKeys.first);
       _loading = false;
     });
   }
@@ -271,10 +273,24 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
             onPressed: _importing ? null : _importFile,
           ),
           const SizedBox(height: 10),
-          _wideButton(
-            icon: Icons.file_upload_outlined,
-            label: R.current.courseShareExportFile,
-            onPressed: _exporting ? null : _exportFile,
+          Row(
+            children: [
+              Expanded(
+                child: _wideButton(
+                  icon: Icons.file_upload_outlined,
+                  label: R.current.courseShareExportFile,
+                  onPressed: _exporting ? null : _exportFile,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _wideButton(
+                  icon: Icons.share_outlined,
+                  label: R.current.courseShareShareFile,
+                  onPressed: _sharing ? null : _shareFile,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -338,21 +354,49 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
         child: Align(
-          alignment: Alignment.topLeft,
+          alignment: Alignment.topCenter,
           child: Wrap(
+            alignment: WrapAlignment.center,
             spacing: 8,
             runSpacing: 8,
-            children: [
-              for (final semester in _semesterKeys)
-                FilterChip(
-                  label: Text(semester),
-                  selected: _selectedSemesterKeys.contains(semester),
-                  onSelected: (selected) => _setSemesterSelected(semester, selected),
-                ),
-            ],
+            children: [for (final semester in _semesterKeys) _buildSemesterChip(semester)],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSemesterChip(String semester) {
+    final selected = _selectedSemesterKeys.contains(semester);
+    final checkColor = Theme.of(context).colorScheme.onSecondaryContainer;
+    const checkSize = 18.0;
+    const checkGap = 4.0;
+
+    Widget checkedContent({required double opacity}) {
+      return Opacity(
+        opacity: opacity,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check, size: checkSize, color: checkColor),
+            const SizedBox(width: checkGap),
+            Text(semester),
+          ],
+        ),
+      );
+    }
+
+    return FilterChip(
+      label: Stack(
+        alignment: Alignment.center,
+        children: [
+          ExcludeSemantics(child: checkedContent(opacity: 0)),
+          if (selected) checkedContent(opacity: 1) else Text(semester),
+        ],
+      ),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: (value) => _setSemesterSelected(semester, value),
     );
   }
 
@@ -479,32 +523,36 @@ class _CourseTableSharePageState extends State<CourseTableSharePage> {
 
     try {
       final bytes = Uint8List.fromList(utf8.encode(_shareUrl));
-      final name = _exportFileName();
-
-      if (Platform.isIOS) {
-        final result = await FileSaver.instance.saveAs(
-          name: name,
-          bytes: bytes,
-          fileExtension: CourseTableShareCodec.fileExtension,
-          mimeType: MimeType.custom,
-          customMimeType: CourseTableShareCodec.mimeType,
-        );
-        if (result == null) return;
-        _showInfo(R.current.courseShareExportedToFiles);
-      } else {
-        await FileSaver.instance.saveToDownloads(
-          name: name,
-          bytes: bytes,
-          fileExtension: CourseTableShareCodec.fileExtension,
-          mimeType: MimeType.custom,
-          customMimeType: CourseTableShareCodec.mimeType,
-        );
-        _showInfo(R.current.courseShareExportedToDownloads);
-      }
+      final result = await FileSaver.instance.saveAs(
+        name: _exportFileName(),
+        bytes: bytes,
+        fileExtension: CourseTableShareCodec.fileExtension,
+        mimeType: MimeType.custom,
+        customMimeType: CourseTableShareCodec.mimeType,
+      );
+      if (result == null) return;
+      _showInfo(R.current.courseShareExportedToFiles);
     } catch (_) {
       _showInfo(R.current.courseShareExportFailed, type: DialogType.error);
     } finally {
       if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _shareFile() async {
+    if (_selectedSemesterKeys.isEmpty || _sharing) return;
+    setState(() => _sharing = true);
+
+    File? temporaryFile;
+    try {
+      final temporaryDirectory = await getTemporaryDirectory();
+      temporaryFile = File('${temporaryDirectory.path}/${_exportFileName()}.${CourseTableShareCodec.fileExtension}');
+      await temporaryFile.writeAsString(_shareUrl, flush: true);
+      await FileActionUtil.shareFile(temporaryFile.path, mimeType: CourseTableShareCodec.mimeType);
+    } catch (_) {
+      _showInfo(R.current.courseShareShareFailed, type: DialogType.error);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
     }
   }
 
