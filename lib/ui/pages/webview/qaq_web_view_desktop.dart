@@ -15,6 +15,7 @@ import 'package:qaq_app/src/connector/ntut_connector.dart';
 import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/ui/pages/webview/istudy_mooc_layout_fix.dart';
 import 'package:webview_all/webview_all.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_all_linux/webview_all_linux.dart' as linux_webview;
@@ -1150,8 +1151,19 @@ class _QAQWebViewDesktopState extends State<QAQWebViewDesktop> {
     }
   }
 
+  Future<void> _installIStudyMoocLayoutFix(String url) async {
+    if (!isIStudyMoocPhpUrl(url)) return;
+
+    try {
+      await _requiredController.runJavaScript(iStudyMoocLayoutFixScript);
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('iStudy MOOC layout fix install', error, stackTrace);
+    }
+  }
+
   Future<void> _onPageFinished(String url) async {
     await _installDownloadFilenameCapture();
+    await _installIStudyMoocLayoutFix(url);
 
     final title = await _requiredController.getTitle();
     if (mounted && title != null && title.trim().isNotEmpty) {
