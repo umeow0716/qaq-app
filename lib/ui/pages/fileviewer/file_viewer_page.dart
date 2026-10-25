@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qaq_app/src/providers/category_provider.dart';
 import 'package:qaq_app/src/r.dart';
+import 'package:qaq_app/src/util/file_action_util.dart';
 import 'package:qaq_app/src/util/file_utils.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
 import "package:lucide_icons_flutter/lucide_icons.dart";
@@ -232,7 +233,19 @@ class _FileViewerPageState extends State<FileViewerPage> with WidgetsBindingObse
                                   return File(file.path);
                                 });
                                 getFiles();
-                              } else if (v == 2) {}
+                              } else if (v == 2) {
+                                try {
+                                  await FileActionUtil.saveAs(file.path);
+                                } catch (_) {
+                                  MyToast.show(R.current.unknownError);
+                                }
+                              } else if (v == 3) {
+                                try {
+                                  await FileActionUtil.shareFile(file.path);
+                                } catch (_) {
+                                  MyToast.show(R.current.unknownError);
+                                }
+                              }
                             },
                           ),
                         );

@@ -5,6 +5,7 @@ import android.app.DownloadManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,7 @@ import android.webkit.CookieManager
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
 import androidx.annotation.NonNull
+import androidx.core.content.FileProvider
 import androidx.webkit.ProxyConfig
 import androidx.webkit.ProxyController
 import androidx.webkit.WebViewFeature
@@ -98,10 +100,54 @@ class MainActivity : FlutterActivity() {
                 "append_webview_blob_download_chunk" -> appendWebViewBlobDownloadChunk(call, result)
                 "finish_webview_blob_download" -> finishWebViewBlobDownload(call, result)
                 "abort_webview_blob_download" -> abortWebViewBlobDownload(call, result)
+                "share_file" -> shareFile(call, result)
                 else -> {
                     result.notImplemented()
                 }
             }
+        }
+    }
+
+    private fun shareFile(call: MethodCall, result: MethodChannel.Result) {
+        val path = call.argument<String>("path")?.trim().orEmpty()
+        if (path.isEmpty()) {
+            result.error("INVALID_SHARE_PATH", "A file path is required.", null)
+            return
+        }
+
+        val file = File(path)
+        if (!file.isFile) {
+            result.error("SHARE_FILE_NOT_FOUND", "The file does not exist.", null)
+            return
+        }
+
+        try {
+            val authority = "${applicationContext.packageName}.fileProvider"
+            val sharedFile = try {
+                FileProvider.getUriForFile(this, authority, file)
+                file
+            } catch (_: IllegalArgumentException) {
+                // Some Dart temporary paths (for example Directory.systemTemp)
+                // may resolve to code_cache, which is not exposed by FileProvider.
+                // Copy into cacheDir, which is covered by the configured <cache-path>.
+                val shareDirectory = File(cacheDir, "shared_files").apply { mkdirs() }
+                File(shareDirectory, file.name).also { file.copyTo(it, overwrite = true) }
+            }
+            val uri = FileProvider.getUriForFile(this, authority, sharedFile)
+            val mimeType = call.argument<String>("mimeType")?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: contentResolver.getType(uri)
+                ?: "application/octet-stream"
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri(file.name, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, null))
+            result.success(true)
+        } catch (error: Exception) {
+            Log.e(logTag, "Unable to share file", error)
+            result.error("SHARE_FILE_FAILED", error.message, null)
         }
     }
 
