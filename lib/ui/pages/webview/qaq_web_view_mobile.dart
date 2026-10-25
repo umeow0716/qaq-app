@@ -17,6 +17,7 @@ import 'package:qaq_app/src/file/webview_blob_download.dart';
 import 'package:qaq_app/src/file/webview_download_filename.dart';
 import 'package:qaq_app/src/r.dart';
 import 'package:qaq_app/ui/other/my_toast.dart';
+import 'package:qaq_app/ui/pages/webview/istudy_mooc_layout_fix.dart';
 import 'package:qaq_app/ui/pages/webview/qaq_android_navigation_delegate.dart';
 import 'package:qaq_app/ui/pages/webview/web_view_button_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -431,8 +432,19 @@ class _QAQWebViewMobileState extends State<QAQWebViewMobile> {
     }
   }
 
+  Future<void> _installIStudyMoocLayoutFix(String url) async {
+    if (!isIStudyMoocPhpUrl(url)) return;
+
+    try {
+      await _controller.runJavaScript(iStudyMoocLayoutFixScript);
+    } catch (error, stackTrace) {
+      GlobalProtectDebug.error('iStudy MOOC layout fix install', error, stackTrace);
+    }
+  }
+
   Future<void> _onPageFinished(String url) async {
     await _installDownloadFilenameCapture();
+    await _installIStudyMoocLayoutFix(url);
     if (!kDebugMode) return;
 
     debugPrint('[WebView] onPageFinished: $url');
